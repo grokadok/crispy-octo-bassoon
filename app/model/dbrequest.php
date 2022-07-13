@@ -1,10 +1,11 @@
 <?php
 class DBRequest
 {
-    private $dbHost = "swoole-mariadb";
-    private $dbUser = "avxi1673_helpdesk";
-    private $dbPassword = "^#N5Kb@qRWVGs4kkR&vUhGtU8sz6tQ9#Uj2N!Ap%";
-    private $dbDatabase = "avxi1673_helpdesk";
+    private $dbHost = getenv('MYSQL_ADDON_HOST');
+    private $dbPort = getenv('MYSQL_ADDON_PORT');
+    private $dbDatabase = getenv('MYSQL_ADDON_DB');
+    private $dbUser = getenv('MYSQL_ADDON_USER');
+    private $dbPassword = getenv('MYSQL_ADDON_PASSWORD');
     private $mysqli;
     public $result;
     // public $num_rows;
@@ -24,7 +25,8 @@ class DBRequest
                 $this->dbHost,
                 $this->dbUser,
                 $this->dbPassword,
-                $this->dbDatabase
+                $this->dbDatabase,
+                $this->dbPort
             );
             $stmt = $this->mysqli->prepare($request["query"]);
             if (
