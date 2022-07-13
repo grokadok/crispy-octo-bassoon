@@ -1,0 +1,535 @@
+:root {
+    font-size: 16px;
+    font-family: "Helvetica Neue";
+    touch-action: manipulation;
+    --gray0: #f8f8f8;
+    --gray1: #dbe1e8;
+    --gray2: #b2becd;
+    --gray3: #6c7983;
+    --gray4: #454e56;
+    --gray5: #2a2e35;
+    --gray6: #12181b;
+    /* --coolor1: #73f76e; */
+    /* --coolor1: #e8c547; */
+    --coolor1: #cdf7f6;
+    /* --coolor2: #1d7730; */
+    /* --coolor2: #5c80bc; */
+    --coolor2: #578dbe;
+    --coolor3: #4d5061;
+    --coolor4: #30323d;
+    /* --coolor5: #cdd1c4; */
+    --coolor5: #e8ebe1;
+    --coolor6: #1f5383;
+    --accent: var(--coolor1);
+    --accent-secondary: var(--coolor2);
+    --theme: #578dbe;
+    --theme-bg: rgb(87, 140, 190, 0.18);
+    --theme-border: rgb(87, 140, 190, 0.12);
+    --primary: #2892fd;
+    --primary-bg: rgb(40, 146, 253, 0.18);
+    --primary-border: rgb(40, 146, 253, 0.12);
+    --success: #5ad092;
+    --success-bg: rgb(90, 208, 146, 0.18);
+    --success-border: rgb(90, 208, 146, 0.12);
+    --info: #4fc6e1;
+    --info-bg: rgb(79, 198, 225, 0.18);
+    --info-border: rgb(79, 198, 225, 0.12);
+    --warning: #fdc45e;
+    --warning-bg: rgb(253, 196, 94, 0.18);
+    --warning-border: rgb(253, 196, 94, 0.12);
+    --danger: #f75964;
+    --danger-bg: rgb(247, 89, 100, 0.18);
+    --danger-border: rgb(247, 89, 100, 0.12);
+    --transition-global: 500ms ease;
+    --transition-pages: 1s;
+}
+
+/* Themes */
+
+.light,
+.setlight {
+    --text: var(--coolor3);
+    --text-highlight: var(--accent-secondary);
+    --text-placeholder: var(--gray3);
+    --bg: var(--gray1);
+    --bg-chat: rgb(255, 255, 255, 0.8);
+    --bg-nav: var(--coolor3);
+    --bg-nav-focus: var(--coolor4);
+    --nav-text: var(--gray1);
+    --nav-text-focus: var(--gray0);
+    --fieldset: var(--gray3);
+    --login-gradient: linear-gradient(
+        60deg,
+        var(--coolor3) 0%,
+        var(--coolor2) 100%
+    );
+    --mark: var(--accent-secondary);
+    --title-gradient: linear-gradient(
+        60deg,
+        var(--coolor3) 0%,
+        var(--coolor2) 50%,
+        var(--coolor3) 100%
+    );
+    --table-header: var(--accent-secondary);
+    --table-header-focus: var(--coolor6);
+    --table-even: var(--gray1);
+    --table-odd: var(--gray0);
+    --table-focus: var(--accent);
+    --table-selected: var(--gray2);
+}
+
+.dark,
+.setdark {
+    --text: var(--gray1);
+    --text-highlight: var(--accent);
+    --text-placeholder: var(--gray3);
+    --bg: var(--coolor4);
+    --bg-chat: rgb(0, 0, 0, 0.8);
+    --bg-nav: var(--coolor3);
+    --bg-nav-focus: var(--coolor4);
+    --nav-text: var(--gray1);
+    --nav-text-focus: var(--gray0);
+    --fieldset: var(--gray2);
+    --login-gradient: linear-gradient(
+        60deg,
+        var(--gray1) 0%,
+        var(--coolor2) 100%
+    );
+    --mark: var(--accent);
+    --title-gradient: linear-gradient(
+        60deg,
+        var(--gray1) 0%,
+        var(--coolor2) 50%,
+        var(--gray1) 100%
+    );
+    --table-header: var(--accent-secondary);
+    --table-header-focus: var(--accent);
+    --table-even: var(--coolor4);
+    --table-odd: var(--gray6);
+    --table-focus: var(--coolor6);
+    --table-selected: var(--coolor3);
+}
+
+.solar {
+    --coolor1: #bbe848;
+    --coolor4: #35303d;
+    --coolor3: #544d61;
+    --coolor2: #695cbd;
+    --coolor5: #c7d1c5;
+}
+
+::selection {
+    color: var(--coolor4);
+    background-color: var(--coolor1);
+}
+
+::placeholder {
+    color: var(--text-placeholder);
+}
+
+mark {
+    color: var(--text);
+    background-color: var(--accent);
+    border-radius: 5px;
+}
+
+body {
+    height: 100vh;
+    color: var(--text);
+    background-color: var(--bg);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 1;
+    transition: background var(--transition-global),
+        color var(--transition-pages), opacity var(--transition-pages),
+        clip-path 1s ease-in;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    :root {
+        scrollbar-color: var(--coolor3) var(--coolor4);
+        scrollbar-width: thin;
+    }
+}
+
+@supports selector(::-webkit-scrollbar) {
+    body::-webkit-scrollbar {
+        width: 0.5rem;
+    }
+
+    body::-webkit-scrollbar-track {
+        background: var(--coolor3);
+    }
+
+    body::-webkit-scrollbar-thumb {
+        background: var(--coolor4);
+    }
+}
+
+a {
+    color: var(--coolor2);
+    text-decoration: none;
+}
+
+ul {
+    list-style-type: square;
+}
+ul mark {
+    color: var(--mark);
+    background: transparent;
+}
+li:hover mark,
+li:focus mark {
+    color: var(--accent);
+}
+legend {
+    background: var(--bg);
+    padding-inline: 0.2rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+nav {
+    z-index: 10;
+}
+
+main {
+    position: relative;
+    /* padding-top: 3rem; */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* height: calc(100vh - 3rem); */
+    height: 100vh;
+    opacity: 1;
+    transition: var(--transition-pages);
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+input {
+    margin: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    background-color: var(--bg);
+    border: 0;
+    border-radius: 5px;
+    box-shadow: 0px 0px 0px 1px var(--text);
+    font-size: 1.2rem;
+    color: var(--text);
+    transition: var(--transition-global);
+    &.password {
+        padding-right: 2.1rem;
+    }
+    &:focus {
+        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--coolor2);
+        outline: none;
+    }
+    &.invalid:focus {
+        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--danger);
+    }
+    &.valid:focus {
+        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--success);
+    }
+}
+
+@media only screen and (max-width: 599px), screen and (max-height: 599px) {
+    :root {
+        font-size: 14px;
+    }
+}
+
+.tab {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    /* max-height: 100%; */
+    padding: 3rem 2rem 2rem 2rem;
+    display: grid;
+    grid-gap: 0.6rem 0.4rem;
+    grid-template-columns: repeat(6, 1fr);
+    grid-auto-rows: auto;
+    box-sizing: border-box;
+    overflow-y: auto;
+    opacity: 1;
+    transition: all var(--transition-global), opacity 500ms;
+    & h1 {
+        position: absolute;
+        top: -1.1rem;
+        left: 7%;
+        transition: top var(--transition-global);
+    }
+    & > fieldset {
+        height: fit-content;
+        max-height: 100%;
+    }
+}
+
+fieldset {
+    position: relative;
+    border: 2px solid var(--fieldset);
+    border-radius: 5px;
+    padding: 0 0.4rem;
+    transition: var(--transition-global);
+    &.compact {
+        border: none;
+        & > legend {
+            display: none;
+        }
+        & > input {
+            box-sizing: border-box;
+            width: 100%;
+            margin: 0;
+        }
+    }
+    & > svg {
+        position: absolute;
+        top: 0.55rem;
+        right: 0.7rem;
+        height: 1.5rem;
+        opacity: 0.7;
+        & path {
+            fill: var(--text);
+            opacity: 1;
+            transition: opacity 0.2s cubic-bezier(0.17, 0.84, 0.44, 1);
+        }
+        & path.hide {
+            opacity: 0;
+            transition: opacity 0.4s ease-in;
+        }
+    }
+}
+
+.hidden {
+    display: none;
+}
+
+.fadeout {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading {
+    opacity: 0;
+}
+
+.drag {
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 0.5rem 0.5rem rgba(0, 0, 0, 0.4));
+    transition: transform var(--transition-global),
+        filter var(--transition-global);
+    &.up {
+        transform: scale(1) translateY(-0.3rem);
+        filter: drop-shadow(0 1rem 1rem rgba(0, 0, 0, 0.4));
+        cursor: grabbing;
+        transition: top 0s, left 0s;
+    }
+}
+@media not all and (min-resolution: 0.001dpcm) {
+    @supports (-webkit-appearance: none) {
+        .drag,
+        .drag.up {
+            filter: none;
+        }
+        fieldset:not(.compact, .fadeout) {
+            padding-bottom: 1rem !important;
+        }
+    }
+}
+
+/* .blurred,
+.blurred * {
+    filter: blur(2px) grayscale(0.6);
+    pointer-events: none;
+} */
+
+/* Tabulator override styling */
+/* .tabulator {
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    & .tabulator-header {
+        border: none;
+        background: transparent;
+        & .tabulator-col {
+            border: none;
+            background: transparent;
+            color: var(--table-header);
+            text-align: center;
+            &.tabulator-sortable:hover {
+                background: transparent;
+                color: var(--table-header-focus);
+            }
+        }
+    }
+    & .tabulator-tableholder .tabulator-table {
+        background: transparent;
+        color: var(--text);
+    }
+}
+.tabulator-row {
+    background: var(--table-odd);
+    &.tabulator-selectable:hover {
+        background: var(--table-focus);
+        color: var(--text);
+    }
+    &.tabulator-row-even {
+        background: var(--table-even);
+    }
+    & div:last-child {
+        border: none;
+    }
+    &.tabulator-selected {
+        background: var(--table-selected);
+    }
+} */
+
+/* Inspired by this reddit post: https://www.reddit.com/r/oddlysatisfying/comments/6b1mro/a_loading_gif_animation_i_made/
+Feel free to use it in your projects in whatever way you want.
+Some variables for you to play around with. */
+/*
+$square: 32px;
+$duration: 10s;
+*/
+
+/* In case you're wondering why I didn't use transforms here: it's because 'background-attachment: fixed' doesn't work with transformed elements. I needed the background-attachment so I can get the subtle gradient across all pieces. Works only in Webkit (and maybe IE, I don't know). */
+/*
+@keyframes square-animation {
+    0% {
+        left: 0;
+        top: 0;
+    }
+
+    10.5% {
+        left: 0;
+        top: 0;
+    }
+    12.5% {
+        left: $square;
+        top: 0;
+    }
+
+    23% {
+        left: $square;
+        top: 0;
+    }
+    25% {
+        left: $square * 2;
+        top: 0;
+    }
+
+    35.5% {
+        left: $square * 2;
+        top: 0;
+    }
+    37.5% {
+        left: $square * 2;
+        top: $square;
+    }
+
+    48% {
+        left: $square * 2;
+        top: $square;
+    }
+    50% {
+        left: $square;
+        top: $square;
+    }
+
+    60.5% {
+        left: $square;
+        top: $square;
+    }
+    62.5% {
+        left: $square;
+        top: $square * 2;
+    }
+
+    73% {
+        left: $square;
+        top: $square * 2;
+    }
+    75% {
+        left: 0;
+        top: $square * 2;
+    }
+
+    85.5% {
+        left: 0;
+        top: $square * 2;
+    }
+    87.5% {
+        left: 0;
+        top: $square;
+    }
+
+    98% {
+        left: 0;
+        top: $square;
+    }
+    100% {
+        left: 0;
+        top: 0;
+    }
+}
+*/
+
+/* This is just a cute animation that cycles through the different hues. */
+/*
+@keyframes hue-rotate {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+    100% {
+        filter: hue-rotate(360deg);
+    }
+}
+*/
+
+/* Just some styles to get everything centred. 
+body {
+  display: flex;
+  height: 100vh;
+  align-items: center;
+  justify-content: center;
+}
+
+Set the rotation to '-135deg' to get a heart shaped loading indicator. 😘 */
+/*
+.loading__temp {
+    position: relative;
+    width: $square * 3;
+    height: $square * 3;
+    transform: rotate(45deg);
+    animation: hue-rotate $duration linear infinite both;
+}
+*/
+
+/* Like I said, I'm using 'position: absolute' because of the background-attachment that otherwise doesn't work.
+The 'background-attachment: fixed' lets it look like the gradient is flowing across all pieces instead of each piece individually.
+At the end of the style you can see a little loop that sets different negative animation delays so the pieces start animating at different positions. */
+/*
+.loading__square {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: $square - 4px;
+    height: $square - 4px;
+    margin: 2px;
+    border-radius: 2px;
+    background: #07a;
+    background-image: linear-gradient(45deg, #fa0 40%, #0c9 60%);
+    background-image: -moz-linear-gradient(#fa0, #fa0);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    animation: square-animation $duration ease-in-out infinite both;
+
+    @for $i from 0 through 7 {
+        &:nth-of-type(#{$i}) {
+            animation-delay: -($duration / 7) * $i;
+        }
+    }
+}
+*/

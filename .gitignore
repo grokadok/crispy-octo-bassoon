@@ -1,0 +1,5 @@
+/node_modules
+/vendor
+/database/diagram/*.bak
+ssl.*
+/*lock*
