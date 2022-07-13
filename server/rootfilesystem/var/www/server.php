@@ -452,7 +452,7 @@ class FWServer
         $this->table->column("session", Swoole\Table::TYPE_INT);
         $this->table->create();
 
-        $this->serv = new Server("0.0.0.0", 9501);
+        $this->serv = new Server("0.0.0.0", 8080);
         // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
         // $this->serv->set(["open_http2_protocol" => true]);
         // $this->serv->set([
