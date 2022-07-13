@@ -837,7 +837,7 @@ class FWServer
                 $response->end();
             }
         } else {
-            if ($server["request_method"] === "POST" && $request_uri === "controllers/http_task.php") {
+            if ($server["request_method"] === "POST") {
                 $res = task($request->post);
                 $response->header("Content-Type", $res["type"] ?? "");
                 $response->end(json_encode($res["content"]) ?? "");

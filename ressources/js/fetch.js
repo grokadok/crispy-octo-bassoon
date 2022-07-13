@@ -25,7 +25,7 @@ async function fetchPost(body) {
  * @returns {String} - Response echoed from request, else "error"
  */
 async function fetchPostText(body) {
-    let d = await fetch("controllers/http_task.php", {
+    let d = await fetch("/", {
         method: "POST",
         headers: {
             "Content-Type":
@@ -36,10 +36,8 @@ async function fetchPostText(body) {
     if (d.ok) {
         let c = await d.text();
         return c;
-    } else {
-        alert("HTTP-Error: " + d.status);
-        return "error";
     }
+    return alert("HTTP-Error: " + d.status);
 }
 /**
  * Returns request's response as JSON.
