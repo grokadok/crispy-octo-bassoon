@@ -1,11 +1,11 @@
 <?php
-$env = __DIR__ . "/config/env.php";
+// $env = __DIR__ . "/config/env.php";
 $httpTask = __DIR__ . "/app/model/task.php";
 $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
 
-foreach ([$env, $httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
+foreach ([$httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
 
 use Swoole\Coroutine as Co;
 use Swoole\WebSocket\Server;
