@@ -1,4 +1,4 @@
-FROM phpswoole/swoole:php8.1
+FROM phpswoole/swoole:php8.1-alpine
 
 RUN docker-php-ext-install mysqli
 
