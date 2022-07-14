@@ -7,10 +7,6 @@ $chat = __DIR__ . "/app/chat/chat.php";
 
 file_put_contents(__DIR__ . "/ssl/ssl.cert", getenv("SSL_CERT"));
 file_put_contents(__DIR__ . "/ssl/ssl.key", getenv("SSL_KEY"));
-print(PHP_EOL . "CERT" . PHP_EOL);
-var_dump(file_get_contents(__DIR__ . "/ssl/ssl.cert", getenv("SSL_CERT")));
-print(PHP_EOL . "KEY" . PHP_EOL);
-var_dump(file_get_contents(__DIR__ . "/ssl/ssl.key", getenv("SSL_KEY")));
 
 foreach ([$httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
 
