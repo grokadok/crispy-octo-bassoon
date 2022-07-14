@@ -3,3 +3,4 @@
 /database/diagram/*.bak
 ssl.*
 /*lock*
+.clever.json
