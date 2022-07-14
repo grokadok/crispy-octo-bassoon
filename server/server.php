@@ -5,7 +5,7 @@ $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
 
-file_put_contents(__DIR__ . "/ssl/ssl.cert", getenv("SSL_CERT"));
+file_put_contents(__DIR__ . "/ssl/ssl.crt", getenv("SSL_CERT"));
 file_put_contents(__DIR__ . "/ssl/ssl.key", getenv("SSL_KEY"));
 
 foreach ([$httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
@@ -460,7 +460,7 @@ class FWServer
         // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
         // $this->serv->set(["open_http2_protocol" => true]);
         $this->serv->set([
-            "ssl_cert_file" => __DIR__ . "/ssl/ssl.cert",
+            "ssl_cert_file" => __DIR__ . "/ssl/ssl.crt",
             "ssl_key_file" => __DIR__ . "/ssl/ssl.key",
             // "ssl_cert_file" => __DIR__ . "/ssl/fullchain.pem",
             // "ssl_key_file" => __DIR__ . "/ssl/privkey.pem",
