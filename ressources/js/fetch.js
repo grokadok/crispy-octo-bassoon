@@ -4,7 +4,7 @@
  * @returns {String} "ok" if request successful, else "error"
  */
 async function fetchPost(body) {
-    let d = await fetch("controllers/task.php", {
+    let d = await fetch("/", {
         method: "POST",
         headers: {
             "Content-Type":
@@ -50,7 +50,7 @@ async function fetchPostJSON(body, json = false) {
         ? "application/json"
         : 'application/x-www-form-urlencoded; charset="utf-8"';
     let res;
-    res = await fetch("controllers/task.php", {
+    res = await fetch("/", {
         method: "POST",
         headers: {
             "Content-Type": type,

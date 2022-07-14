@@ -1,13 +1,8 @@
 <?php
-// $env = __DIR__ . "/config/env.php";
 $httpTask = __DIR__ . "/app/model/task.php";
 $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
-
-file_put_contents(__DIR__ . "/ssl/ssl.crt", getenv("SSL_CERT"));
-file_put_contents(__DIR__ . "/ssl/ssl.key", getenv("SSL_KEY"));
-
 foreach ([$httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
 
 use Swoole\Coroutine as Co;
@@ -454,7 +449,6 @@ class FWServer
         $this->table->column("user", Swoole\Table::TYPE_INT);
         $this->table->column("session", Swoole\Table::TYPE_INT);
         $this->table->create();
-
         $this->serv = new Server("0.0.0.0", 8080);
         // $this->serv = new Server("0.0.0.0", 8080, SWOOLE_BASE, SWOOLE_SOCK_TCP | SWOOLE_SSL);
         // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
@@ -737,7 +731,7 @@ class FWServer
     }
     public function onManagerStart($serv)
     {
-        echo "#### onManagerStart ####" . PHP_EOL . PHP_EOL;
+        echo "#### Manager started ####" . PHP_EOL;
         swoole_set_process_name("swoole_process_server_manager");
     }
     public function onMessage(
@@ -745,7 +739,7 @@ class FWServer
         Swoole\WebSocket\Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
-            echo "login request: {$frame->data} from {$frame->fd}" . PHP_EOL;
+            echo "login request: {$frame->data->email} from {$frame->fd}" . PHP_EOL;
             $data = json_decode(urldecode($frame->data), true);
             $data["fd"] = $frame->fd;
             $res = $this->login($data);
@@ -872,7 +866,7 @@ class FWServer
     }
     public function onWorkStart($serv, $worker_id)
     {
-        echo "#### onWorkStart ####" . PHP_EOL . PHP_EOL;
+        echo "#### Worker#$worker_id started ####" . PHP_EOL;
         swoole_set_process_name("swoole_process_server_worker");
         // spl_autoload_register(function ($className) {
         //     $classPath = __DIR__ . "/public/" . $className . ".php";

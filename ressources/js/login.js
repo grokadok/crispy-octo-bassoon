@@ -27,10 +27,9 @@ class ClassLogin {
     }
     async checkMail() {
         if (this.email.input[0].value && this.email.input[0].validity.valid) {
-            // check server
-            const post =
-                "f=3&a=" + encodeURIComponent(this.email.input[0].value);
-            let mailSet = await fetchPostText(post);
+            let mailSet = await fetchPostText(
+                "f=3&a=" + encodeURIComponent(this.email.input[0].value)
+            );
             if (
                 mailSet === "1" &&
                 typeof this.currentPassword === "undefined"
@@ -41,14 +40,10 @@ class ClassLogin {
                 mailSet === "0" &&
                 typeof this.newPassword === "undefined"
             ) {
-                // create newpw
                 this.blankBox();
                 this.loadNewPW();
             }
-        } else {
-            // remove all el after email
-            this.blankBox();
-        }
+        } else this.blankBox();
     }
     checkPWCheck() {
         if (this.checkPassword.input[0].value) {
