@@ -456,10 +456,10 @@ class FWServer
         $this->serv = new Server("0.0.0.0", 8080, SWOOLE_BASE, SWOOLE_SOCK_TCP | SWOOLE_SSL);
         // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
         // $this->serv->set(["open_http2_protocol" => true]);
-        // $this->serv->set([
-        //     "ssl_cert_file" => __DIR__ . "/ssl.crt",
-        //     "ssl_key_file" => __DIR__ . "/ssl.key",
-        // ]);
+        $this->serv->set([
+            "ssl_cert_file" => __DIR__ . "/ssl/fullchain.pem",
+            "ssl_key_file" => __DIR__ . "/ssl/privkey.pem",
+        ]);
         // $cert = file_get_contents(__DIR__ . "/ssl.crt");
         // var_dump($cert);
         // $this->serv->set([

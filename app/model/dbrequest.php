@@ -20,18 +20,20 @@ class DBRequest
      */
     public function __construct($request)
     {
-        $dbHost = getenv('MYSQL_ADDON_HOST');
-        $dbPort = getenv('MYSQL_ADDON_PORT');
-        $dbDatabase = getenv('MYSQL_ADDON_DB');
-        $dbUser = getenv('MYSQL_ADDON_USER');
-        $dbPassword = getenv('MYSQL_ADDON_PASSWORD');
+        $host = getenv('MYSQL_ADDON_HOST') . ',' . getenv('MYSQL_ADDON_USER') . ',' . getenv('MYSQL_ADDON_PASSWORD') . ',' . getenv('MYSQL_ADDON_DB') . ',' . getenv('MYSQL_ADDON_PORT');
+        // $dbHost = getenv('MYSQL_ADDON_HOST');
+        // $dbUser = getenv('MYSQL_ADDON_USER');
+        // $dbPassword = getenv('MYSQL_ADDON_PASSWORD');
+        // $dbDatabase = getenv('MYSQL_ADDON_DB');
+        // $dbPort = getenv('MYSQL_ADDON_PORT');
         try {
             $this->mysqli = new Mysqli(
-                $dbHost,
-                $dbUser,
-                $dbPassword,
-                $dbDatabase,
-                $dbPort,
+                $host
+                // $dbHost,
+                // $dbUser,
+                // $dbPassword,
+                // $dbDatabase,
+                // $dbPort,
             );
             $stmt = $this->mysqli->prepare($request["query"]);
             if (
