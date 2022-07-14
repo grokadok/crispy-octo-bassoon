@@ -4,7 +4,7 @@ RUN docker-php-ext-install mysqli
 
 WORKDIR /var/www
 
-COPY /server /
+COPY /server/server.php ./
 RUN mkdir public
 RUN mkdir app
 RUN mkdir ssl
