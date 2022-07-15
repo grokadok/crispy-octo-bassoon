@@ -327,7 +327,8 @@
                 flex: 1 1 8rem;
                 justify-content: center;
                 & > ul {
-                    inset: 100% auto auto 0;
+                    inset: 100% 0 auto 0;
+                    max-width: none;
                 }
                 &:nth-last-child(3) > * ul {
                     inset: 0 100% auto auto;
@@ -365,7 +366,8 @@
         & > ul {
             margin: 0 0 0 2rem;
             & > li > ul {
-                inset: auto auto 100% 0;
+                inset: auto 0 100% 0;
+                max-width: none;
             }
         }
         & ~ div#chat {
