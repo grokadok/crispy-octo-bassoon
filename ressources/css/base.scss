@@ -1,6 +1,7 @@
 :root {
     font-size: 16px;
     font-family: "Helvetica Neue";
+    /* font-family: "Helvetica Neue, Helvetica, Liberation Sans, Arial, sans-serif"; */
     touch-action: manipulation;
     --gray0: #f8f8f8;
     --gray1: #dbe1e8;
@@ -42,6 +43,7 @@
     --danger-border: rgb(247, 89, 100, 0.12);
     --transition-global: 500ms ease;
     --transition-pages: 1s;
+    --transition-nav-li: 1.5s ease-out;
 }
 
 /* Themes */

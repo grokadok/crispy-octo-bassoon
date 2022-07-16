@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
     server:
-        build: .
+        build:
+            context: .
+            dockerfile: dev.Dockerfile
         container_name: server
         environment:
             AUTORELOAD_PROGRAMS: "swoole"
@@ -14,8 +16,9 @@ services:
             ISLOCAL: TRUE
         restart: unless-stopped
         volumes:
-            - ./server/server.php:/var/www/server.php
+            - ./server:/var/www
             - ./app:/var/www/app
+            - ./public:/var/www/public
             - ./ressources/js:/var/www/public/assets/js
             - ./ressources/vendor:/var/www/public/assets/vendor
         ports:

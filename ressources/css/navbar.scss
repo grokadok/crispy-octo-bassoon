@@ -23,7 +23,7 @@
         padding-inline: 0.4rem;
         gap: 0.5rem;
         box-sizing: border-box;
-        transition: background 2s;
+        transition: background var(--transition-nav-li);
         user-select: none;
         cursor: pointer;
         & svg {
@@ -79,7 +79,8 @@
             padding: 0;
             justify-content: center;
             transition: width var(--transition-global),
-                height var(--transition-global), background 2s,
+                height var(--transition-global),
+                background var(--transition-nav-li),
                 margin var(--transition-global),
                 min-width var(--transition-global);
             & > svg {
