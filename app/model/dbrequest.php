@@ -1,14 +1,8 @@
 <?php
 class DBRequest
 {
-    // private $dbHost = $EnvDbHost;
-    // private $dbPort = $EnvDbPort;
-    // private $dbDatabase = $EnvDbDatabase;
-    // private $dbUser = $EnvDbUser;
-    // private $dbPassword = $EnvDbPassword;
     private $mysqli;
     public $result;
-    // public $num_rows;
 
     /**
      * Performs a mysqli request with prepared statement.
@@ -24,7 +18,7 @@ class DBRequest
         $dbUser = getenv('MYSQL_ADDON_USER');
         $dbPassword = getenv('MYSQL_ADDON_PASSWORD');
         $dbDatabase = getenv('MYSQL_ADDON_DB');
-        $dbPort = getenv('MYSQL_ADDON_PORT');
+        $dbPort = getenv('MYSQL_ADDON_PORT') ?? '';
         try {
             $this->mysqli = new Mysqli(
                 $dbHost,

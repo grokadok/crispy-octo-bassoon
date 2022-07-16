@@ -1,6 +1,7 @@
 /node_modules
 /vendor
 /database/diagram/*.bak
+/database/mysql
 ssl.*
 /*lock*
 .clever.json

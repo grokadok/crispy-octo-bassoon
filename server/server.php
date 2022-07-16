@@ -739,7 +739,7 @@ class FWServer
         Swoole\WebSocket\Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
-            echo "login request: {$frame->data->email} from {$frame->fd}" . PHP_EOL;
+            echo "login request: {$frame->data} from {$frame->fd}" . PHP_EOL;
             $data = json_decode(urldecode($frame->data), true);
             $data["fd"] = $frame->fd;
             $res = $this->login($data);
@@ -857,7 +857,6 @@ class FWServer
         echo "manager_pid: {$serv->manager_pid}" . PHP_EOL;
         echo "########" . PHP_EOL . PHP_EOL;
         new DBRequest([
-            // "query" => "TRUNCATE TABLE session;",
             "query" => "DELETE FROM session;",
         ]);
         new DBRequest([

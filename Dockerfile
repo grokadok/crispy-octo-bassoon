@@ -4,9 +4,9 @@ RUN docker-php-ext-install mysqli
 
 WORKDIR /var/www
 
+RUN mkdir public &&\
+    mkdir app
 COPY /server/server.php ./
-RUN mkdir public
-RUN mkdir app
 COPY /public ./public
 COPY /app ./app
 
