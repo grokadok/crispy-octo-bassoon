@@ -81,7 +81,7 @@
         pointer-events: none;
     }
     & > span,
-    & > fieldset:not(:last-of-type) {
+    & > .field:not(:last-of-type) {
         margin-bottom: 0.5rem;
     }
     & > button {

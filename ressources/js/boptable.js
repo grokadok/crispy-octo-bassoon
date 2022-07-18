@@ -119,46 +119,6 @@ class BopTable {
             this.menu.search,
             cols,
         ]);
-        // this.menu.wrapper.addEventListener("pointerup", (e) => {
-        //     if (this.menu.wrapper.classList.contains("up")) {
-        //         this.menu.observer?.disconnect();
-        //         // delete this.menu.observer;
-        //         const table = BopTable.find(e.target),
-        //             box = table.menu.wrapper.getBoundingClientRect(),
-        //             thead = table.thead.getBoundingClientRect(),
-        //             yMin = thead.y - 2 * thead.height,
-        //             yMax = thead.y + 2 * thead.height;
-
-        //         // if close to some col head, stick to it etc
-        //         if (box.y > yMin && box.y < yMax) {
-        //             const boxMiddle = box.x + box.width / 2,
-        //                 theadMiddle = thead.x + thead.width / 2;
-        //             let heads = table.cols
-        //                     .filter((x) => x.width !== "0fr")
-        //                     .map((x) => [x.head, x.id]),
-        //                 last;
-        //             if (boxMiddle > theadMiddle) heads.reverse();
-        //             for (const head of heads) {
-        //                 const headRect = head[0].getBoundingClientRect(),
-        //                     headMiddle = headRect.x + headRect.width / 2,
-        //                     diff = Math.abs(boxMiddle - headMiddle);
-        //                 if (typeof last === "number" && diff > last) {
-        //                     // stick menu to closest col.head.
-        //                     return table.menuToHead(
-        //                         heads[heads.indexOf(head) - 1][1]
-        //                     );
-        //                 } else last = diff;
-        //             }
-        //         } else {
-        //             this.menuMove();
-        //             const wrap = table.menu.wrapper;
-        //             wrap.classList.add("solo");
-        //             wrap.style.width = "";
-        //             wrap.getElementsByTagName("ul")[0].style.width = "";
-        //             delete table.menu.col;
-        //         }
-        //     }
-        // });
 
         // if param.task then request data
         if (typeof param.task !== "undefined") {
@@ -361,10 +321,12 @@ class BopTable {
             )
                 table.dockMenu();
             if (
-                !table.menu.search.contains(event.target) &&
-                !table.menu.wrapper.classList.contains("head") &&
-                table.menu.search.getElementsByTagName("span")[0]
-                    .textContent === ""
+                (table.menu.wrapper.classList.contains("head") &&
+                    !table.menu.search.contains(event.target)) ||
+                (!table.menu.wrapper.classList.contains("head") &&
+                    !table.menu.wrapper.contains(event.target) &&
+                    table.menu.search.getElementsByTagName("span")[0]
+                        .textContent === "")
             )
                 table.menu.search.classList.remove("active");
         });

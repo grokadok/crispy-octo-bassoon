@@ -423,6 +423,16 @@
                         min-width: 7rem;
                         margin: 0;
                         background: transparent;
+                        &::after {
+                            width: 5rem;
+                            margin-inline: 1rem;
+                            padding: 0;
+                            text-align: center;
+                            opacity: 1;
+                        }
+                    }
+                    &.active span::after {
+                        opacity: 0;
                     }
                 }
                 &:nth-of-type(3) > ul {
