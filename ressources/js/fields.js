@@ -1,588 +1,3 @@
-// function checkRequiredFields(el) {
-//     const btns = el.getElementsByClassName("modal-footer")[0]
-//         ? el
-//               .getElementsByClassName("modal-footer")[0]
-//               .getElementsByTagName("button")
-//         : undefined;
-//     if (el.querySelectorAll('fieldset[required="true"]').length > 0) {
-//         const reqfields = el.querySelectorAll('fieldset[required="true"]');
-//         let ok = true;
-//         for (const field of reqfields) {
-//             if (field.getElementsByClassName("selectize-selected")[0]) {
-//                 if (
-//                     field.getElementsByClassName("selectize-selected")[0]
-//                         .children.length === 0
-//                 ) {
-//                     ok = false;
-//                     break;
-//                 }
-//             } else if (field.getElementsByClassName("iti")[0]) {
-//                 if (
-//                     !field
-//                         .getElementsByClassName("iti")[0]
-//                         .getElementsByTagName("input")[0]
-//                         .getAttribute("data-phone")
-//                 ) {
-//                     ok = false;
-//                     break;
-//                 }
-//             } else if (field.getElementsByTagName("input")[0]) {
-//                 if (
-//                     field
-//                         .getElementsByTagName("input")[0]
-//                         .getAttribute("type") === "email"
-//                 ) {
-//                     if (!field.classList.contains("valid")) {
-//                         ok = false;
-//                         break;
-//                     }
-//                 } else if (field.getElementsByTagName("textarea")[0]) {
-//                     if (!field.getElementsByTagName("textarea")[0].value) {
-//                         ok = false;
-//                         break;
-//                     }
-//                 } else if (!field.getElementsByTagName("input")[0].value) {
-//                     ok = false;
-//                     break;
-//                 }
-//             } else if (field.getElementsByTagName("textarea")[0]) {
-//                 if (!field.getElementsByTagName("textarea")[0].value) {
-//                     ok = false;
-//                     break;
-//                 }
-//             }
-//         }
-//         if (ok === true && el.getElementsByClassName("invalid").length === 0) {
-//             for (let i = 1; i < btns.length; i++) {
-//                 if (!btns[i].classList.contains("hidden")) {
-//                     enable(btns[i]);
-//                 }
-//             }
-//         } else {
-//             for (let i = 1; i < btns.length; i++) {
-//                 if (!btns[i].classList.contains("hidden")) {
-//                     disable(btns[i]);
-//                 }
-//             }
-//         }
-//     } else if (btns) elEnableTimer(Array.from(btns));
-// }
-/**
- * Creates field elements (input, textarea,...).
- * @param {Object[]} options - Options of the function.
- * @param {HTMLElement} options.parent - Parent element where fields are to be inserted.
- * @param {Number} [options.index] - If set, inserts fields begining at this index, else inserts after last parent's child.
- * @param {Object[]} options.fields - Array of objects where each object has the data to create an input.
- * @param {Function} [options.fields.add] - The function to add a new value to a selectize, whether to open a new modal or simply add the value.
- * @param {Boolean} [options.fields.collapsible] - Not yet implemented: check to make element collapsible.
- * @param {String} options.fields.label - Value of the aria-label attribute, may be useless.
- * @param {Boolean} [options.fields.multi] - Whether the select(ize) can get more than one selected value or not.
- * @param {String} options.fields.name - Sets the name of the field, applies to the fieldset's legend.
- * @param {String} [options.fields.placeholder] - Sets the placeholder value for the input fields.
- * @param {Boolean} [options.fields.required] - Whether the field is required or not to validate the modal.
- * @param {Number} [options.fields.task] - The task to get data on input.
- * @param {String} options.fields.type - The type of the field. Accepted values: address, email, name, phone, select, selectize,text.
- * @param {Whatever} [options.fields.value] - The value to apply to the field on load.
- */
-// function createFields(options, itemList) {
-//     let parent = options.parent,
-//         index = options.index ?? null,
-//         conts = document.getElementsByClassName("modal-container");
-
-//     const parentAppend = (el) => {
-//         index !== null && index + 1 // when index=0, it doesn't pass the ? condition (falsy) though we need it
-//             ? parent.children[index++].insertAdjacentElement("afterend", el)
-//             : parent.append(el);
-//     };
-//     for (let field of options.fields) {
-//         const type = field["type"];
-//         let fieldset = document.createElement("fieldset"),
-//             legend = document.createElement("legend");
-//         legend.textContent = field["name"];
-//         fieldset.style.gridArea = field["grid"] ?? null;
-//         if (field["required"] === true)
-//             fieldset.setAttribute("required", "true");
-
-//         switch (type) {
-//             case "address": {
-//                 let street = document.createElement("input"),
-//                     postcode = document.createElement("input"),
-//                     city = document.createElement("input"),
-//                     country = document.createElement("input");
-//                 setElementAttributes(street, [
-//                     ["placeholder", "2 rue du Port"],
-//                     ["aria-label", "Numéro et voie"],
-//                 ]);
-//                 setElementAttributes(postcode, [
-//                     ["placeholder", "87200"],
-//                     ["aria-label", "Code postal"],
-//                 ]);
-//                 setElementAttributes(city, [
-//                     ["placeholder", "Sainte Bernadette"],
-//                     ["aria-label", "Ville"],
-//                 ]);
-//                 setElementAttributes(country, [
-//                     ["placeholder", "France"],
-//                     ["aria-label", "Pays"],
-//                 ]);
-//                 if (
-//                     typeof field["value"] === "string" &&
-//                     field["value"].length > 0
-//                 ) {
-//                     const value = field["value"].split("|");
-//                     street.value = value[0];
-//                     postcode.value = value[1];
-//                     city.value = value[2];
-//                     country.value = value[3];
-//                 }
-//                 let elements = [];
-//                 for (const element of [street, postcode, city, country]) {
-//                     let fieldset = document.createElement("fieldset"),
-//                         legend = document.createElement("legend");
-//                     if (field["required"] === true) {
-//                         fieldset.setAttribute("required", "true");
-//                         element.addEventListener("input", function () {
-//                             checkRequiredFields(parent);
-//                         });
-//                     }
-//                     legend.textContent = element.getAttribute("aria-label");
-//                     fieldset
-//                         .appendChild(legend)
-//                         .insertAdjacentElement("afterend", element);
-//                     elements.push(fieldset);
-//                 }
-//                 // later add address autocomplete/verification
-//                 elements.forEach((el) => parentAppend(el));
-//                 break;
-//             }
-//             case "email": {
-//                 let fieldElement = document.createElement("input");
-//                 setElementAttributes(fieldElement, [
-//                     ["type", "email"],
-//                     [
-//                         "pattern",
-//                         "^[\\w!#$%&’*+/=?`{|}~^-]+(?:\\.[\\w!#$%&’*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$",
-//                     ],
-//                     ...field["attributes"],
-//                 ]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 if (field["value"]) fieldElement.value = field["value"];
-//                 fieldElement.addEventListener("input", function () {
-//                     if (fieldElement.value) {
-//                         if (fieldElement.validity.valid) {
-//                             fieldset.classList.add("valid");
-//                             fieldset.classList.remove("invalid");
-//                             legend.textContent = field["name"];
-//                         } else {
-//                             fieldset.classList.add("invalid");
-//                             fieldset.classList.remove("valid");
-//                             legend.textContent = field["name"] + " (invalide)";
-//                         }
-//                     } else {
-//                         fieldset.classList.remove("invalid", "valid");
-//                         legend.textContent = field["name"];
-//                     }
-//                     checkRequiredFields(parent);
-//                 });
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "input_string": {
-//                 let fieldElement = document.createElement("input");
-//                 setElementAttributes(fieldElement, [
-//                     ["spellcheck", "false"],
-//                     ["autocomplete", "off"],
-//                     ...field["attributes"],
-//                 ]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 if (field["value"]) fieldElement.value = field["value"];
-//                 fieldElement.addEventListener("input", function () {
-//                     if (fieldset.getAttribute("required") === "true") {
-//                         checkRequiredFields(parent);
-//                     }
-//                 });
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "input_text": {
-//                 let fieldElement = document.createElement("textarea");
-//                 setElementAttributes(fieldElement, field["attributes"]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 fieldElement.addEventListener("input", function () {
-//                     checkRequiredFields(parent);
-//                 });
-//                 fieldElement.textContent = field["value"] ?? "";
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "notes": {
-//             }
-//             case "password":
-//             case "current-password":
-//             case "new-password": {
-//                 let fieldElement = document.createElement("input");
-//                 setElementAttributes(fieldElement, [
-//                     ["type", "password"],
-//                     [
-//                         "pattern",
-//                         "^(?=.*[a-z])(?=.*[A-Z])(?=.*[\\d])(?=.*[!@#$%^&*]).{12,}$",
-//                     ],
-//                     ["maxlength", "64"],
-//                 ]);
-//                 if (type !== "password")
-//                     setElementAttributes(fieldElement, [
-//                         ["autocomplete", type],
-//                     ]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 fieldElement.addEventListener("input", function () {
-//                     if (fieldElement.value) {
-//                         if (fieldElement.validity.valid) {
-//                             fieldset.classList.add("valid");
-//                             fieldset.classList.remove("invalid");
-//                             legend.textContent = field["name"];
-//                         } else {
-//                             fieldset.classList.add("invalid");
-//                             fieldset.classList.remove("valid");
-//                             legend.textContent = field["name"] + " (invalide)";
-//                         }
-//                     } else {
-//                         fieldset.classList.remove("invalid", "valid");
-//                         legend.textContent = field["name"];
-//                     }
-//                     checkRequiredFields(parent);
-//                 });
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "phone": {
-//                 let fieldElement = document.createElement("input");
-//                 setElementAttributes(fieldElement, field["attributes"]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 let tel = intlTelInput(fieldElement, {
-//                     utilsScript: "./assets/intlTelInput/js/utils.js",
-//                     initialCountry: "fr",
-//                     preferredCountries: ["fr"],
-//                     onlyCountries: ["be", "ch", "de", "es", "fr", "gb", "it"],
-//                     localizedCountries: {
-//                         de: "Deutschland",
-//                         ch: "Schweiz",
-//                         it: "Italia",
-//                         es: "España",
-//                     },
-//                 });
-//                 fieldElement.addEventListener("input", function () {
-//                     fieldElement.removeAttribute("data-phone");
-//                     if (fieldElement.value) {
-//                         if (tel.isValidNumber()) {
-//                             fieldElement.setAttribute(
-//                                 "data-phone",
-//                                 tel.getNumber()
-//                             );
-//                             fieldset.classList.add("valid");
-//                             fieldset.classList.remove("invalid");
-//                             legend.textContent = field["name"];
-//                         } else {
-//                             fieldset.classList.add("invalid");
-//                             fieldset.classList.remove("valid");
-//                             legend.textContent = field["name"] + " (invalide)";
-//                         }
-//                     } else {
-//                         fieldset.classList.remove("invalid", "valid");
-//                         legend.textContent = field["name"];
-//                     }
-//                     checkRequiredFields(parent);
-//                 });
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "select": {
-//                 const message = {
-//                     f: 7,
-//                     s: field["task"],
-//                 };
-//                 let container = document.createElement("div"),
-//                     fieldElement = document.createElement("input"),
-//                     ul = document.createElement("ul");
-//                 socket.send(message);
-//                 ul.className = "fadeout";
-//                 setElementAttributes(fieldElement, [
-//                     ["readonly", "true"],
-//                     ["data-f", "7"],
-//                     ["data-s", field["task"]],
-//                     ["data-value", field["value"]],
-//                     ...field["attributes"],
-//                 ]);
-//                 container.className = "select-container";
-//                 container.append(fieldElement, ul);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", container);
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "selectize": {
-//                 let container = document.createElement("div"),
-//                     selected = document.createElement("div"),
-//                     add = document.createElement("button"),
-//                     fieldElement = document.createElement("input"),
-//                     ul = document.createElement("ul");
-//                 ul.className = "fadeout";
-//                 setElementAttributes(fieldElement, [
-//                     ["spellcheck", "false"],
-//                     ["autocomplete", "off"],
-//                     ["data-f", "7"],
-//                     ["data-s", field.task],
-//                     ...field.attributes,
-//                 ]);
-//                 container.className = "selectize-container";
-//                 container.append(fieldElement, ul);
-//                 selected.className = "selectize-selected";
-//                 if (field.add && conts.length < 5) {
-//                     add.textContent = "+";
-//                     container.append(add);
-//                     add.addEventListener("click", function () {
-//                         let names = [];
-//                         for (const child of selected.children) {
-//                             names.push(child.textContent);
-//                         }
-//                         if (!names.includes(fieldElement.value)) {
-//                             fadeOut(ul, { hide: true });
-//                             field.add(fieldElement);
-//                         }
-//                     });
-//                 }
-//                 if (field.value) {
-//                     for (const item of field.value) {
-//                         let span = document.createElement("span");
-//                         if (item["content"]) {
-//                             span.textContent = item.group
-//                                 ? `${item.content} (${item.group})`
-//                                 : item.content;
-//                         } else {
-//                             span.textContent = item.group;
-//                         }
-//                         span.setAttribute("data-select", item["data-select"]);
-//                         if (item.email) {
-//                             span.setAttribute("data-email", item.email);
-//                         }
-//                         span.addEventListener("click", (e) => {
-//                             e.currentTarget.remove();
-//                             checkRequiredFields(parent);
-//                         });
-//                         selected.appendChild(span);
-//                     }
-//                 }
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", container)
-//                     .insertAdjacentElement("afterend", selected);
-//                 fieldElement.addEventListener("input", () => {
-//                     fetchDataTimer(fieldElement, { selectize: field.task });
-//                 });
-//                 fieldElement.addEventListener("keydown", (e) => {
-//                     // remplacer par navigation globale dans l'app
-
-//                     switch (e.code) {
-//                         case "ArrowDown":
-//                             e.preventDefault();
-//                             if (!ul.classList.contains("fadeout"))
-//                                 ul.getElementsByTagName("li")[0].focus();
-//                             else if (
-//                                 fieldset.nextElementSibling?.getElementsByTagName(
-//                                     "input"
-//                                 )[0]
-//                             )
-//                                 fieldset.nextElementSibling
-//                                     .getElementsByTagName("input")[0]
-//                                     .focus();
-//                             else if (
-//                                 fieldset.nextElementSibling?.getElementsByTagName(
-//                                     "textarea"
-//                                 )[0]
-//                             )
-//                                 fieldset.nextElementSibling
-//                                     .getElementsByTagName("textarea")[0]
-//                                     .focus();
-//                             break;
-//                         case "ArrowUp":
-//                             e.preventDefault();
-//                             if (
-//                                 fieldset.previousElementSibling?.getElementsByTagName(
-//                                     "input"
-//                                 )[0]
-//                             )
-//                                 fieldset.previousElementSibling
-//                                     .getElementsByTagName("input")[0]
-//                                     .focus();
-//                             else if (
-//                                 fieldset.previousElementSibling?.getElementsByTagName(
-//                                     "textarea"
-//                                 )[0]
-//                             )
-//                                 fieldset.previousElementSibling
-//                                     .getElementsByTagName("textarea")[0]
-//                                     .focus();
-//                             break;
-//                         case "Escape":
-//                             if (!ul.classList.contains("fadeout")) fadeOut(ul);
-//                             break;
-//                         case "Enter":
-//                             if (field["add"] && conts.length < 5) {
-//                                 let names = [];
-//                                 for (const child of selected.children) {
-//                                     names.push(child.textContent);
-//                                 }
-//                                 if (!names.includes(fieldElement.value)) {
-//                                     fadeOut(ul, { hide: true });
-//                                     field.add(fieldElement);
-//                                 }
-//                             }
-//                             break;
-//                     }
-//                 });
-//                 fieldElement.addEventListener("focus", () => {
-//                     fetchDataTimer(fieldElement, { selectize: field.task });
-//                 });
-//                 parentAppend(fieldset);
-//                 break;
-//             }
-//             case "table": {
-//                 let fieldElement = document.createElement("div");
-//                 // fieldset.setAttribute("data-task", field["task"]);
-//                 setElementAttributes(fieldset, [
-//                     ["data-f", "6"],
-//                     ["data-t", field["task"]],
-//                 ]);
-//                 setElementAttributes(fieldElement, field["attributes"]);
-//                 fieldset
-//                     .appendChild(legend)
-//                     .insertAdjacentElement("afterend", fieldElement);
-//                 parentAppend(fieldset);
-//                 if (!itemList.includes("6-" + field["task"]))
-//                     itemList.push("6-" + field["task"]);
-//                 break;
-//             }
-//         }
-//     }
-// }
-// function fetchSelectizeData(el, select) {
-//     const message = {
-//         f: 7,
-//         s: select,
-//         i: el.value,
-//         x: Array.from(
-//             document.querySelectorAll(
-//                 "input[data-f='7'][data-s='" + select + "']"
-//             )
-//         ).indexOf(el),
-//     };
-//     socket.send(message);
-// }
-// function selectizeKeysNav(e) {
-//     // modifier en function pour la navigation globale dans le site, avec raccourcis clavier (n= jump to navbar, t=jump to topbar, ...)
-
-//     switch (e.code) {
-//         case "ArrowUp":
-//             e.preventDefault();
-//             if (chat.wrapper.contains(e.currentTarget)) {
-//                 e.currentTarget.nextSibling?.focus();
-//             } else {
-//                 e.currentTarget.previousSibling
-//                     ? e.currentTarget.previousSibling.focus()
-//                     : e.currentTarget
-//                           .closest("div")
-//                           .getElementsByTagName("input")[0]
-//                           .focus();
-//             }
-//             break;
-//         case "ArrowDown":
-//             e.preventDefault();
-//             if (chat.wrapper.contains(e.currentTarget)) {
-//                 e.currentTarget.previousSibling
-//                     ? e.currentTarget.previousSibling.focus()
-//                     : e.currentTarget
-//                           .closest("div")
-//                           .getElementsByTagName("input")[0]
-//                           .focus();
-//             } else {
-//                 e.currentTarget.nextSibling?.focus();
-//             }
-//             break;
-//         case "Enter":
-//         case "Space":
-//             if (
-//                 chat.wrapper.contains(e.currentTarget) &&
-//                 !e.currentTarget.classList.contains("offline")
-//             )
-//                 chat.request(
-//                     parseInt(e.currentTarget.getAttribute("data-select"))
-//                 );
-//             else if (!chat.wrapper.contains(e.currentTarget)) selectizeAdd(e);
-//             break;
-//         case "Escape":
-//             e.preventDefault();
-//             fadeOut(e.currentTarget.parentNode, {
-//                 dropdown: e.currentTarget.closest("fieldset"),
-//             });
-//             e.currentTarget
-//                 .closest("div")
-//                 .getElementsByTagName("input")[0]
-//                 .blur();
-//     }
-// }
-// function selectizeAdd(e) {
-//     const spans = e.currentTarget.getElementsByTagName("span");
-//     let span = document.createElement("span"),
-//         fieldset = e.currentTarget.closest("fieldset"),
-//         input = fieldset.getElementsByTagName("input")[0],
-//         selected = fieldset.getElementsByClassName("selectize-selected")[0],
-//         ul = e.currentTarget.parentNode,
-//         content;
-//     content = spans[1]
-//         ? spans[0].textContent + " " + spans[1].textContent
-//         : spans[0].textContent;
-//     span.textContent = content;
-//     setElementAttributes(span, [
-//         ["tabindex", "0"],
-//         ["data-select", e.currentTarget.getAttribute("data-select")],
-//     ]);
-//     if (e.currentTarget.getAttribute("data-email"))
-//         span.setAttribute(
-//             "data-email",
-//             e.currentTarget.getAttribute("data-email")
-//         );
-//     if (input.getAttribute("data-multi") === "0") {
-//         removeChildren(selected, true);
-//     }
-//     const removeSpan = (e) => {
-//         checkRequiredFields(fieldset.parentNode);
-//         e.currentTarget.remove();
-//     };
-//     span.addEventListener("click", (e) => removeSpan(e));
-//     span.addEventListener("keydown", (e) => {
-//         if (e.code === "Space" || e.code === "Enter") {
-//             removeSpan(e);
-//         }
-//     });
-//     selected.append(span);
-//     input.value = "";
-//     fadeOut(ul);
-//     removeChildren(ul, true);
-//     checkRequiredFields(fieldset.parentNode);
-//     setTimeout(function focusInput() {
-//         input.focus();
-//     }, 50);
-// }
 class Field {
     static fields = [];
     static timer;
@@ -590,7 +5,7 @@ class Field {
      * @param {Object} params
      * @param {Function} [params.add] - The function to add a new value to a selectize, whether to open a new modal or simply add the value.
      * @param {Boolean} [params.collapsible=false] - Not yet implemented: check to make element collapsible.
-     * @param {Boolean} [params.compact=false] - If compact, only input(s) shown, else complete fieldset.
+     * @param {Boolean} [params.compact=false] - If compact, title hidden ?
      * @param {String} [params.label] - Value of the aria-label attribute, if not set then aria-label = name.
      * @param {Boolean} [params.modal=false] - Whether the field is part of a Modal object.
      * @param {Boolean} [params.multi=false] - Whether the select(ize) can get more than one selected value or not.
@@ -602,7 +17,7 @@ class Field {
      * @param {Whatever} [params.value] - The value to apply to the field on load.
      */
     constructor(params) {
-        this.wrapper = document.createElement("fieldset");
+        this.wrapper = document.createElement("div");
         this.input = [];
         this.isValid = false;
         this.timer;
@@ -616,7 +31,7 @@ class Field {
         this.wrapper.style.gridArea = params.grid ?? null;
         if (typeof params.compact === "boolean" && params.compact)
             this.wrapper.classList.add("compact");
-
+        this.wrapper.classList.add("field");
         const attributes = [
             ["placeholder", params.placeholder ?? ""],
             ["aria-label", params.label ?? this.name],
@@ -626,13 +41,13 @@ class Field {
             case "address": {
                 this.wrapper;
                 this.fields = [];
-                let addressLegend = document.createElement("legend"),
+                let title = document.createElement("h2"),
                     street = document.createElement("input"),
                     postcode = document.createElement("input"),
                     city = document.createElement("input"),
                     country = document.createElement("input");
-                addressLegend.textContent = "Addresse";
-                this.wrapper.appendChild(addressLegend);
+                title.textContent = "Addresse";
+                this.wrapper.appendChild(title);
                 setElementAttributes(street, [
                     ["placeholder", "2 rue du Port"],
                     ["aria-label", "Numéro et voie"],
@@ -656,11 +71,11 @@ class Field {
                     country.value = params.value.country;
                 }
                 for (const element of [street, postcode, city, country]) {
-                    let fieldset = document.createElement("fieldset"),
-                        legend = document.createElement("legend");
-                    legend.textContent = element.getAttribute("aria-label");
-                    appendChildren(fieldset, [legend, element]);
-                    this.wrapper.appendChild(fieldset);
+                    let div = document.createElement("div"),
+                        h3 = document.createElement("h2");
+                    h3.textContent = element.getAttribute("aria-label");
+                    appendChildren(div, [h3, element]);
+                    this.wrapper.appendChild(div);
                 }
                 this.wrapper.classList.add("address"); // to stylise address set
                 this.input.push([street, postcode, city, country]);
@@ -668,9 +83,9 @@ class Field {
                 break;
             }
             case "email": {
-                let legend = document.createElement("legend"),
+                let h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 setElementAttributes(fieldElement, [
                     ["type", "email"],
                     [
@@ -679,7 +94,7 @@ class Field {
                     ],
                     ...attributes,
                 ]);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 fieldElement.value = params.value ?? "";
                 fieldElement.addEventListener("input", function () {
                     const field = Field.find(fieldElement);
@@ -691,15 +106,15 @@ class Field {
                 break;
             }
             case "input_string": {
-                let legend = document.createElement("legend"),
+                let h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 setElementAttributes(fieldElement, [
                     ["spellcheck", "false"],
                     ["autocomplete", "off"],
                     ...attributes,
                 ]);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 if (params.value) fieldElement.value = params.value;
                 if (this.required) {
                     const field = this;
@@ -713,10 +128,10 @@ class Field {
             }
             case "input_text": {
                 let fieldElement = document.createElement("textarea"),
-                    legend = document.createElement("legend");
-                legend.textContent = params.label ?? this.name;
+                    h2 = document.createElement("h2");
+                h2.textContent = params.label ?? this.name;
                 setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 fieldElement.textContent = params.value ?? "";
                 if (this.required) {
                     const field = this;
@@ -731,9 +146,9 @@ class Field {
             case "password":
             case "current-password":
             case "new-password": {
-                let legend = document.createElement("legend"),
+                let h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 fieldElement.className = "password";
                 setElementAttributes(fieldElement, [
                     ["type", "password"],
@@ -745,7 +160,7 @@ class Field {
                     ["placeholder", params.placeholder ?? ""],
                     ["autocomplete", this.type !== "password" ? this.type : ""],
                 ]);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 this.wrapper.insertAdjacentHTML(
                     "beforeend",
                     `<svg viewBox="0 0 24 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" tabindex="0">
@@ -779,11 +194,11 @@ class Field {
                 break;
             }
             case "phone": {
-                let legend = document.createElement("legend"),
+                let h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 this.intlTel = intlTelInput(fieldElement, {
                     utilsScript: "./assets/intlTelInput/js/utils.js",
                     initialCountry: "fr",
@@ -812,9 +227,9 @@ class Field {
                     s: this.task,
                 };
                 let container = document.createElement("div"),
-                    legend = document.createElement("legend"),
+                    h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 this.ul = document.createElement("ul");
                 socket.send(message);
                 this.ul.className = "fadeout";
@@ -825,7 +240,7 @@ class Field {
                 ]);
                 container.className = "select-container";
                 container.append(fieldElement, this.ul);
-                appendChildren(this.wrapper, [legend, container]);
+                appendChildren(this.wrapper, [h2, container]);
                 this.input.push(fieldElement);
                 break;
             }
@@ -833,9 +248,9 @@ class Field {
                 const field = this;
                 let container = document.createElement("div"),
                     add = document.createElement("button"),
-                    legend = document.createElement("legend"),
+                    h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                legend.textContent = params.label ?? this.name;
+                h2.textContent = params.label ?? this.name;
                 this.selected = {
                     wrapper: document.createElement("div"),
                     items: [],
@@ -895,7 +310,7 @@ class Field {
                     }
                 }
                 appendChildren(this.wrapper, [
-                    legend,
+                    h2,
                     container,
                     this.selected.wrapper,
                 ]);
@@ -979,29 +394,15 @@ class Field {
                 this.input.push(fieldElement);
                 break;
             }
-            case "sweettable": {
+            case "boptable": {
                 let fieldElement = document.createElement("div"),
-                    legend = document.createElement("legend");
-                legend.textContent = params.label ?? this.name;
+                    h2 = document.createElement("h2");
+                h2.textContent = params.label ?? this.name;
                 setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [legend, fieldElement]);
+                appendChildren(this.wrapper, [h2, fieldElement]);
                 params.options.caption = this.name;
                 params.options.wrapper = fieldElement;
-                new SweetTable(params.options);
-                break;
-            }
-            case "table": {
-                const message = { f: 6, t: this.task };
-                let fieldElement = document.createElement("div"),
-                    legend = document.createElement("legend");
-                legend.textContent = params.label ?? this.name;
-                setElementAttributes(this.wrapper, [
-                    ["data-f", "6"],
-                    ["data-t", this.task],
-                ]);
-                setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [legend, fieldElement]);
-                socket.send(message);
+                new BopTable(params.options);
                 break;
             }
         }

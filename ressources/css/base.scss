@@ -1,5 +1,6 @@
 :root {
     font-size: 16px;
+    /*font-family: "IBM Plex Sans", sans-serif; */
     font-family: "Helvetica Neue";
     /* font-family: "Helvetica Neue, Helvetica, Liberation Sans, Arial, sans-serif"; */
     touch-action: manipulation;
@@ -265,6 +266,15 @@ input {
     & > fieldset {
         height: fit-content;
         max-height: 100%;
+    }
+    & .field {
+        position: relative;
+        margin-block: 2rem;
+        & h2 {
+            position: absolute;
+            inset: -2rem 0 auto auto;
+            margin: 0;
+        }
     }
 }
 

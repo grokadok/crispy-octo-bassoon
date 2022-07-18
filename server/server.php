@@ -40,7 +40,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Home",
@@ -74,7 +74,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 1,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Items",
@@ -104,7 +104,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Orders",
@@ -221,7 +221,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Tickets",
@@ -254,7 +254,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 1,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Corp.",
@@ -297,7 +297,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 2,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "People",
@@ -364,7 +364,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 3,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Admin",
@@ -2093,7 +2093,7 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH SWEETTABLE DATA (2501)
+            // FETCH boptable DATA (2501)
             /////////////////////////////////////////////////////
 
             if ($f === 2501) {

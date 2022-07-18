@@ -20,9 +20,9 @@ class ClassMain {
             options: data.options,
         };
         this.wrapper = document.getElementsByTagName("main")[0];
-        this.chat = new SweetChat(document.getElementById("chat"), data.chat);
+        this.chat = new BopChat(document.getElementById("chat"), data.chat);
         this.tabs = {
-            active: data.active_tab ?? 0,
+            active: data.active_tab ?? 1,
             data: data.tabs,
             item: [],
             map: data.tabs_map,
@@ -578,7 +578,7 @@ function loadMain(idchat) {
             es: "España",
         },
     });
-    chat = new SweetChat(mainChat, idchat);
+    chat = new BopChat(mainChat, idchat);
 
     // Event listeners
     logo.addEventListener("click", () => {

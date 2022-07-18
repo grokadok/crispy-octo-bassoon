@@ -1,6 +1,6 @@
 // const msg = document.getElementsByClassName("msg")[0];
 
-class SweetAlert {
+class BopAlert {
     constructor() {
         this.wrapper = document.getElementsByClassName("msg")[0];
         this.message = this.wrapper.getElementsByTagName("span")[0];
@@ -18,7 +18,7 @@ class SweetAlert {
         // fadeOut(this.wrapper, { hide: true });
         // unblurElements(this.backgroundElements);
         if (this.wrapper.getAttribute("open") === null)
-            console.warn("No open SweetAlert to close.");
+            console.warn("No open BopAlert to close.");
         else {
             this.wrapper.close();
             this.store.shift();
@@ -28,8 +28,8 @@ class SweetAlert {
     }
     /**
      * Adds an alert to the alert list, and show it if no alert in the list.
-     * @param {Object} params - Settings of the sweetalert.
-     * @param {String} params.content - Message of the sweetalert.
+     * @param {Object} params - Settings of the bopalert.
+     * @param {String} params.content - Message of the bopalert.
      * @param {String} [params.type="theme"] - Type of message: "success", "warning", "danger", defaults to neutral.
      * @param {Function} [params.btn0listener] - Optional function to add to the default behavior of btn_0.
      * @param {Function} [params.btn1listener] - Function on click of btn_1, btn disabled if not set.
@@ -103,4 +103,4 @@ class SweetAlert {
     }
 }
 
-const msg = new SweetAlert();
+const msg = new BopAlert();
