@@ -8,6 +8,9 @@
         height: 0;
         padding: 0;
     }
+    & .field h2 {
+        display: none;
+    }
 }
 
 .login-header {
@@ -78,7 +81,7 @@
         pointer-events: none;
     }
     & > span,
-    & > fieldset:not(:last-of-type) {
+    & > .field:not(:last-of-type) {
         margin-bottom: 0.5rem;
     }
     & > button {

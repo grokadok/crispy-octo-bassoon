@@ -1,15 +1,15 @@
 /**
  * Creates tabbed websocket chats in specified wrapper.
  */
-class SweetChat {
+class BopChat {
     static chats = [];
     /**
-     * @param {HTMLElement} element - The element designed to contain the sweetchat.
-     * @param {Number[]} [idchat] - Optionnal array of chat ids to be opened at sweetchat creation. Others may be added later.
+     * @param {HTMLElement} element - The element designed to contain the bopchat.
+     * @param {Number[]} [idchat] - Optionnal array of chat ids to be opened at bopchat creation. Others may be added later.
      */
     constructor(element, idchat) {
-        SweetChat.chats.push(this);
-        this.id = SweetChat.chats.indexOf(this);
+        BopChat.chats.push(this);
+        this.id = BopChat.chats.indexOf(this);
         this.active = 0;
         this.chats = [];
         this.wrapper = element;
@@ -174,7 +174,7 @@ class SweetChat {
             this.users,
             this.footer,
         ]);
-        this.wrapper.classList.add("sweetchat");
+        this.wrapper.classList.add("bopchat");
         if (idchat.length > 0) {
             for (const id of idchat)
                 socket.send({
@@ -445,10 +445,10 @@ class SweetChat {
     destroy() {
         this.wrapper.innerHTML = "";
         this.wrapper.className = "loading hidden";
-        SweetChat.chats.splice(SweetChat.chats.indexOf(this), 1);
+        BopChat.chats.splice(BopChat.chats.indexOf(this), 1);
     }
     static destroyAll() {
-        for (const chat of SweetChat.chats) chat.destroy();
+        for (const chat of BopChat.chats) chat.destroy();
     }
     expand() {
         this.wrapper.classList.add("toggle");

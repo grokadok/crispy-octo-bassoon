@@ -1,8 +1,8 @@
-class SweetTable {
+class BopTable {
     static tables = [];
     /**
      * Creates a table, duh. Needs either param.rows or param.task to be created and populated.
-     * @param {Object} param - SweetTable properties.
+     * @param {Object} param - BopTable properties.
      * @param {Object[]} param.cols - Column properties.
      * @param {String} [param.cols.datatype] - Type to determine sorting of the rows according to column data.
      * @param {Boolean|Number} [param.cols.groupby=false] - Number to set hierarchical grouping of rows (from 0=highest), else false.
@@ -37,10 +37,10 @@ class SweetTable {
             typeof param.task === "undefined" &&
             typeof param.rows === "undefined"
         )
-            return console.error("Sweettable: no data set.");
-        if (SweetTable.tables.length === 0)
-            document.addEventListener("click", SweetTable.hideMenuListener);
-        SweetTable.tables.push(this);
+            return console.error("BopTable: no data set.");
+        if (BopTable.tables.length === 0)
+            document.addEventListener("click", BopTable.menuListener);
+        BopTable.tables.push(this);
         this.wrapper = param.wrapper;
         this.header = document.createElement("div");
         this.table = document.createElement("div");
@@ -50,13 +50,14 @@ class SweetTable {
         // this.tfoot = document.createElement("div");
         this.footer = document.createElement("div");
         this.rowHeight = param.row?.height ?? 2;
-        this.wrapper.className = "sweettable";
+        this.wrapper.className = "boptable";
         this.menu = {};
         this.menu.wrapper = document.createElement("ul");
         this.menu.search = document.createElement("li");
         this.menu.colsDrop = document.createElement("ul");
         this.menu.icons = document.createElement("li");
         let cols = document.createElement("li"),
+            searchButton = document.createElement("div"),
             searchInput = document.createElement("span");
         this.menu.icons.innerHTML = `<div class="show">
             <svg viewBox="0 0 24 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" tabindex="0">
@@ -85,15 +86,32 @@ class SweetTable {
             </svg>
         </div>`;
         cols.textContent = "Columns";
-        searchInput.placeholder = "search...";
+        searchButton.innerHTML = `<svg class="svg-icon" viewBox="0 0 20 20">
+							<path fill="none" d="M12.323,2.398c-0.741-0.312-1.523-0.472-2.319-0.472c-2.394,0-4.544,1.423-5.476,3.625C3.907,7.013,3.896,8.629,4.49,10.102c0.528,1.304,1.494,2.333,2.72,2.99L5.467,17.33c-0.113,0.273,0.018,0.59,0.292,0.703c0.068,0.027,0.137,0.041,0.206,0.041c0.211,0,0.412-0.127,0.498-0.334l1.74-4.23c0.583,0.186,1.18,0.309,1.795,0.309c2.394,0,4.544-1.424,5.478-3.629C16.755,7.173,15.342,3.68,12.323,2.398z M14.488,9.77c-0.769,1.807-2.529,2.975-4.49,2.975c-0.651,0-1.291-0.131-1.897-0.387c-0.002-0.004-0.002-0.004-0.002-0.004c-0.003,0-0.003,0-0.003,0s0,0,0,0c-1.195-0.508-2.121-1.452-2.607-2.656c-0.489-1.205-0.477-2.53,0.03-3.727c0.764-1.805,2.525-2.969,4.487-2.969c0.651,0,1.292,0.129,1.898,0.386C14.374,4.438,15.533,7.3,14.488,9.77z"></path>
+						</svg>`;
         searchInput.contentEditable = "true";
+        searchInput.placeholder = "search...";
         searchInput.spellcheck = "false";
-        searchInput.setAttribute("role", "textbox");
-        searchInput.addEventListener("input", (e) => {
-            e.target.style.height = "auto";
-            e.target.style.height = e.target.scrollHeight + "px";
-            SweetTable.find(e.target).search(e.target.textContent);
+        searchInput.disabled = true;
+        searchButton.addEventListener("click", () => {
+            this.menu.search.classList.toggle("active");
+            if (this.menu.search.classList.contains("active")) {
+                searchInput.disabled = false;
+                searchInput.focus();
+            } else searchInput.disabled = true;
         });
+        searchInput.addEventListener("click", () => {
+            if (!this.menu.search.classList.contains("active"))
+                this.menu.search.classList.add("active");
+        });
+        searchInput.addEventListener("input", (e) => {
+            if (this.menu.wrapper.classList.contains("head")) {
+                e.target.style.height = "auto";
+                e.target.style.height = e.target.scrollHeight + "px";
+            }
+            BopTable.find(e.target).search(e.target.textContent);
+        });
+        appendChildren(this.menu.search, [searchButton, searchInput]);
         this.menu.search.appendChild(searchInput);
         cols.appendChild(this.menu.colsDrop);
         appendChildren(this.menu.wrapper, [
@@ -101,54 +119,13 @@ class SweetTable {
             this.menu.search,
             cols,
         ]);
-        this.menu.wrapper.className = "hide";
-        this.menu.wrapper.addEventListener("pointerup", (e) => {
-            if (this.menu.wrapper.classList.contains("up")) {
-                this.menu.observer?.disconnect();
-                // delete this.menu.observer;
-                const table = SweetTable.find(e.target),
-                    box = table.menu.wrapper.getBoundingClientRect(),
-                    thead = table.thead.getBoundingClientRect(),
-                    yMin = thead.y - 2 * thead.height,
-                    yMax = thead.y + 2 * thead.height;
-
-                // if close to some col head, stick to it etc
-                if (box.y > yMin && box.y < yMax) {
-                    const boxMiddle = box.x + box.width / 2,
-                        theadMiddle = thead.x + thead.width / 2;
-                    let heads = table.cols
-                            .filter((x) => x.width !== "0fr")
-                            .map((x) => [x.head, x.id]),
-                        last;
-                    if (boxMiddle > theadMiddle) heads.reverse();
-                    for (const head of heads) {
-                        const headRect = head[0].getBoundingClientRect(),
-                            headMiddle = headRect.x + headRect.width / 2,
-                            diff = Math.abs(boxMiddle - headMiddle);
-                        if (typeof last === "number" && diff > last) {
-                            // stick menu to closest col.head.
-                            return table.menuToHead(
-                                heads[heads.indexOf(head) - 1][1]
-                            );
-                        } else last = diff;
-                    }
-                } else {
-                    this.menuMove();
-                    const wrap = table.menu.wrapper;
-                    wrap.classList.add("solo");
-                    wrap.style.width = "";
-                    wrap.getElementsByTagName("ul")[0].style.width = "";
-                    delete table.menu.col;
-                }
-            }
-        });
 
         // if param.task then request data
         if (typeof param.task !== "undefined") {
             this.task = param.task;
             socket.send({
                 f: 2501,
-                i: SweetTable.tables.indexOf(this),
+                i: BopTable.tables.indexOf(this),
                 t: this.task,
             });
             // incomplete server side version
@@ -173,7 +150,7 @@ class SweetTable {
                     // d: 0, // direction: 0 down, 1 up // NOT NEEDED ?
                     f: 2501, // global fetch table data task
                     // g: [], // grouping columns
-                    i: SweetTable.tables.indexOf(this), // index of table object
+                    i: BopTable.tables.indexOf(this), // index of table object
                     p: 0, // array of primary ids of table rows to get data for.
                     r: rows, // number of rows to request
                     s: [1], // grouping & sorting columns (last has to be 1, preceded by the sorting column), 1 based
@@ -279,12 +256,23 @@ class SweetTable {
     destroy() {
         this.menu.observer?.disconnect();
         this.wrapper.remove();
-        SweetTable.tables.splice(SweetTable.tables.indexOf(this), 1);
-        if (SweetTable.tables.length === 0)
-            document.removeEventListener("click", SweetTable.hideMenuListener);
+        BopTable.tables.splice(BopTable.tables.indexOf(this), 1);
+        if (BopTable.tables.length === 0)
+            document.removeEventListener("click", BopTable.menuListener);
     }
     static destroyAll() {
-        for (const table of SweetTable.tables) table.destroy();
+        for (const table of BopTable.tables) table.destroy();
+    }
+    dockMenu() {
+        this.menuMove();
+        this.menu.wrapper.classList.remove("head");
+        this.menu.wrapper.style = "";
+        this.menu.colsDrop.style = "";
+        const searchInput = this.menu.search.getElementsByTagName("span")[0];
+        searchInput.style = "";
+        this.menu.observer?.disconnect();
+        delete this.menu.observer;
+        delete this.menu.col;
     }
     /**
      * Finds table object from element within it.
@@ -292,7 +280,7 @@ class SweetTable {
      * @returns Table object or false.
      */
     static find(el) {
-        for (const table of SweetTable.tables)
+        for (const table of BopTable.tables)
             if (table.wrapper.contains(el) || table.wrapper === el)
                 return table;
         return false;
@@ -309,31 +297,17 @@ class SweetTable {
     }
     headClick(col) {
         const box = this.menu.wrapper;
-        if (col.id === this.menu.col && !box.classList.contains("hide"))
-            return box.classList.add("hide");
+        if (col.id === this.menu.col && box.classList.contains("head"))
+            return this.dockMenu();
         this.menuToHead(col.id);
-        // if menu hidden, show it and add event listener to hide it again
-        box.classList.remove("hide");
+        box.classList.add("head");
     }
     headOver(col) {
         if (
-            !this.menu.wrapper.classList.contains("hide") &&
+            this.menu.wrapper.classList.contains("head") &&
             this.menu.col !== col.id
         )
             this.headClick(col);
-        else if (this.menu.col === col.id) {
-            this.menuToHead();
-        }
-    }
-    static hideMenuListener(event) {
-        SweetTable.tables.map((table) => {
-            if (
-                !table.menu.wrapper.contains(event.target) &&
-                !table.thead.contains(event.target) &&
-                !table.menu.wrapper.classList.contains("hide")
-            )
-                table.menu.wrapper.classList.add("hide");
-        });
     }
     hightlightSearch() {
         // for each drawn cell
@@ -353,6 +327,25 @@ class SweetTable {
     loadUp() {
         // when remaining scroll up < 1 table height, load more rows
     }
+    static menuListener(event) {
+        BopTable.tables.map((table) => {
+            if (
+                !table.menu.wrapper.contains(event.target) &&
+                !table.thead.contains(event.target) &&
+                table.menu.wrapper.classList.contains("head")
+            )
+                table.dockMenu();
+            if (
+                (table.menu.wrapper.classList.contains("head") &&
+                    !table.menu.search.contains(event.target)) ||
+                (!table.menu.wrapper.classList.contains("head") &&
+                    !table.menu.wrapper.contains(event.target) &&
+                    table.menu.search.getElementsByTagName("span")[0]
+                        .textContent === "")
+            )
+                table.menu.search.classList.remove("active");
+        });
+    }
     async menuMove() {
         if (this.timeout) clearTimeout(this.timeout);
         const menu = this.menu.wrapper.classList;
@@ -370,40 +363,23 @@ class SweetTable {
             box = this.menu.wrapper,
             parent = box.offsetParent.getBoundingClientRect(),
             head = col.head.getBoundingClientRect();
-        // if (
-        //     is_safari &&
-        //     this.wrapper.previousElementSibling.tagName.toLowerCase() ===
-        //         "legend"
-        // ) {
-        //     const legend = this.wrapper.previousElementSibling.offsetHeight;
-        //     box.style.top =
-        //         Math.floor(
-        //             head.y +
-        //                 head.height -
-        //                 col.head.offsetTop -
-        //                 parent.y -
-        //                 legend
-        //         ) + "px";
-        // } else
-        // box.style.top =
-        //     head.y + head.height - col.head.offsetTop - parent.y + "px";
         box.style.top =
             Math.floor(head.y + head.height - col.head.offsetTop - parent.y) +
             "px";
-        this.menu.wrapper.classList.remove("solo");
+        this.menu.wrapper.classList.add("head");
         this.menu.icons.innerHTML =
             this.menu.colsDrop.children[col.id].children[1].innerHTML;
         this.menu.icons.children[0].addEventListener("click", () => {
-            SweetTable.find(box).toggleColVis(col);
+            BopTable.find(box).toggleColVis(col);
         });
         this.menu.icons.children[1].addEventListener("click", () => {
-            SweetTable.find(box).setGroupBy(col.id);
+            BopTable.find(box).setGroupBy(col.id);
         });
         this.menu.icons.children[2].addEventListener("click", () => {
-            SweetTable.find(box).setSortBy(col.id);
+            BopTable.find(box).setSortBy(col.id);
         });
         this.menu.observer = new ResizeObserver((entries) => {
-            if (!box.classList.contains("hide")) {
+            if (box.classList.contains("head")) {
                 for (const entry of entries) {
                     const head = entry.target.getBoundingClientRect(),
                         limit = convertRemToPixels(7);
@@ -448,12 +424,12 @@ class SweetTable {
      * @param {Array[]} data
      */
     static parseData(data) {
-        const table = SweetTable.tables[data.i];
+        const table = BopTable.tables[data.i];
         table.rows = data.response.rows;
         table.cols = data.response.cols;
         table.options = data.response.options;
         table.populate();
-        setElementDraggable(table.menu.wrapper);
+        // setElementDraggable(table.menu.wrapper);
         // incomplete server side version
         if (1 === 0) {
             if (typeof data.d === "undefined") {
@@ -476,6 +452,76 @@ class SweetTable {
             // for each sorter arrow
             // set eventlistener on click get data according to sorter.
         }
+    }
+    loadRow(rowData, last, groups) {
+        if (Array.isArray(rowData)) {
+            let row = document.createElement("div");
+            row.setAttribute("role", "row");
+            for (const col of this.cols) {
+                let cell = document.createElement("div");
+                cell.setAttribute("role", "cell");
+                cell.style.gridColumn = col.id + 1;
+                if (Array.isArray(rowData[col.id])) {
+                    let values = [];
+                    for (const value of rowData[col.id])
+                        values.push(
+                            typeof value === "number" &&
+                                typeof col.options === "string"
+                                ? this.options[col.options][value].name
+                                : value
+                        );
+                    cell.textContent = values.join(",");
+                } else
+                    cell.textContent =
+                        typeof rowData[col.id] === "number" &&
+                        typeof col.options === "string"
+                            ? this.options[col.options][rowData[col.id]].name
+                            : rowData[col.id] ?? "";
+                if (typeof col.groupby === "number") cell.width = "0fr";
+                // set event listener
+                if (typeof col.action !== "undefined") {
+                    for (const [key, value] of Object.entries(col.action)) {
+                        cell.addEventListener(key, eval(value));
+                    }
+                }
+                row.appendChild(cell);
+            }
+            last.appendChild(row);
+        } else {
+            if (!groups.includes(rowData.col)) groups.push(rowData.col);
+            const id = groups.indexOf(rowData.col);
+            let parent = this.tbody,
+                wrapper = document.createElement("div"),
+                divider = document.createElement("button");
+            wrapper.setAttribute("role", "presentation");
+            last = document.createElement("div");
+            if (id > 0)
+                for (let i = 0; i < id; i++) {
+                    parent = parent.lastElementChild;
+                }
+            // set divider text content
+            if (
+                rowData.name &&
+                typeof this.cols[rowData.col].options === "string" &&
+                (typeof this.cols[rowData.col].sortby === "undefined" ||
+                    this.cols[rowData.col].sortby === 0)
+            ) {
+                divider.textContent =
+                    this.options[this.cols[rowData.col].options][
+                        rowData.name
+                    ].name;
+            } else divider.textContent = rowData.name ?? "";
+
+            // find aria role for group dividers
+            wrapper.addEventListener("click", (e) => {
+                e.currentTarget.nextElementSibling.classList.toggle(
+                    "collapsed"
+                );
+            });
+            wrapper.appendChild(divider);
+            appendChildren(parent, [wrapper, last]);
+        }
+        return last;
     }
     /**
      * Load data into table.
@@ -528,13 +574,13 @@ class SweetTable {
                     this.toggleColVis(col);
                 });
                 col.visIcon.addEventListener("click", () => {
-                    SweetTable.find(icons).toggleColVis(col);
+                    BopTable.find(icons).toggleColVis(col);
                 });
                 col.groupIcon.addEventListener("click", () => {
-                    SweetTable.find(icons).setGroupBy(col.id);
+                    BopTable.find(icons).setGroupBy(col.id);
                 });
                 col.sortIcon.addEventListener("click", () => {
-                    SweetTable.find(icons).setSortBy(col.id);
+                    BopTable.find(icons).setSortBy(col.id);
                 });
                 this.menu.colsDrop.appendChild(menuRow);
                 // create col header
@@ -583,14 +629,11 @@ class SweetTable {
             this.colGrid();
             this.sort();
         } else {
-            // get row quantity by calc table height and row height.
-
-            // always observe 2-3 rows, around intersection element, to load next-previous rows when necessary.
-            // set intersection observer on top of the table, for next tenth row.
-            // on intersection
-            // if row<last, load previous 10 rows, empty next 10 rows, observe previous tenth row, unobserve next tenth row
-            // of row>last, load next 10 rows, empty previous 10 rows, observe next tenth row, unobserve previous tenth row
-            // store intersected row as last
+            // for each row generated, check if y > table bottom
+            // if so, load ten more items
+            // add intersection observer to the fifth
+            // on intersection load five more and remove 5 from opposite
+            // two intersectobservers, one for top, one for bottom.
 
             const start = performance.now();
             this.tbody.innerHTML = "";
@@ -601,88 +644,9 @@ class SweetTable {
             for (const rowData of this.search.rows ?? this.rows) {
                 if (limit < 100) {
                     // move limit according to table height/row height + 10 rows
-                    if (Array.isArray(rowData)) {
-                        let row = document.createElement("div");
-                        row.setAttribute("role", "row");
-                        for (const col of this.cols) {
-                            let cell = document.createElement("div");
-                            cell.setAttribute("role", "cell");
-                            cell.style.gridColumn = col.id + 1;
-                            if (Array.isArray(rowData[col.id])) {
-                                let values = [];
-                                for (const value of rowData[col.id])
-                                    values.push(
-                                        typeof value === "number" &&
-                                            typeof col.options === "string"
-                                            ? this.options[col.options][value]
-                                                  .name
-                                            : value
-                                    );
-                                cell.textContent = values.join(",");
-                            } else
-                                cell.textContent =
-                                    typeof rowData[col.id] === "number" &&
-                                    typeof col.options === "string"
-                                        ? this.options[col.options][
-                                              rowData[col.id]
-                                          ].name
-                                        : rowData[col.id] ?? "";
-                            if (typeof col.groupby === "number")
-                                cell.width = "0fr";
-                            // set event listener
-                            if (typeof col.action !== "undefined") {
-                                for (const [key, value] of Object.entries(
-                                    col.action
-                                )) {
-                                    cell.addEventListener(key, eval(value));
-                                }
-                            }
-                            row.appendChild(cell);
-                        }
-                        last.appendChild(row);
-                    } else {
-                        if (!groups.includes(rowData.col))
-                            groups.push(rowData.col);
-                        const id = groups.indexOf(rowData.col);
-                        let parent = this.tbody,
-                            wrapper = document.createElement("div"),
-                            divider = document.createElement("button");
-                        wrapper.setAttribute("role", "presentation");
-                        last = document.createElement("div");
-                        if (id > 0)
-                            for (let i = 0; i < id; i++) {
-                                parent = parent.lastElementChild;
-                            }
-                        // set divider text content
-                        if (
-                            rowData.name &&
-                            typeof this.cols[rowData.col].options ===
-                                "string" &&
-                            (typeof this.cols[rowData.col].sortby ===
-                                "undefined" ||
-                                this.cols[rowData.col].sortby === 0)
-                        ) {
-                            divider.textContent =
-                                this.options[this.cols[rowData.col].options][
-                                    rowData.name
-                                ].name;
-                        } else divider.textContent = rowData.name ?? "";
-
-                        // find aria role for group dividers
-                        wrapper.addEventListener("click", (e) => {
-                            e.currentTarget.nextElementSibling.classList.toggle(
-                                "collapsed"
-                            );
-                        });
-                        wrapper.appendChild(divider);
-                        appendChildren(parent, [wrapper, last]);
-                    }
+                    last = this.loadRow(rowData, last, groups);
                     limit++;
-                }
-                // add observer to tenth row:
-                // if tenth row intersect with table top
-                // load the ten next rows
-                //
+                } else break;
             }
             console.log(performance.now() - start + "ms draw");
         }
@@ -692,7 +656,7 @@ class SweetTable {
         delete this.sorted;
         socket.send({
             f: 2501,
-            i: SweetTable.tables.indexOf(this),
+            i: BopTable.tables.indexOf(this),
             t: this.task,
         });
     }
@@ -713,7 +677,7 @@ class SweetTable {
             col.head.offsetWidth + this.cols[nextCol].head.offsetWidth;
 
         this.table.classList.add("resize");
-        this.menu.wrapper.classList.add("hide");
+        this.dockMenu();
 
         // on pointerdown convert every fr into px
         // apply modification of col as difference with next visible col width

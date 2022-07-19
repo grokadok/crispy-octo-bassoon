@@ -1,5 +1,30 @@
 <?php
 $response->header("Content-Type", "text/html; charset=utf-8");
+$jsfiles = getenv('ISLOCAL') ? [
+    'js/quicksort.js',
+    'js/navigation.js',
+    'js/basic_functions.js',
+    'js/fscreen.js',
+    'js/fetch.js',
+    'js/fields.js',
+    'vendor/intlTelInput/js/intlTelInput.js',
+    'vendor/intlTelInput/js/utils.js',
+    'js/login.js',
+    'js/websocket.js',
+    'js/themes.js',
+    'js/tabs.js',
+    'js/btn.js',
+    'js/boptable.js',
+    'js/bopchat.js',
+    'js/bopalert.js',
+    'js/modal.js',
+    'js/pages.js',
+    'js/main.js',
+] : ['js/custom.min.js', 'js/vendor.min.js'];
+$jsstring = '';
+foreach ($jsfiles as $jsfile) {
+    $jsstring .= '<script defer src="./assets/' . $jsfile . '"></script>';
+}
 $main =
     '<!DOCTYPE html>
     <html lang="fr">
@@ -14,14 +39,10 @@ $main =
         <meta name="application-name" content="Seadesk">
         <meta name="apple-mobile-web-app-title" content="Seadesk">
         <meta name="msapplication-starturl" content="index.php">
-
         <title>SeaDesk</title>
-
         <link rel="stylesheet" href="./assets/css/style.css">
         <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
-
-        <script defer src="./assets/js/custom.min.js"></script>
-        <script defer src="./assets/js/vendor.min.js"></script>
+        ' . $jsstring . '
     </head>
     <body class="loading ' .
     $theme .

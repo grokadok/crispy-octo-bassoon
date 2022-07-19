@@ -136,7 +136,7 @@ class WSConnection {
                     }
                 } else if ([7, 12].includes(data.f)) {
                     data.s === 8
-                        ? SweetChat.chats[0].parseData(data)
+                        ? BopChat.chats[0].parseData(data)
                         : Field.parseData(data);
                 } else if ([8, 9, 10, 11].includes(data.f)) {
                     Modal.parseData(data);
@@ -260,10 +260,10 @@ class WSConnection {
                             title: "Ticket #" + data.i,
                         };
                         new Modal(params);
-                        SweetChat.chats[0].wrapper.classList.add("toggle");
+                        BopChat.chats[0].wrapper.classList.add("toggle");
                     }
                 } else if (data.f === 14) {
-                    SweetChat.chats[0].addChat(data.chat);
+                    BopChat.chats[0].addChat(data.chat);
                 } else if (data.f === 15) {
                     // user typing in chat
                     console.log(
@@ -275,7 +275,7 @@ class WSConnection {
                     // show typing icon in chat tab
                 } else if (data.f === 16) {
                     // new message for chat data.i
-                    const chat = SweetChat.chats[0];
+                    const chat = BopChat.chats[0];
                     if (
                         data.response.last &&
                         !chat.content.querySelector(
@@ -362,17 +362,17 @@ class WSConnection {
                     }
                 } else if (data.f === 18) {
                     // refresh user list
-                    SweetChat.chats[0].updateUsers(data.chat);
+                    BopChat.chats[0].updateUsers(data.chat);
                 } else if (data.f === 19) {
                     data.chat.deserted
                         ? // if user that left, close chat
-                          SweetChat.chats[0].remove(data.chat.id)
+                          BopChat.chats[0].remove(data.chat.id)
                         : // else refresh user list
-                          SweetChat.chats[0].updateUsers(data.chat);
+                          BopChat.chats[0].updateUsers(data.chat);
                 } else if (data.f === 20) {
                     ClassMain.el.parseTab(data.i, data.response);
                 } else if (data.f === 2501) {
-                    SweetTable.parseData(data);
+                    BopTable.parseData(data);
                 }
             }
         };
@@ -395,15 +395,15 @@ class WSConnection {
             //         Modal.destroy();
             //         unblurElements([main, navbar, topbar]);
             //         tabuDestroy(main);
-            //         SweetChat.destroyAll();
+            //         BopChat.destroyAll();
             //         emptyEl([navbar, main, topbar, mainChat]);
             //         loginView();
             //         loadLogin();
             //         login.classList.remove("loading");
             //     }, 300);
             // }
-            SweetChat.destroyAll();
-            SweetTable.destroyAll();
+            BopChat.destroyAll();
+            BopTable.destroyAll();
             if (ClassMain.el) {
                 ClassMain.destroy();
                 login.load();

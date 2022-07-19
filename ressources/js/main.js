@@ -1,18 +1,3 @@
-// Variables
-
-// const body = document.body,
-//     login = document.getElementsByClassName("login")[0],
-//     navbar = document.getElementsByClassName("navbar")[0],
-//     topbar = document.getElementsByClassName("topbar")[0],
-//     main = document.getElementsByTagName("main")[0],
-//     mainChat = document.getElementById("main-chat");
-// regLower = /[a-z]+/,
-// regUpper = /[A-Z]+/,
-// regNumber = /[0-9]+/,
-// regSpecial = /[!@#$%^&*]+/;
-// var intlTel, socket;
-// let timer,
-//     btnController,
 let login = new ClassLogin(),
     socket,
     main;
@@ -35,9 +20,9 @@ class ClassMain {
             options: data.options,
         };
         this.wrapper = document.getElementsByTagName("main")[0];
-        this.chat = new SweetChat(document.getElementById("chat"), data.chat);
+        this.chat = new BopChat(document.getElementById("chat"), data.chat);
         this.tabs = {
-            active: data.active_tab,
+            active: data.active_tab ?? 1,
             data: data.tabs,
             item: [],
             map: data.tabs_map,
@@ -46,14 +31,14 @@ class ClassMain {
             ul: document.createElement("ul"),
             wrapper: document.getElementsByClassName("navbar")[0],
         };
-        this.navbar.wrapper.setAttribute(
-            "style",
-            localStorage.getItem("navbarStyle") ?? ""
-        );
+        const localNavbar = localStorage.getItem("navbarClass");
         this.navbar.wrapper.className =
-            localStorage.getItem("navbarClass") !== null
-                ? "navbar " + localStorage.getItem("navbarClass")
-                : "navbar left";
+            "navbar " + (localNavbar !== null ? localNavbar : "left");
+        if (localNavbar === null || localNavbar.split(" ").length < 2)
+            this.navbar.wrapper.setAttribute(
+                "style",
+                localStorage.getItem("navbarStyle") ?? ""
+            );
         this.topbar = {
             react: document.createElement("ul"),
             static: document.createElement("ul"),
@@ -143,9 +128,6 @@ class ClassMain {
         this.navbar.wrapper.addEventListener("pointerup", () => {
             this.navbarRelease();
         });
-        //!!!
-        // apply user options (theme,animations,...)
-        //!!!
         // parse tabs
         this.prepareTab(this.tabs.map);
         let theme = document.createElement("li");
@@ -200,6 +182,7 @@ class ClassMain {
             this.topbar.wrapper,
             this.chat.wrapper,
         ]);
+        fadeIn(this.tabs.item[this.tabs.active].tab);
         // destroy login
         // show warning connection count
         if (data.attempts_total > 2)
@@ -254,6 +237,7 @@ class ClassMain {
         localStorage.setItem("navbarClass", navbarClasses.join(" "));
     }
     parseTab(id, data) {
+        console.log(data);
         this.tabs.data[id] = data;
         this.loadTab(id);
     }
@@ -597,7 +581,7 @@ function loadMain(idchat) {
             es: "España",
         },
     });
-    chat = new SweetChat(mainChat, idchat);
+    chat = new BopChat(mainChat, idchat);
 
     // Event listeners
     logo.addEventListener("click", () => {

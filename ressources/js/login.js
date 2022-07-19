@@ -304,7 +304,9 @@ class ClassLogin {
     static openWS() {
         login.currentPassword.input[0].blur();
         socket?.close();
-        let host = "wss://" + window.location.host;
+        let host =
+            (window.location.hostname === "localhost" ? "ws://" : "wss://") +
+            window.location.host;
         socket = new WSConnection(host);
     }
     phoneCheck() {

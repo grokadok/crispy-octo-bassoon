@@ -40,7 +40,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Home",
@@ -74,7 +74,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 1,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Items",
@@ -104,7 +104,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Orders",
@@ -221,7 +221,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 0,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Tickets",
@@ -254,7 +254,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 1,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Corp.",
@@ -297,7 +297,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 2,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "People",
@@ -364,7 +364,7 @@ class FWServer
                         "scroll" => "infinite",
                         "task" => 3,
                     ],
-                    "type" => "sweettable",
+                    "type" => "boptable",
                 ],
             ],
             "name" => "Admin",
@@ -614,7 +614,9 @@ class FWServer
                         $data["options"] = $res[0] ?? null;
 
                         // if active tab set, get this tab, else get default tab (id1)
-                        $data["active_tab"] = $request["active"] ?? 1;
+                        var_dump($request["active"]);
+                        var_dump(isset($request['active']));
+                        $data["active_tab"] = isset($request["active"]) ? $request["active"] : 1;
                         // get tabs (if not admin, admin as all tabs by default, or has he?)
                         $fetch = new DBRequest([
                             "query" =>
@@ -739,7 +741,7 @@ class FWServer
         Swoole\WebSocket\Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
-            echo "login request: {$frame->data->email} from {$frame->fd}" . PHP_EOL;
+            echo "login request: {$frame->data} from {$frame->fd}" . PHP_EOL;
             $data = json_decode(urldecode($frame->data), true);
             $data["fd"] = $frame->fd;
             $res = $this->login($data);
@@ -857,7 +859,6 @@ class FWServer
         echo "manager_pid: {$serv->manager_pid}" . PHP_EOL;
         echo "########" . PHP_EOL . PHP_EOL;
         new DBRequest([
-            // "query" => "TRUNCATE TABLE session;",
             "query" => "DELETE FROM session;",
         ]);
         new DBRequest([
@@ -2094,7 +2095,7 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH SWEETTABLE DATA (2501)
+            // FETCH boptable DATA (2501)
             /////////////////////////////////////////////////////
 
             if ($f === 2501) {
