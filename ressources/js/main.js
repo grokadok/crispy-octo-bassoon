@@ -31,8 +31,9 @@ class ClassMain {
             ul: document.createElement("ul"),
             wrapper: document.getElementsByClassName("navbar")[0],
         };
-        let localNavbar = localStorage.getItem("navbarClass");
-        this.navbar.wrapper.className = "navbar " + localNavbar ?? "left";
+        const localNavbar = localStorage.getItem("navbarClass");
+        this.navbar.wrapper.className =
+            "navbar " + (localNavbar !== null ? localNavbar : "left");
         if (localNavbar === null || localNavbar.split(" ").length < 2)
             this.navbar.wrapper.setAttribute(
                 "style",
@@ -181,6 +182,7 @@ class ClassMain {
             this.topbar.wrapper,
             this.chat.wrapper,
         ]);
+        fadeIn(this.tabs.item[this.tabs.active].tab);
         // destroy login
         // show warning connection count
         if (data.attempts_total > 2)
@@ -235,6 +237,7 @@ class ClassMain {
         localStorage.setItem("navbarClass", navbarClasses.join(" "));
     }
     parseTab(id, data) {
+        console.log(data);
         this.tabs.data[id] = data;
         this.loadTab(id);
     }

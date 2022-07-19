@@ -614,7 +614,9 @@ class FWServer
                         $data["options"] = $res[0] ?? null;
 
                         // if active tab set, get this tab, else get default tab (id1)
-                        $data["active_tab"] = $request["active"] ?? 1;
+                        var_dump($request["active"]);
+                        var_dump(isset($request['active']));
+                        $data["active_tab"] = isset($request["active"]) ? $request["active"] : 1;
                         // get tabs (if not admin, admin as all tabs by default, or has he?)
                         $fetch = new DBRequest([
                             "query" =>
