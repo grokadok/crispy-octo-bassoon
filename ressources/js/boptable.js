@@ -308,9 +308,24 @@ class BopTable {
             this.menu.col !== col.id
         )
             this.headClick(col);
-        // else if (this.menu.col === col.id) {
-        //     this.menuToHead();
-        // }
+    }
+    hightlightSearch() {
+        // for each drawn cell
+        // for each searched term
+        // find words matching term
+        // if word not highlighted yet, highlight it.
+    }
+    /**
+     * Load more data down the table.
+     */
+    loadDown() {
+        // when remaining scroll down < 1 table height, load more rows
+    }
+    /**
+     * Load more data up the table.
+     */
+    loadUp() {
+        // when remaining scroll up < 1 table height, load more rows
     }
     static menuListener(event) {
         BopTable.tables.map((table) => {
@@ -330,24 +345,6 @@ class BopTable {
             )
                 table.menu.search.classList.remove("active");
         });
-    }
-    hightlightSearch() {
-        // for each drawn cell
-        // for each searched term
-        // find words matching term
-        // if word not highlighted yet, highlight it.
-    }
-    /**
-     * Load more data down the table.
-     */
-    loadDown() {
-        // when remaining scroll down < 1 table height, load more rows
-    }
-    /**
-     * Load more data up the table.
-     */
-    loadUp() {
-        // when remaining scroll up < 1 table height, load more rows
     }
     async menuMove() {
         if (this.timeout) clearTimeout(this.timeout);
@@ -456,6 +453,76 @@ class BopTable {
             // set eventlistener on click get data according to sorter.
         }
     }
+    loadRow(rowData, last, groups) {
+        if (Array.isArray(rowData)) {
+            let row = document.createElement("div");
+            row.setAttribute("role", "row");
+            for (const col of this.cols) {
+                let cell = document.createElement("div");
+                cell.setAttribute("role", "cell");
+                cell.style.gridColumn = col.id + 1;
+                if (Array.isArray(rowData[col.id])) {
+                    let values = [];
+                    for (const value of rowData[col.id])
+                        values.push(
+                            typeof value === "number" &&
+                                typeof col.options === "string"
+                                ? this.options[col.options][value].name
+                                : value
+                        );
+                    cell.textContent = values.join(",");
+                } else
+                    cell.textContent =
+                        typeof rowData[col.id] === "number" &&
+                        typeof col.options === "string"
+                            ? this.options[col.options][rowData[col.id]].name
+                            : rowData[col.id] ?? "";
+                if (typeof col.groupby === "number") cell.width = "0fr";
+                // set event listener
+                if (typeof col.action !== "undefined") {
+                    for (const [key, value] of Object.entries(col.action)) {
+                        cell.addEventListener(key, eval(value));
+                    }
+                }
+                row.appendChild(cell);
+            }
+            last.appendChild(row);
+        } else {
+            if (!groups.includes(rowData.col)) groups.push(rowData.col);
+            const id = groups.indexOf(rowData.col);
+            let parent = this.tbody,
+                wrapper = document.createElement("div"),
+                divider = document.createElement("button");
+            wrapper.setAttribute("role", "presentation");
+            last = document.createElement("div");
+            if (id > 0)
+                for (let i = 0; i < id; i++) {
+                    parent = parent.lastElementChild;
+                }
+            // set divider text content
+            if (
+                rowData.name &&
+                typeof this.cols[rowData.col].options === "string" &&
+                (typeof this.cols[rowData.col].sortby === "undefined" ||
+                    this.cols[rowData.col].sortby === 0)
+            ) {
+                divider.textContent =
+                    this.options[this.cols[rowData.col].options][
+                        rowData.name
+                    ].name;
+            } else divider.textContent = rowData.name ?? "";
+
+            // find aria role for group dividers
+            wrapper.addEventListener("click", (e) => {
+                e.currentTarget.nextElementSibling.classList.toggle(
+                    "collapsed"
+                );
+            });
+            wrapper.appendChild(divider);
+            appendChildren(parent, [wrapper, last]);
+        }
+        return last;
+    }
     /**
      * Load data into table.
      * @param {[]} - Rows
@@ -562,14 +629,11 @@ class BopTable {
             this.colGrid();
             this.sort();
         } else {
-            // get row quantity by calc table height and row height.
-
-            // always observe 2-3 rows, around intersection element, to load next-previous rows when necessary.
-            // set intersection observer on top of the table, for next tenth row.
-            // on intersection
-            // if row<last, load previous 10 rows, empty next 10 rows, observe previous tenth row, unobserve next tenth row
-            // of row>last, load next 10 rows, empty previous 10 rows, observe next tenth row, unobserve previous tenth row
-            // store intersected row as last
+            // for each row generated, check if y > table bottom
+            // if so, load ten more items
+            // add intersection observer to the fifth
+            // on intersection load five more and remove 5 from opposite
+            // two intersectobservers, one for top, one for bottom.
 
             const start = performance.now();
             this.tbody.innerHTML = "";
@@ -580,88 +644,9 @@ class BopTable {
             for (const rowData of this.search.rows ?? this.rows) {
                 if (limit < 100) {
                     // move limit according to table height/row height + 10 rows
-                    if (Array.isArray(rowData)) {
-                        let row = document.createElement("div");
-                        row.setAttribute("role", "row");
-                        for (const col of this.cols) {
-                            let cell = document.createElement("div");
-                            cell.setAttribute("role", "cell");
-                            cell.style.gridColumn = col.id + 1;
-                            if (Array.isArray(rowData[col.id])) {
-                                let values = [];
-                                for (const value of rowData[col.id])
-                                    values.push(
-                                        typeof value === "number" &&
-                                            typeof col.options === "string"
-                                            ? this.options[col.options][value]
-                                                  .name
-                                            : value
-                                    );
-                                cell.textContent = values.join(",");
-                            } else
-                                cell.textContent =
-                                    typeof rowData[col.id] === "number" &&
-                                    typeof col.options === "string"
-                                        ? this.options[col.options][
-                                              rowData[col.id]
-                                          ].name
-                                        : rowData[col.id] ?? "";
-                            if (typeof col.groupby === "number")
-                                cell.width = "0fr";
-                            // set event listener
-                            if (typeof col.action !== "undefined") {
-                                for (const [key, value] of Object.entries(
-                                    col.action
-                                )) {
-                                    cell.addEventListener(key, eval(value));
-                                }
-                            }
-                            row.appendChild(cell);
-                        }
-                        last.appendChild(row);
-                    } else {
-                        if (!groups.includes(rowData.col))
-                            groups.push(rowData.col);
-                        const id = groups.indexOf(rowData.col);
-                        let parent = this.tbody,
-                            wrapper = document.createElement("div"),
-                            divider = document.createElement("button");
-                        wrapper.setAttribute("role", "presentation");
-                        last = document.createElement("div");
-                        if (id > 0)
-                            for (let i = 0; i < id; i++) {
-                                parent = parent.lastElementChild;
-                            }
-                        // set divider text content
-                        if (
-                            rowData.name &&
-                            typeof this.cols[rowData.col].options ===
-                                "string" &&
-                            (typeof this.cols[rowData.col].sortby ===
-                                "undefined" ||
-                                this.cols[rowData.col].sortby === 0)
-                        ) {
-                            divider.textContent =
-                                this.options[this.cols[rowData.col].options][
-                                    rowData.name
-                                ].name;
-                        } else divider.textContent = rowData.name ?? "";
-
-                        // find aria role for group dividers
-                        wrapper.addEventListener("click", (e) => {
-                            e.currentTarget.nextElementSibling.classList.toggle(
-                                "collapsed"
-                            );
-                        });
-                        wrapper.appendChild(divider);
-                        appendChildren(parent, [wrapper, last]);
-                    }
+                    last = this.loadRow(rowData, last, groups);
                     limit++;
-                }
-                // add observer to tenth row:
-                // if tenth row intersect with table top
-                // load the ten next rows
-                //
+                } else break;
             }
             console.log(performance.now() - start + "ms draw");
         }

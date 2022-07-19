@@ -399,7 +399,7 @@
             padding: 0 0.5rem;
         }
         &.head {
-            width: 7rem;
+            min-width: 7rem;
             background: rgba(0, 0, 0, 0.7);
             flex-direction: column;
             & li {
