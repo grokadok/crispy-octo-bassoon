@@ -11,8 +11,13 @@
             max-height: 80vh;
             overflow-y: scroll;
             transition: all 0.5s;
+            /* Column headers */
             &:first-of-type {
                 border-radius: 9px 9px 0 0;
+            }
+            /* Table body */
+            &:nth-of-type(2).search {
+                box-shadow: 0 0 20px 5px var(--accent-secondary) inset;
             }
         }
         &.resize > div {

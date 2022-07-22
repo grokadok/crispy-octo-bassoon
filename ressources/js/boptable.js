@@ -102,6 +102,17 @@ class BopTable {
                 searchInput.focus();
             } else searchInput.disabled = true;
         });
+        searchInput.addEventListener("focus", () => {
+            if (this.menu.wrapper.classList.contains("head")) {
+                this.table.setAttribute("search", `${this.menu.col}`);
+                this.table.classList.add("search");
+            } else this.tbody.classList.add("search");
+        });
+        searchInput.addEventListener("blur", () => {
+            this.table.removeAttribute("search");
+            this.table.classList.remove("search");
+            this.tbody.classList.remove("search");
+        });
         searchInput.addEventListener("click", () => {
             if (!this.menu.search.classList.contains("active"))
                 this.menu.search.classList.add("active");
