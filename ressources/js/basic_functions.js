@@ -463,6 +463,25 @@ function resetModal(el) {
     return el;
 }
 /**
+ * Selects text inside element if possible.
+ * @param {HTMLElement} node
+ */
+function selectText(node) {
+    if (document.body.createTextRange) {
+        const range = document.body.createTextRange();
+        range.moveToElementText(node);
+        range.select();
+    } else if (window.getSelection) {
+        const selection = window.getSelection(),
+            range = document.createRange();
+        range.selectNodeContents(node);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } else {
+        console.warn("Could not select text in node: Unsupported browser.");
+    }
+}
+/**
  * Set attributes from array to element.
  * @param {HTMLElement} el - Element to apply attributes to
  * @param {Array} att - Array of attributes to apply to element

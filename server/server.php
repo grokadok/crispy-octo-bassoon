@@ -64,7 +64,6 @@ class FWServer
             '<svg class="svg-icon" viewBox="0 0 20 20"><path d="M17.431,2.156h-3.715c-0.228,0-0.413,0.186-0.413,0.413v6.973h-2.89V6.687c0-0.229-0.186-0.413-0.413-0.413H6.285c-0.228,0-0.413,0.184-0.413,0.413v6.388H2.569c-0.227,0-0.413,0.187-0.413,0.413v3.942c0,0.228,0.186,0.413,0.413,0.413h14.862c0.228,0,0.413-0.186,0.413-0.413V2.569C17.844,2.342,17.658,2.156,17.431,2.156 M5.872,17.019h-2.89v-3.117h2.89V17.019zM9.587,17.019h-2.89V7.1h2.89V17.019z M13.303,17.019h-2.89v-6.651h2.89V17.019z M17.019,17.019h-2.891V2.982h2.891V17.019z"></path></svg>',
             "fields" => [
                 [
-                    "compact" => true,
                     "grid" => "1/1/-1/-1",
                     "name" => "Items",
                     "options" => [
@@ -614,8 +613,6 @@ class FWServer
                         $data["options"] = $res[0] ?? null;
 
                         // if active tab set, get this tab, else get default tab (id1)
-                        var_dump($request["active"]);
-                        var_dump(isset($request['active']));
                         $data["active_tab"] = isset($request["active"]) ? $request["active"] : 1;
                         // get tabs (if not admin, admin as all tabs by default, or has he?)
                         $fetch = new DBRequest([
@@ -741,7 +738,7 @@ class FWServer
         Swoole\WebSocket\Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
-            echo "login request: {$frame->data} from {$frame->fd}" . PHP_EOL;
+            echo "login request from socket {$frame->fd}" . PHP_EOL;
             $data = json_decode(urldecode($frame->data), true);
             $data["fd"] = $frame->fd;
             $res = $this->login($data);

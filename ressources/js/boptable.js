@@ -41,6 +41,7 @@ class BopTable {
         if (BopTable.tables.length === 0)
             document.addEventListener("click", BopTable.menuListener);
         BopTable.tables.push(this);
+        this.id = BopTable.tables.indexOf(this);
         this.wrapper = param.wrapper;
         this.header = document.createElement("div");
         this.table = document.createElement("div");
@@ -51,6 +52,7 @@ class BopTable {
         this.footer = document.createElement("div");
         this.rowHeight = param.row?.height ?? 2;
         this.wrapper.className = "boptable";
+        this.scroll = {};
         this.menu = {};
         this.menu.wrapper = document.createElement("ul");
         this.menu.search = document.createElement("li");
@@ -103,6 +105,9 @@ class BopTable {
         searchInput.addEventListener("click", () => {
             if (!this.menu.search.classList.contains("active"))
                 this.menu.search.classList.add("active");
+        });
+        searchInput.addEventListener("dblclick", () => {
+            if (searchInput.textContent) selectText(searchInput);
         });
         searchInput.addEventListener("input", (e) => {
             if (this.menu.wrapper.classList.contains("head")) {
@@ -316,10 +321,19 @@ class BopTable {
         // if word not highlighted yet, highlight it.
     }
     /**
-     * Load more data down the table.
+     * Loads rows down the table.
+     * @param {Number} key - Key from which rows are loaded.
+     * @param {Number} quantity
      */
-    loadDown() {
-        // when remaining scroll down < 1 table height, load more rows
+    loadDown(key, quantity) {
+        let i = 1,
+            rowKey = ++key;
+        const rows = this.search.rows ?? this.rows;
+        while (i < quantity && rowKey < rows.length) {
+            this.loadRow(rowKey++);
+            i++;
+        }
+        return --rowKey;
     }
     /**
      * Load more data up the table.
@@ -336,12 +350,12 @@ class BopTable {
             )
                 table.dockMenu();
             if (
-                (table.menu.wrapper.classList.contains("head") &&
+                table.menu.search.getElementsByTagName("span")[0]
+                    .textContent === "" &&
+                ((table.menu.wrapper.classList.contains("head") &&
                     !table.menu.search.contains(event.target)) ||
-                (!table.menu.wrapper.classList.contains("head") &&
-                    !table.menu.wrapper.contains(event.target) &&
-                    table.menu.search.getElementsByTagName("span")[0]
-                        .textContent === "")
+                    (!table.menu.wrapper.classList.contains("head") &&
+                        !table.menu.wrapper.contains(event.target)))
             )
                 table.menu.search.classList.remove("active");
         });
@@ -453,10 +467,21 @@ class BopTable {
             // set eventlistener on click get data according to sorter.
         }
     }
-    loadRow(rowData, last, groups) {
+    /**
+     *
+     * @param {Number} key
+     * @param {Boolean} [top] - If true, create the new row before the key+1 row.
+     * @returns
+     */
+    loadRow(key, top) {
+        const rowData = this.search.rows
+            ? this.search.rows[key]
+            : this.rows[key];
+        let row;
         if (Array.isArray(rowData)) {
-            let row = document.createElement("div");
+            row = document.createElement("div");
             row.setAttribute("role", "row");
+            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
             for (const col of this.cols) {
                 let cell = document.createElement("div");
                 cell.setAttribute("role", "cell");
@@ -486,15 +511,20 @@ class BopTable {
                 }
                 row.appendChild(cell);
             }
-            last.appendChild(row);
+            if (top) {
+                const next = document.getElementById(`${this.id}.${key + 1}`);
+                next.parentNode.insertBefore(row, next);
+            } else this.scroll.last.appendChild(row);
         } else {
-            if (!groups.includes(rowData.col)) groups.push(rowData.col);
-            const id = groups.indexOf(rowData.col);
+            if (!this.scroll.groups.includes(rowData.col))
+                this.scroll.groups.push(rowData.col);
+            const id = this.scroll.groups.indexOf(rowData.col);
+            row = document.createElement("div");
             let parent = this.tbody,
-                wrapper = document.createElement("div"),
                 divider = document.createElement("button");
-            wrapper.setAttribute("role", "presentation");
-            last = document.createElement("div");
+            row.setAttribute("role", "presentation");
+            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
+            let last = document.createElement("div");
             if (id > 0)
                 for (let i = 0; i < id; i++) {
                     parent = parent.lastElementChild;
@@ -513,15 +543,16 @@ class BopTable {
             } else divider.textContent = rowData.name ?? "";
 
             // find aria role for group dividers
-            wrapper.addEventListener("click", (e) => {
+            row.addEventListener("click", (e) => {
                 e.currentTarget.nextElementSibling.classList.toggle(
                     "collapsed"
                 );
             });
-            wrapper.appendChild(divider);
-            appendChildren(parent, [wrapper, last]);
+            row.appendChild(divider);
+            appendChildren(parent, [row, last]);
+            this.scroll.last = last;
         }
-        return last;
+        return row;
     }
     /**
      * Load data into table.
@@ -629,24 +660,133 @@ class BopTable {
             this.colGrid();
             this.sort();
         } else {
-            // for each row generated, check if y > table bottom
-            // if so, load ten more items
-            // add intersection observer to the fifth
-            // on intersection load five more and remove 5 from opposite
-            // two intersectobservers, one for top, one for bottom.
+            const observerOptions = {
+                root: this.tbody,
+                rootMargin: "200px 0px",
+                threshold: 0,
+            };
+            let loading = true;
+            const rowIntersect = (entries, observer) => {
+                const rows = this.search.rows ?? this.rows;
+                entries.forEach((entry) => {
+                    // observe first and last rows.
+                    // IF top row && !isintersecting
+                    if (entry.target === this.scroll.topRow.firstElementChild) {
+                        if (entry.isIntersecting) {
+                            // if new row to load (key>0?), unobserve, load if not group and observe new row
+                            // remove one row at the bottom
+
+                            // IF new top row
+                            const previousTop =
+                                parseInt(this.scroll.topRow.id.split(".")[1]) -
+                                1;
+                            if (rows[previousTop]) {
+                                // unobserve top row
+                                this.scroll.rowObserver.unobserve(
+                                    this.scroll.topRow.firstElementChild
+                                );
+                                // load new top row if not group
+                                this.scroll.topRow =
+                                    document.getElementById(
+                                        `${this.id}.${previousTop}`
+                                    ) ?? this.loadRow(previousTop, true);
+                                // observe new top row
+                                this.scroll.rowObserver.observe(
+                                    this.scroll.topRow.firstElementChild
+                                );
+                                // // unobserve and remove one bottomrow
+                                // this.scroll.rowObserver.unobserve(
+                                //     this.scroll.bottomRow.firstElementChild
+                                // );
+                                // // observe previous row
+                                // const previousBottom =
+                                //     parseInt(
+                                //         this.scroll.bottomRow.id.split(".")[1]
+                                //     ) - 1;
+                                // this.scroll.bottomRow.remove();
+                                // this.scroll.bottomRow = document.getElementById(
+                                //     `${this.id}.${previousBottom}`
+                                // );
+                                // this.scroll.rowObserver.observe(
+                                //     this.scroll.bottomRow.firstElementChild
+                                // );
+                            }
+                        }
+                    } else if (
+                        entry.target === this.scroll.bottomRow.firstElementChild
+                    ) {
+                        // ELSE IF bottom row
+
+                        // IF isintersecting
+                        if (entry.isIntersecting) {
+                            // load x more rows
+                            let bottomRow = this.loadDown(
+                                parseInt(
+                                    this.scroll.bottomRow.id.split(".")[1]
+                                ),
+                                50
+                            );
+                            this.scroll.rowObserver.unobserve(
+                                this.scroll.bottomRow.firstElementChild
+                            );
+                            this.scroll.bottomRow = document.getElementById(
+                                `${this.id}.${bottomRow}`
+                            );
+                            this.scroll.rowObserver.observe(
+                                this.scroll.bottomRow.firstElementChild
+                            );
+                        }
+                    }
+
+                    // if (entry.isIntersecting) {
+                    //     return (entry.target.style.backgroundColor = "green");
+                    // }
+                    // entry.target.style.backgroundColor = "red";
+                });
+            };
+            this.scroll.rowObserver = new IntersectionObserver(
+                rowIntersect,
+                observerOptions
+            );
+            // first load:
+            // for each row, check if Y > table bottom
+            // store first and last rows ids in object
+
+            // set intersection observer to load next row if last row intersects (use margin for last row to be below table)
+            // set second intersection obsever to load previous row if first intersects (use margin for first to be upon table)
+            // play with margin and interval of rows to get a good result
 
             const start = performance.now();
             this.tbody.innerHTML = "";
-            let last = this.tbody,
-                groups = [],
-                limit = 0;
+            delete this.scroll.topRow;
+            delete this.scroll.bottomRow;
+            this.scroll.last = this.tbody;
+            this.scroll.groups = [];
+            // let last = this.tbody,
+            //     groups = [],
+            //     limit = 0;
             // set rows
-            for (const rowData of this.search.rows ?? this.rows) {
-                if (limit < 100) {
-                    // move limit according to table height/row height + 10 rows
-                    last = this.loadRow(rowData, last, groups);
-                    limit++;
-                } else break;
+            for (const [key, rowData] of this.search.rows?.entries() ??
+                this.rows.entries()) {
+                // if (limit < 10000) {
+                const row = this.loadRow(key);
+                if (row) {
+                    if (!this.scroll.topRow) {
+                        this.scroll.topRow = row;
+                        this.scroll.rowObserver.observe(row.firstElementChild);
+                    } else {
+                        this.scroll.bottomRow = row;
+                        this.scroll.rowObserver.observe(row.firstElementChild);
+                        break;
+                    }
+                }
+                // console.log(last);
+                // if (last.lastElementChild?.querySelector('[role="cell"]'))
+                //     rowObserver.observe(
+                //         last.lastElementChild.querySelector('[role="cell"]')
+                //     );
+                //     limit++;
+                // } else break;
             }
             console.log(performance.now() - start + "ms draw");
         }
@@ -670,7 +810,6 @@ class BopTable {
         for (let i = col.id + 1; i < this.cols.length; i++)
             if (this.cols[i].head.offsetWidth > 0) {
                 nextCol = i;
-                console.log(i);
                 break;
             }
         const bothWidth =

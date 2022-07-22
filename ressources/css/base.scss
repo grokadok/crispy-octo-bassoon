@@ -130,6 +130,18 @@
     color: var(--text-placeholder);
 }
 
+/* :focus-visible {
+    animation: outlineAnimation 3s linear infinite;
+    outline-color: currentColor;
+    outline-offset: 0.2em;
+    outline-style: dashed;
+    outline-width: 0.2em;
+}
+@keyframes outlineAnimation {
+    50% {
+        outline-offset: 0.4em;
+    }
+} */
 mark {
     color: var(--text);
     background-color: var(--accent);
@@ -280,19 +292,10 @@ input {
 
 .field {
     position: relative;
-    padding: 0 0.4rem;
+    background: #181c29;
+    border-radius: 9px;
+    box-shadow: 2px 2px 0px 2px black;
     transition: var(--transition-global);
-    &.compact {
-        border: none;
-        & > legend {
-            display: none;
-        }
-        & > input {
-            box-sizing: border-box;
-            width: 100%;
-            margin: 0;
-        }
-    }
     & > input {
         width: 100%;
         margin: 0;
@@ -311,6 +314,17 @@ input {
         & path.hide {
             opacity: 0;
             transition: opacity 0.4s ease-in;
+        }
+    }
+    &.compact {
+        border: none;
+        border-radius: 5px;
+        box-shadow: none;
+        background: transparent;
+        & > input {
+            box-sizing: border-box;
+            width: 100%;
+            margin: 0;
         }
     }
 }

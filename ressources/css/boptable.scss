@@ -9,8 +9,11 @@
         & > div {
             display: grid;
             max-height: 80vh;
-            overflow: hidden scroll;
+            overflow-y: scroll;
             transition: all 0.5s;
+            &:first-of-type {
+                border-radius: 9px 9px 0 0;
+            }
         }
         &.resize > div {
             transition: none;
