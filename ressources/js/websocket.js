@@ -404,6 +404,7 @@ class WSConnection {
             // }
             BopChat.destroyAll();
             BopTable.destroyAll();
+            Modal.destroy();
             if (ClassMain.el) {
                 ClassMain.destroy();
                 login.load();

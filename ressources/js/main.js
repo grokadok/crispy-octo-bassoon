@@ -236,6 +236,17 @@ class ClassMain {
               );
         localStorage.setItem("navbarClass", navbarClasses.join(" "));
     }
+    /**
+     * Sets main element's class according to navbar position;
+     */
+    navbarSetMain() {
+        this.wrapper.classList.remove("menu-left", "menu-right");
+        if (this.navbar.wrapper.classList.contains("left")) {
+            this.wrapper.classList.add("menu-left");
+        } else if (this.navbar.wrapper.classList.contains("right")) {
+            this.wrapper.classList.add("menu-right");
+        }
+    }
     parseTab(id, data) {
         this.tabs.data[id] = data;
         this.loadTab(id);

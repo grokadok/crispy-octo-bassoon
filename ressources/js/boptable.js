@@ -52,6 +52,7 @@ class BopTable {
         this.footer = document.createElement("div");
         this.rowHeight = param.row?.height ?? 2;
         this.wrapper.className = "boptable";
+        this.search = {};
         this.scroll = {};
         this.menu = {};
         this.menu.wrapper = document.createElement("ul");
@@ -129,7 +130,7 @@ class BopTable {
                 e.target.style.height = "auto";
                 e.target.style.height = e.target.scrollHeight + "px";
             }
-            this.search(e.target.textContent);
+            this.searchTable(e.target.textContent);
         });
         appendChildren(this.menu.search, [searchButton, searchInput]);
         this.menu.search.appendChild(searchInput);
@@ -195,6 +196,9 @@ class BopTable {
             this.menu.wrapper,
         ]);
     }
+    /**
+     * Configure the table head and body elements according to columns' width and visibility.
+     */
     colGrid() {
         const fontSize =
             parseInt(
@@ -345,6 +349,100 @@ class BopTable {
         return --rowKey;
     }
     /**
+     *
+     * @param {Number} key
+     * @param {Boolean} [top] - If true, create the new row before the key+1 row.
+     * @returns
+     */
+    loadRow(key, top) {
+        const rowData = this.search.rows
+            ? this.search.rows[key]
+            : this.rows[key];
+        let row;
+        if (Array.isArray(rowData)) {
+            row = document.createElement("div");
+            row.setAttribute("role", "row");
+            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
+            for (const col of this.cols) {
+                let cell = document.createElement("div");
+                cell.setAttribute("role", "cell");
+                cell.style.gridColumn = col.id + 1;
+                if (Array.isArray(rowData[col.id])) {
+                    let values = [];
+                    for (const value of rowData[col.id])
+                        values.push(
+                            typeof value === "number" &&
+                                typeof col.options === "string"
+                                ? this.options[col.options][value].name
+                                : value
+                        );
+                    cell.textContent = values.join(",");
+                } else
+                    cell.textContent =
+                        typeof rowData[col.id] === "number" &&
+                        typeof col.options === "string"
+                            ? this.options[col.options][rowData[col.id]].name
+                            : rowData[col.id] ?? "";
+                if (typeof col.groupby === "number") cell.width = "0fr";
+                // set event listener
+                if (typeof col.action !== "undefined") {
+                    for (const [key, value] of Object.entries(col.action)) {
+                        cell.addEventListener(key, eval(value));
+                    }
+                }
+                row.appendChild(cell);
+            }
+            if (this.search.string)
+                highlightSearch(
+                    this.search.col
+                        ? row.children[this.search.col]
+                        : Array.from(row.children),
+                    this.search.string?.split(" ")
+                );
+            if (top) {
+                const next = document.getElementById(`${this.id}.${key + 1}`);
+                next.parentNode.insertBefore(row, next);
+            } else this.scroll.last.appendChild(row);
+        } else {
+            if (!this.scroll.groups.includes(rowData.col))
+                this.scroll.groups.push(rowData.col);
+            const id = this.scroll.groups.indexOf(rowData.col);
+            row = document.createElement("div");
+            let parent = this.tbody,
+                divider = document.createElement("button");
+            row.setAttribute("role", "presentation");
+            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
+            let last = document.createElement("div");
+            if (id > 0)
+                for (let i = 0; i < id; i++) {
+                    parent = parent.lastElementChild;
+                }
+            // set divider text content
+            if (
+                rowData.name &&
+                typeof this.cols[rowData.col].options === "string" &&
+                (typeof this.cols[rowData.col].sortby === "undefined" ||
+                    this.cols[rowData.col].sortby === 0)
+            ) {
+                divider.textContent =
+                    this.options[this.cols[rowData.col].options][
+                        rowData.name
+                    ].name;
+            } else divider.textContent = rowData.name ?? "";
+
+            // find aria role for group dividers
+            row.addEventListener("click", (e) => {
+                e.currentTarget.nextElementSibling.classList.toggle(
+                    "collapsed"
+                );
+            });
+            row.appendChild(divider);
+            appendChildren(parent, [row, last]);
+            this.scroll.last = last;
+        }
+        return row;
+    }
+    /**
      * Load more data up the table.
      */
     loadUp() {
@@ -460,7 +558,7 @@ class BopTable {
      * @param {Array[]} data
      */
     static parseData(data) {
-        const table = BopTable.tables[data.i];
+        let table = BopTable.tables[data.i];
         table.rows = data.response.rows;
         table.cols = data.response.cols;
         table.options = data.response.options;
@@ -488,100 +586,6 @@ class BopTable {
             // for each sorter arrow
             // set eventlistener on click get data according to sorter.
         }
-    }
-    /**
-     *
-     * @param {Number} key
-     * @param {Boolean} [top] - If true, create the new row before the key+1 row.
-     * @returns
-     */
-    loadRow(key, top) {
-        const rowData = this.search.rows
-            ? this.search.rows[key]
-            : this.rows[key];
-        let row;
-        if (Array.isArray(rowData)) {
-            row = document.createElement("div");
-            row.setAttribute("role", "row");
-            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
-            for (const col of this.cols) {
-                let cell = document.createElement("div");
-                cell.setAttribute("role", "cell");
-                cell.style.gridColumn = col.id + 1;
-                if (Array.isArray(rowData[col.id])) {
-                    let values = [];
-                    for (const value of rowData[col.id])
-                        values.push(
-                            typeof value === "number" &&
-                                typeof col.options === "string"
-                                ? this.options[col.options][value].name
-                                : value
-                        );
-                    cell.textContent = values.join(",");
-                } else
-                    cell.textContent =
-                        typeof rowData[col.id] === "number" &&
-                        typeof col.options === "string"
-                            ? this.options[col.options][rowData[col.id]].name
-                            : rowData[col.id] ?? "";
-                if (typeof col.groupby === "number") cell.width = "0fr";
-                // set event listener
-                if (typeof col.action !== "undefined") {
-                    for (const [key, value] of Object.entries(col.action)) {
-                        cell.addEventListener(key, eval(value));
-                    }
-                }
-                row.appendChild(cell);
-            }
-            if (this.search.string)
-                highlightSearch(
-                    this.search.col
-                        ? row.children[this.search.col]
-                        : Array.from(row.children),
-                    this.search.string?.split(" ")
-                );
-            if (top) {
-                const next = document.getElementById(`${this.id}.${key + 1}`);
-                next.parentNode.insertBefore(row, next);
-            } else this.scroll.last.appendChild(row);
-        } else {
-            if (!this.scroll.groups.includes(rowData.col))
-                this.scroll.groups.push(rowData.col);
-            const id = this.scroll.groups.indexOf(rowData.col);
-            row = document.createElement("div");
-            let parent = this.tbody,
-                divider = document.createElement("button");
-            row.setAttribute("role", "presentation");
-            row.id = `${BopTable.tables.indexOf(this)}.${key}`;
-            let last = document.createElement("div");
-            if (id > 0)
-                for (let i = 0; i < id; i++) {
-                    parent = parent.lastElementChild;
-                }
-            // set divider text content
-            if (
-                rowData.name &&
-                typeof this.cols[rowData.col].options === "string" &&
-                (typeof this.cols[rowData.col].sortby === "undefined" ||
-                    this.cols[rowData.col].sortby === 0)
-            ) {
-                divider.textContent =
-                    this.options[this.cols[rowData.col].options][
-                        rowData.name
-                    ].name;
-            } else divider.textContent = rowData.name ?? "";
-
-            // find aria role for group dividers
-            row.addEventListener("click", (e) => {
-                e.currentTarget.nextElementSibling.classList.toggle(
-                    "collapsed"
-                );
-            });
-            row.appendChild(divider);
-            appendChildren(parent, [row, last]);
-            this.scroll.last = last;
-        }
-        return row;
     }
     /**
      * Load data into table.
@@ -890,7 +894,7 @@ class BopTable {
      * @param {String} str
      * @param {Number} [id]
      */
-    search(str, id) {
+    searchTable(str, id) {
         const start = performance.now();
         delete this.search.rows;
         delete this.search.string;
@@ -1013,8 +1017,7 @@ class BopTable {
         this.sort();
     }
     /**
-     * Sorts rows and apply result to table. If array provided, sorts this one instead of default data.
-     * @param {Array[]} [arr]
+     * Sorts rows and apply result to table.
      */
     sort() {
         // Set menu icons and values
@@ -1170,6 +1173,7 @@ class BopTable {
             this.search.rows ? (this.search.rows = array) : (this.rows = array);
             this.populate();
         };
+        console.log(this.search.rows ?? this.rows);
         action(this.search.rows ?? this.rows);
     }
     toggleColVis(col) {

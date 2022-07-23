@@ -242,6 +242,10 @@
         &:hover:not(.up) .nav-logo {
             border-radius: 0 0 0 50%;
         }
+        & ~ main .tab {
+            margin-right: 3rem;
+            width: calc(100% - 3rem);
+        }
     }
     &.left {
         left: 0;
@@ -265,6 +269,10 @@
         }
         &:hover:not(.up) .nav-logo {
             border-radius: 0 0 50% 0;
+        }
+        & ~ main .tab {
+            margin-left: 3rem;
+            width: calc(100% - 3rem);
         }
     }
     &.bottom.left,

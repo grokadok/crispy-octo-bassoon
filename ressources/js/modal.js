@@ -21,7 +21,7 @@ class Modal {
      * @param {Function} [options.fields.add] - The function to add a new value to a selectize, whether to open a new modal or simply add the value.
      * @param {Array} [options.fields.attributes] - Attributes to apply to fieldElement.
      * @param {Boolean} [options.fields.collapsible] - NYI: check to make element collapsible.
-     * @param {String} options.fields.name - Sets the name of the field, applies to the fieldset's legend.
+     * @param {String} options.fields.name - Sets the name of the field.
      * @param {Boolean} [options.fields.required] - Whether the field is required or not to validate the modal.
      * @param {Function} [options.fields.rowDblClick] - Tabulator: function triggered by double click on row.
      * @param {Number} [options.fields.task] - The task to get data on input.
@@ -385,6 +385,7 @@ function loadNewCompany(options) {
         btn1style: "success",
         fields: [
             {
+                compact: true,
                 name: "Nom",
                 placeholder: "Evil Corp",
                 required: true,
@@ -392,6 +393,7 @@ function loadNewCompany(options) {
                 value: name,
             },
             {
+                compact: true,
                 name: "Adresse email",
                 placeholder: "contact@evil.corp",
                 required: true,
@@ -399,12 +401,14 @@ function loadNewCompany(options) {
                 value: email,
             },
             {
+                compact: true,
                 label: "Téléphone",
                 name: "Téléphone",
                 placeholder: "0601234567",
                 type: "phone",
             },
             {
+                compact: true,
                 name: "Adresse",
                 type: "address",
             },
@@ -418,6 +422,7 @@ function loadNewCompany(options) {
                         parentId: field,
                     });
                 },
+                compact: true,
                 multi: true,
                 name: "Employés",
                 placeholder: "Tannen Biff, McFly Marty...",
@@ -426,6 +431,7 @@ function loadNewCompany(options) {
             },
             {
                 add: (el) => modalAddTag(el),
+                compact: true,
                 multi: true,
                 name: "Tags",
                 placeholder: "Serpentard, moldu...",
@@ -477,6 +483,7 @@ function loadNewContact(options) {
 
         fields: [
             {
+                compact: true,
                 name: "Nom",
                 placeholder: "Xavier",
                 required: true,
@@ -484,6 +491,7 @@ function loadNewContact(options) {
                 value: lastName.trim(),
             },
             {
+                compact: true,
                 name: "Prénom",
                 placeholder: "Charles",
                 required: true,
@@ -500,6 +508,7 @@ function loadNewContact(options) {
                         parentId: field,
                     });
                 },
+                compact: true,
                 multi: false,
                 name: "Société",
                 placeholder: "Tricatel",
@@ -507,6 +516,7 @@ function loadNewContact(options) {
                 type: "selectize",
             },
             {
+                compact: true,
                 name: "Adresse email",
                 placeholder: "d4rkp03t@xmen.org",
                 required: true,
@@ -514,11 +524,13 @@ function loadNewContact(options) {
                 value: email,
             },
             {
+                compact: true,
                 name: "Téléphone portable",
                 placeholder: "0601234567",
                 type: "phone",
             },
             {
+                compact: true,
                 name: "Adresse",
                 type: "address",
             },
@@ -540,6 +552,7 @@ function loadNewContact(options) {
                         },
                     });
                 },
+                compact: true,
                 multi: true,
                 name: "Tags",
                 placeholder: "Serpentard, moldu...",
@@ -590,6 +603,7 @@ function loadNewEmail(contacts) {
                         parentId: field,
                     });
                 },
+                compact: true,
                 multi: true,
                 name: "Destinataire",
                 placeholder: "Michel Dupont",
@@ -608,6 +622,7 @@ function loadNewEmail(contacts) {
                         parentId: field,
                     });
                 },
+                compact: true,
                 multi: true,
                 name: "Cc",
                 placeholder: "Marie Martin",
@@ -625,6 +640,7 @@ function loadNewEmail(contacts) {
                         parentId: field,
                     });
                 },
+                compact: true,
                 multi: true,
                 name: "Cci",
                 placeholder: "Mona Lisa",
@@ -633,12 +649,14 @@ function loadNewEmail(contacts) {
                 collapsible: true,
             },
             {
+                compact: true,
                 name: "Sujet",
                 placeholder: "Sujet de votre email",
                 required: true,
                 type: "input_string",
             },
             {
+                compact: true,
                 name: "Contenu",
                 placeholder: "Contenu de votre email.",
                 required: true,
@@ -677,6 +695,7 @@ function loadNewTicket(contact) {
                             parentId: field,
                         });
                     },
+                    compact: true,
                     multi: false,
                     name: "Client",
                     placeholder: "Hunter Rick",
@@ -686,34 +705,40 @@ function loadNewTicket(contact) {
                     value: client,
                 },
                 {
+                    compact: true,
                     name: "Sujet",
                     placeholder: "Problème de solanum tuberosum.",
                     required: true,
                     type: "input_string",
                 },
                 {
+                    compact: true,
                     name: "Description",
                     placeholder:
                         "C'est tout ce que ça te fait quand j'te dis qu'on va manger des chips ?",
                     type: "input_text",
                 },
                 {
+                    compact: true,
                     name: "État",
                     task: 7,
                     type: "select",
                 },
                 {
+                    compact: true,
                     name: "Type",
                     task: 5,
                     type: "select",
                 },
                 {
+                    compact: true,
                     name: "Priorité",
                     placeholder: "Vital",
                     task: 6,
                     type: "select",
                 },
                 {
+                    compact: true,
                     multi: false,
                     name: "Attribué à",
                     placeholder: "Cuisine",
@@ -723,6 +748,7 @@ function loadNewTicket(contact) {
                 },
                 {
                     add: (el) => modalAddTag(el),
+                    compact: true,
                     multi: true,
                     name: "Tags",
                     placeholder: "Serpentard, moldu...",
