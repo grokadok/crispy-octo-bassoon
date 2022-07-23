@@ -17,7 +17,7 @@
             }
             /* Table body */
             &:nth-of-type(2).search {
-                box-shadow: 0 0 20px 5px var(--accent-secondary) inset;
+                box-shadow: 0 0 10px 4px var(--accent-secondary) inset;
             }
         }
         &.resize > div {
@@ -137,7 +137,11 @@
         text-align: center;
         text-overflow: ellipsis;
         white-space: nowrap;
-        transition: height 0.2s;
+        transition: height 0.2s, box-shadow var(--transition-global);
+        &.search {
+            box-shadow: 10px 0 10px -4px var(--accent-secondary) inset,
+                -10px 0 10px -4px var(--accent-secondary) inset;
+        }
     }
     /* Menu */
     & > ul {

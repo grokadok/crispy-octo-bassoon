@@ -143,9 +143,9 @@
     }
 } */
 mark {
-    color: var(--text);
-    background-color: var(--accent);
-    border-radius: 5px;
+    color: var(--mark);
+    background-color: transparent;
+    /* border-radius: 5px; */
 }
 
 body {

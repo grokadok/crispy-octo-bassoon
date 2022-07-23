@@ -103,15 +103,19 @@ class BopTable {
             } else searchInput.disabled = true;
         });
         searchInput.addEventListener("focus", () => {
+            console.log(this.menu.col);
             if (this.menu.wrapper.classList.contains("head")) {
-                this.table.setAttribute("search", `${this.menu.col}`);
-                this.table.classList.add("search");
+                this.tbody
+                    .querySelectorAll('[role="row"]')
+                    .forEach((x) =>
+                        x.children[this.menu.col].classList.add("search")
+                    );
             } else this.tbody.classList.add("search");
         });
         searchInput.addEventListener("blur", () => {
-            this.table.removeAttribute("search");
-            this.table.classList.remove("search");
-            this.tbody.classList.remove("search");
+            this.table
+                .querySelectorAll(".search")
+                .forEach((x) => x.classList.remove("search"));
         });
         searchInput.addEventListener("click", () => {
             if (!this.menu.search.classList.contains("active"))
@@ -125,7 +129,7 @@ class BopTable {
                 e.target.style.height = "auto";
                 e.target.style.height = e.target.scrollHeight + "px";
             }
-            BopTable.find(e.target).search(e.target.textContent);
+            this.search(e.target.textContent);
         });
         appendChildren(this.menu.search, [searchButton, searchInput]);
         this.menu.search.appendChild(searchInput);
@@ -325,12 +329,6 @@ class BopTable {
         )
             this.headClick(col);
     }
-    hightlightSearch() {
-        // for each drawn cell
-        // for each searched term
-        // find words matching term
-        // if word not highlighted yet, highlight it.
-    }
     /**
      * Loads rows down the table.
      * @param {Number} key - Key from which rows are loaded.
@@ -428,6 +426,19 @@ class BopTable {
             }
         });
         this.menu.observer.observe(this.cols[this.menu.col].head);
+        if (
+            document.activeElement ===
+            this.menu.search.getElementsByTagName("span")[0]
+        ) {
+            this.tbody
+                .querySelectorAll(".search")
+                .forEach((x) => x.classList.remove("search"));
+            this.tbody
+                .querySelectorAll('[role="row"]')
+                .forEach((x) =>
+                    x.children[this.menu.col].classList.add("search")
+                );
+        }
     }
     /**
      * Add rows for testing purposes.
@@ -522,6 +533,13 @@ class BopTable {
                 }
                 row.appendChild(cell);
             }
+            if (this.search.string)
+                highlightSearch(
+                    this.search.col
+                        ? row.children[this.search.col]
+                        : Array.from(row.children),
+                    this.search.string?.split(" ")
+                );
             if (top) {
                 const next = document.getElementById(`${this.id}.${key + 1}`);
                 next.parentNode.insertBefore(row, next);
@@ -679,81 +697,88 @@ class BopTable {
             let loading = true;
             const rowIntersect = (entries, observer) => {
                 const rows = this.search.rows ?? this.rows;
-                entries.forEach((entry) => {
-                    // observe first and last rows.
-                    // IF top row && !isintersecting
-                    if (entry.target === this.scroll.topRow.firstElementChild) {
-                        if (entry.isIntersecting) {
-                            // if new row to load (key>0?), unobserve, load if not group and observe new row
-                            // remove one row at the bottom
+                if (rows.length > 0) {
+                    entries.forEach((entry) => {
+                        // observe first and last rows.
+                        // IF top row && !isintersecting
+                        if (
+                            entry.target ===
+                            this.scroll.topRow.firstElementChild
+                        ) {
+                            if (entry.isIntersecting) {
+                                // if new row to load (key>0?), unobserve, load if not group and observe new row
+                                // remove one row at the bottom
 
-                            // IF new top row
-                            const previousTop =
-                                parseInt(this.scroll.topRow.id.split(".")[1]) -
-                                1;
-                            if (rows[previousTop]) {
-                                // unobserve top row
+                                // IF new top row
+                                const previousTop =
+                                    parseInt(
+                                        this.scroll.topRow.id.split(".")[1]
+                                    ) - 1;
+                                if (rows[previousTop]) {
+                                    // unobserve top row
+                                    this.scroll.rowObserver.unobserve(
+                                        this.scroll.topRow.firstElementChild
+                                    );
+                                    // load new top row if not group
+                                    this.scroll.topRow =
+                                        document.getElementById(
+                                            `${this.id}.${previousTop}`
+                                        ) ?? this.loadRow(previousTop, true);
+                                    // observe new top row
+                                    this.scroll.rowObserver.observe(
+                                        this.scroll.topRow.firstElementChild
+                                    );
+                                    // // unobserve and remove one bottomrow
+                                    // this.scroll.rowObserver.unobserve(
+                                    //     this.scroll.bottomRow.firstElementChild
+                                    // );
+                                    // // observe previous row
+                                    // const previousBottom =
+                                    //     parseInt(
+                                    //         this.scroll.bottomRow.id.split(".")[1]
+                                    //     ) - 1;
+                                    // this.scroll.bottomRow.remove();
+                                    // this.scroll.bottomRow = document.getElementById(
+                                    //     `${this.id}.${previousBottom}`
+                                    // );
+                                    // this.scroll.rowObserver.observe(
+                                    //     this.scroll.bottomRow.firstElementChild
+                                    // );
+                                }
+                            }
+                        } else if (
+                            entry.target ===
+                            this.scroll.bottomRow.firstElementChild
+                        ) {
+                            // ELSE IF bottom row
+
+                            // IF isintersecting
+                            if (entry.isIntersecting) {
+                                // load x more rows
+                                let bottomRow = this.loadDown(
+                                    parseInt(
+                                        this.scroll.bottomRow.id.split(".")[1]
+                                    ),
+                                    50
+                                );
                                 this.scroll.rowObserver.unobserve(
-                                    this.scroll.topRow.firstElementChild
+                                    this.scroll.bottomRow.firstElementChild
                                 );
-                                // load new top row if not group
-                                this.scroll.topRow =
-                                    document.getElementById(
-                                        `${this.id}.${previousTop}`
-                                    ) ?? this.loadRow(previousTop, true);
-                                // observe new top row
+                                this.scroll.bottomRow = document.getElementById(
+                                    `${this.id}.${bottomRow}`
+                                );
                                 this.scroll.rowObserver.observe(
-                                    this.scroll.topRow.firstElementChild
+                                    this.scroll.bottomRow.firstElementChild
                                 );
-                                // // unobserve and remove one bottomrow
-                                // this.scroll.rowObserver.unobserve(
-                                //     this.scroll.bottomRow.firstElementChild
-                                // );
-                                // // observe previous row
-                                // const previousBottom =
-                                //     parseInt(
-                                //         this.scroll.bottomRow.id.split(".")[1]
-                                //     ) - 1;
-                                // this.scroll.bottomRow.remove();
-                                // this.scroll.bottomRow = document.getElementById(
-                                //     `${this.id}.${previousBottom}`
-                                // );
-                                // this.scroll.rowObserver.observe(
-                                //     this.scroll.bottomRow.firstElementChild
-                                // );
                             }
                         }
-                    } else if (
-                        entry.target === this.scroll.bottomRow.firstElementChild
-                    ) {
-                        // ELSE IF bottom row
 
-                        // IF isintersecting
-                        if (entry.isIntersecting) {
-                            // load x more rows
-                            let bottomRow = this.loadDown(
-                                parseInt(
-                                    this.scroll.bottomRow.id.split(".")[1]
-                                ),
-                                50
-                            );
-                            this.scroll.rowObserver.unobserve(
-                                this.scroll.bottomRow.firstElementChild
-                            );
-                            this.scroll.bottomRow = document.getElementById(
-                                `${this.id}.${bottomRow}`
-                            );
-                            this.scroll.rowObserver.observe(
-                                this.scroll.bottomRow.firstElementChild
-                            );
-                        }
-                    }
-
-                    // if (entry.isIntersecting) {
-                    //     return (entry.target.style.backgroundColor = "green");
-                    // }
-                    // entry.target.style.backgroundColor = "red";
-                });
+                        // if (entry.isIntersecting) {
+                        //     return (entry.target.style.backgroundColor = "green");
+                        // }
+                        // entry.target.style.backgroundColor = "red";
+                    });
+                }
             };
             this.scroll.rowObserver = new IntersectionObserver(
                 rowIntersect,

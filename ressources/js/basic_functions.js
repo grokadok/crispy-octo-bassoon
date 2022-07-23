@@ -284,19 +284,15 @@ function highlightSearch(el, needle) {
             })
             .join("|");
     }
-    const regex = new RegExp(`((^|\\b|\\w+)(${needle})($|\\b|\\w+))`, "gi");
-    // const regex = new RegExp(needle, "gi");
-    if (Array.isArray(el)) {
-        for (let e of el) {
+    const regex = new RegExp(`((^|\\b|\\w+)(${needle})($|\\b|\\w+))`, "gi"),
+        textReplace = (e) => {
             e.innerHTML = e.innerHTML.replace(/(<mark>|<\/mark>)/gim, "");
             e.innerHTML = e.textContent.replace(regex, "<mark>$&</mark>");
-        }
-    } else {
-        let text = el.innerHTML;
-        text = text.replace(/(<mark>|<\/mark>)/gim, "");
-        const newText = e.textContent.replace(regex, "<mark>$&</mark>");
-        el.innerHTML = newText;
-    }
+        };
+    // const regex = new RegExp(needle, "gi");
+    if (Array.isArray(el)) {
+        for (let e of el) textReplace(e);
+    } else textReplace(el);
 }
 /**
  * Removes class "valid", adds class "invalid" to element.
