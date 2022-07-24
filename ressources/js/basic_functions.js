@@ -279,8 +279,9 @@ function hideOnClickOutside(el, anc = el) {
 function highlightSearch(el, needle) {
     if (Array.isArray(needle)) {
         needle = needle
-            .filter((e) => {
-                return e !== "";
+            .map((x) => normalizePlus(x))
+            .filter((x) => {
+                return x !== "";
             })
             .join("|");
     }

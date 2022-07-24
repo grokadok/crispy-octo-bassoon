@@ -346,6 +346,7 @@ class BopTable {
             this.loadRow(rowKey++);
             i++;
         }
+        console.warn("+50");
         return --rowKey;
     }
     /**
@@ -554,12 +555,15 @@ class BopTable {
         }
     }
     /**
-     * Loads table data into object, then populate table.
+     * Loads table data into object, replace null values with '', then populate table.
      * @param {Array[]} data
      */
     static parseData(data) {
         let table = BopTable.tables[data.i];
         table.rows = data.response.rows;
+        for (const [key, row] of table.rows.entries())
+            for (const [index, cell] of row.entries())
+                table.rows[key][index] = cell ? cell : "";
         table.cols = data.response.cols;
         table.options = data.response.options;
         table.populate();
@@ -631,9 +635,6 @@ class BopTable {
                 appendChildren(menuRow, [handle, icons]);
                 menuRow.appendChild(icons);
                 // set eventlisteners
-                // menuRow.addEventListener("pointerdown", (e) => {
-                //     e.stopPropagation();
-                // });
                 menuRow.addEventListener("click", () => {
                     this.toggleColVis(col);
                 });
@@ -695,7 +696,7 @@ class BopTable {
         } else {
             const observerOptions = {
                 root: this.tbody,
-                rootMargin: "200px 0px",
+                rootMargin: "1000px 0px",
                 threshold: 0,
             };
             let loading = true;
@@ -752,7 +753,7 @@ class BopTable {
                             }
                         } else if (
                             entry.target ===
-                            this.scroll.bottomRow.firstElementChild
+                            this.scroll.bottomRow?.firstElementChild
                         ) {
                             // ELSE IF bottom row
 
@@ -958,6 +959,10 @@ class BopTable {
         console.log(performance.now() - start + "ms search");
         this.sort();
     }
+    /**
+     * Set new groupby order to columns while grouping, moving or ungrouping provided column.
+     * @param {Number} id
+     */
     setGroupBy(id) {
         const groups = this.setGroups().map((x) => x[1]);
         // if (groups.length === 0) this.cols[id].groupby = 0;else
@@ -980,6 +985,9 @@ class BopTable {
             this.cols[id].sorting = 0;
         this.sort();
     }
+    /**
+     * Apply groupby columns to table.
+     */
     setGroups() {
         let groups = [];
         for (const col of this.cols) {
@@ -1099,7 +1107,6 @@ class BopTable {
                                     ) {
                                         // push duplicate row with row[group[1]]=array(last is first)
                                         b.splice(0, 0, b.pop());
-                                        // console.log(b);
                                         a.push([...row]);
                                         a[i - 1][group[1]] = [...b];
                                     }
@@ -1107,7 +1114,6 @@ class BopTable {
                                 }
                             });
                         }
-                        // console.warn(this.tempRows);
                         array = [...array, ...this.tempRows];
                     }
                     this.sorted = newSort;
@@ -1173,7 +1179,6 @@ class BopTable {
             this.search.rows ? (this.search.rows = array) : (this.rows = array);
             this.populate();
         };
-        console.log(this.search.rows ?? this.rows);
         action(this.search.rows ?? this.rows);
     }
     toggleColVis(col) {

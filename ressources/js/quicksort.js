@@ -76,22 +76,23 @@ function arrCompare(a, b, param) {
         //         c = a[param[i][1]];
         //         d = b[param[i][1]];
         // }
-        let c =
+        let c, d;
+        if (a[param[i][1]])
+            c =
                 typeof a[param[i][1]] === "object"
                     ? a[param[i][1]][0]
-                    : a[param[i][1]],
+                    : a[param[i][1]];
+        else c = "";
+        if (b[param[i][1]])
             d =
                 typeof b[param[i][1]] === "object"
                     ? b[param[i][1]][0]
                     : b[param[i][1]];
+        else d = "";
         c = typeof c === "string" ? c.toLowerCase() : c;
         d = typeof d === "string" ? d.toLowerCase() : d;
-        // console.log(c);
-        // console.warn(d);
         if (c === d) continue;
         else return param[i][0] === 0 ? c > d : d > c;
-        // ? true
-        // : false;
     }
     // if (a[param[0][1]] === b[param[0][1]]) {
     //     if (a[param[1][1]] === b[param[1][1]]) {

@@ -2384,7 +2384,6 @@ class FWServer
                         "array" => true,
                     ]);
                     $res = $fetch->result;
-                    // $iditems = [];
                     $items = [];
                     foreach ($res as $item) {
                         $items[$item[0]] = $item;
@@ -2399,10 +2398,7 @@ class FWServer
                         $items[$item[0]][21] = [];
                         $items[$item[0]][22] = [];
                         $items[$item[0]][23] = [];
-
-                        // $iditems[]=$item[0];
                     }
-                    // $iditems=implode(',',$iditems);
                     $response = [
                         "cols" => [
                             "0" => [
