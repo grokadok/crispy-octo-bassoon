@@ -56,10 +56,7 @@ class ClassMain {
             <li>
             Search
             </li>`;
-        appendChildren(this.topbar.wrapper, [
-            this.topbar.react,
-            this.topbar.static,
-        ]);
+        this.topbar.wrapper.append(this.topbar.react, this.topbar.static);
         this.topbar.static
             .querySelector("ul:first-of-type li:first-of-type")
             .addEventListener("click", () => loadNewEmail());
@@ -167,8 +164,7 @@ class ClassMain {
             e.stopPropagation();
             socket.close();
         });
-        appendChildren(this.navbar.ul, [theme, logout]);
-        // this.navbar.ul.appendChild(logout);
+        this.navbar.ul.append(theme, logout);
 
         // populate tabs
         this.loadTab(this.tabs.active);

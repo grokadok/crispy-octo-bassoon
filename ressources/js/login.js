@@ -104,7 +104,7 @@ class ClassLogin {
         this.email = new Field({
             compact: true,
             name: "Email",
-            placeholder: "Veuillez entrer votre addresse email.",
+            placeholder: "Addresse email",
             required: true,
             type: "email",
         });
@@ -163,10 +163,7 @@ class ClassLogin {
         this.connectBtn.className = "theme";
         this.connectBtn.disabled = true;
         this.connectBtn.addEventListener("click", ClassLogin.openWS);
-        appendChildren(this.box, [
-            this.currentPassword.wrapper,
-            this.connectBtn,
-        ]);
+        this.box.append(this.currentPassword.wrapper, this.connectBtn);
     }
     loadNewPW() {
         this.newPassword = new Field({

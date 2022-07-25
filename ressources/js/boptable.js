@@ -45,7 +45,7 @@ class BopTable {
         this.wrapper = param.wrapper;
         this.header = document.createElement("div");
         this.table = document.createElement("div");
-        this.table.setAttribute("role", "table");
+        this.table.setAttribute("role", "grid");
         this.thead = document.createElement("div");
         this.tbody = document.createElement("div");
         // this.tfoot = document.createElement("div");
@@ -56,6 +56,7 @@ class BopTable {
         this.scroll = {};
         this.menu = {};
         this.menu.wrapper = document.createElement("ul");
+        this.menu.wrapper.setAttribute("role", "menu");
         this.menu.search = document.createElement("li");
         this.menu.colsDrop = document.createElement("ul");
         this.menu.icons = document.createElement("li");
@@ -132,14 +133,9 @@ class BopTable {
             }
             this.searchTable(e.target.textContent);
         });
-        appendChildren(this.menu.search, [searchButton, searchInput]);
-        this.menu.search.appendChild(searchInput);
+        this.menu.search.append(searchButton, searchInput);
         cols.appendChild(this.menu.colsDrop);
-        appendChildren(this.menu.wrapper, [
-            this.menu.icons,
-            this.menu.search,
-            cols,
-        ]);
+        this.menu.wrapper.append(this.menu.icons, this.menu.search, cols);
 
         // if param.task then request data
         if (typeof param.task !== "undefined") {
@@ -188,13 +184,13 @@ class BopTable {
             this.cols = param.cols;
             this.options = param.options;
         }
-        appendChildren(this.table, [this.thead, this.tbody]);
-        appendChildren(this.wrapper, [
+        this.table.append(this.thead, this.tbody);
+        this.wrapper.append(
             this.header,
             this.table,
             this.footer,
-            this.menu.wrapper,
-        ]);
+            this.menu.wrapper
+        );
     }
     /**
      * Configure the table head and body elements according to columns' width and visibility.
@@ -346,7 +342,7 @@ class BopTable {
             this.loadRow(rowKey++);
             i++;
         }
-        console.warn("+50");
+        console.log("+50");
         return --rowKey;
     }
     /**
@@ -438,7 +434,7 @@ class BopTable {
                 );
             });
             row.appendChild(divider);
-            appendChildren(parent, [row, last]);
+            parent.append(row, last);
             this.scroll.last = last;
         }
         return row;
@@ -632,8 +628,7 @@ class BopTable {
                 handle.addEventListener("click", (e) => {
                     e.stopPropagation();
                 });
-                appendChildren(menuRow, [handle, icons]);
-                menuRow.appendChild(icons);
+                menuRow.append(handle, icons);
                 // set eventlisteners
                 menuRow.addEventListener("click", () => {
                     this.toggleColVis(col);
@@ -756,16 +751,16 @@ class BopTable {
                             this.scroll.bottomRow?.firstElementChild
                         ) {
                             // ELSE IF bottom row
-
+                            const bottomRowKey = parseInt(
+                                this.scroll.bottomRow.id.split(".")[1]
+                            );
                             // IF isintersecting
-                            if (entry.isIntersecting) {
+                            if (
+                                entry.isIntersecting &&
+                                bottomRowKey < rows.length - 1
+                            ) {
                                 // load x more rows
-                                let bottomRow = this.loadDown(
-                                    parseInt(
-                                        this.scroll.bottomRow.id.split(".")[1]
-                                    ),
-                                    50
-                                );
+                                let bottomRow = this.loadDown(bottomRowKey, 50);
                                 this.scroll.rowObserver.unobserve(
                                     this.scroll.bottomRow.firstElementChild
                                 );

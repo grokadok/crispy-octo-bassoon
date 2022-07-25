@@ -86,7 +86,7 @@
 .setdark {
     --text: var(--gray1);
     --text-highlight: var(--accent);
-    --text-placeholder: var(--gray3);
+    --text-placeholder: var(--gray2);
     --bg: var(--coolor4);
     --bg-chat: rgb(0, 0, 0, 0.8);
     --bg-nav: var(--coolor3);
@@ -254,7 +254,76 @@ input {
         font-size: 14px;
     }
 }
-
+.field {
+    position: relative;
+    background: #181c29;
+    border-radius: 9px;
+    box-shadow: 2px 2px 0px 2px black;
+    transition: var(--transition-global);
+    & input {
+        position: relative;
+        width: 100%;
+        margin: 0;
+        &.password ~ svg {
+            position: absolute;
+            top: 0.55rem;
+            right: 0.7rem;
+            height: 1.5rem;
+            opacity: 0.7;
+            & path {
+                fill: var(--text);
+                opacity: 1;
+                transition: opacity 0.2s cubic-bezier(0.17, 0.84, 0.44, 1);
+            }
+            & path.hide {
+                opacity: 0;
+                transition: opacity 0.4s ease-in;
+            }
+        }
+    }
+    &::after {
+        content: attr(aria-label);
+        position: absolute;
+        inset: -2rem 1rem auto auto;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    &.compact {
+        border: none;
+        border-radius: 5px;
+        box-shadow: none;
+        background: transparent;
+        &::after {
+            content: attr(aria-label);
+            position: absolute;
+            inset: -1.1rem auto auto 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0;
+            transform: scaleY(0);
+            transform-origin: bottom;
+            transition: transform var(--transition-global),
+                opacity var(--transition-global);
+        }
+        & > input {
+            box-sizing: border-box;
+            width: 100%;
+            margin: 0;
+        }
+        & div.selectize-container {
+            border-radius: 5px;
+            box-shadow: 0px 0px 0px 1px var(--text);
+            & input {
+                box-shadow: none;
+            }
+        }
+        &:focus-within::after {
+            opacity: 1;
+            transform: scaleY(1);
+        }
+    }
+}
 .tab {
     position: absolute;
     height: 100%;
@@ -275,57 +344,12 @@ input {
         left: 7%;
         transition: top var(--transition-global);
     }
-    & > fieldset {
+    /* & > fieldset {
         height: fit-content;
         max-height: 100%;
-    }
+    } */
     & .field {
-        position: relative;
         margin-block: 2rem;
-        & h2 {
-            position: absolute;
-            inset: -2rem 2rem auto auto;
-            margin: 0;
-        }
-    }
-}
-
-.field {
-    position: relative;
-    background: #181c29;
-    border-radius: 9px;
-    box-shadow: 2px 2px 0px 2px black;
-    transition: var(--transition-global);
-    & > input {
-        width: 100%;
-        margin: 0;
-    }
-    & > svg {
-        position: absolute;
-        top: 0.55rem;
-        right: 0.7rem;
-        height: 1.5rem;
-        opacity: 0.7;
-        & path {
-            fill: var(--text);
-            opacity: 1;
-            transition: opacity 0.2s cubic-bezier(0.17, 0.84, 0.44, 1);
-        }
-        & path.hide {
-            opacity: 0;
-            transition: opacity 0.4s ease-in;
-        }
-    }
-    &.compact {
-        border: none;
-        border-radius: 5px;
-        box-shadow: none;
-        background: transparent;
-        & > input {
-            box-sizing: border-box;
-            width: 100%;
-            margin: 0;
-        }
     }
 }
 

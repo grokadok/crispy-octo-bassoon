@@ -3,6 +3,7 @@
 class BopAlert {
     constructor() {
         this.wrapper = document.getElementsByClassName("msg")[0];
+        this.wrapper.setAttribute("role", "alertdialog");
         this.message = this.wrapper.getElementsByTagName("span")[0];
         this.buttons = this.wrapper.getElementsByTagName("button");
         this.btn0 = this.buttons[0];

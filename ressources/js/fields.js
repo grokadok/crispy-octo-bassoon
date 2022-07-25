@@ -9,7 +9,7 @@ class Field {
      * @param {String} [params.label] - Value of the aria-label attribute, if not set then aria-label = name.
      * @param {Boolean} [params.modal=false] - Whether the field is part of a Modal object.
      * @param {Boolean} [params.multi=false] - Whether the select(ize) can get more than one selected value or not.
-     * @param {String} params.name - Sets the name of the field, applies to the fieldset's legend.
+     * @param {String} params.name - Sets the name of the field.
      * @param {String} [params.placeholder] - Sets the placeholder value for the input field.
      * @param {Boolean} [params.required=false] - If field is required or not on form submission/modal validation.
      * @param {Number} [params.task] - The task to get data on input.
@@ -32,37 +32,36 @@ class Field {
         if (typeof params.compact === "boolean" && params.compact)
             this.wrapper.classList.add("compact");
         this.wrapper.classList.add("field");
-        const attributes = [
-            ["placeholder", params.placeholder ?? ""],
-            ["aria-label", params.label ?? this.name],
-        ];
-
+        this.wrapper.setAttribute("aria-label", this.name);
+        const placeholder = params.placeholder ?? "",
+            label = params.label ?? this.name;
+        // const attributes = [
+        //     ["placeholder", params.placeholder ?? ""],
+        // ];
         switch (this.type) {
             case "address": {
                 this.wrapper;
                 this.fields = [];
-                let title = document.createElement("h2"),
-                    street = document.createElement("input"),
+                let street = document.createElement("input"),
                     postcode = document.createElement("input"),
                     city = document.createElement("input"),
                     country = document.createElement("input");
-                title.textContent = "Addresse";
-                this.wrapper.appendChild(title);
+                this.wrapper.setAttribute("aria-label", "Addresse");
                 setElementAttributes(street, [
                     ["placeholder", "2 rue du Port"],
-                    ["aria-label", "Numéro et voie"],
+                    ["name", "Numéro et voie"],
                 ]);
                 setElementAttributes(postcode, [
                     ["placeholder", "87200"],
-                    ["aria-label", "Code postal"],
+                    ["name", "Code postal"],
                 ]);
                 setElementAttributes(city, [
                     ["placeholder", "Sainte Bernadette"],
-                    ["aria-label", "Ville"],
+                    ["name", "Ville"],
                 ]);
                 setElementAttributes(country, [
                     ["placeholder", "France"],
-                    ["aria-label", "Pays"],
+                    ["name", "Pays"],
                 ]);
                 if (params.value) {
                     street.value = params.value.street;
@@ -70,31 +69,23 @@ class Field {
                     city.value = params.value.city;
                     country.value = params.value.country;
                 }
-                for (const element of [street, postcode, city, country]) {
-                    let div = document.createElement("div"),
-                        h3 = document.createElement("h2");
-                    h3.textContent = element.getAttribute("aria-label");
-                    appendChildren(div, [h3, element]);
-                    this.wrapper.appendChild(div);
-                }
-                this.wrapper.classList.add("address"); // to stylise address set
+                this.wrapper.append(street, postcode, city, country);
                 this.input.push([street, postcode, city, country]);
                 // later add address autocomplete/verification
                 break;
             }
             case "email": {
-                let h2 = document.createElement("h2"),
-                    fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
+                let fieldElement = document.createElement("input");
                 setElementAttributes(fieldElement, [
                     ["type", "email"],
                     [
                         "pattern",
                         "^[\\w!#$%&’*+/=?`{|}~^-]+(?:\\.[\\w!#$%&’*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$",
                     ],
-                    ...attributes,
+                    // ["name", label],
+                    ["placeholder", placeholder],
                 ]);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                this.wrapper.append(fieldElement);
                 fieldElement.value = params.value ?? "";
                 fieldElement.addEventListener("input", function () {
                     const field = Field.find(fieldElement);
@@ -106,15 +97,14 @@ class Field {
                 break;
             }
             case "input_string": {
-                let h2 = document.createElement("h2"),
-                    fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
+                let fieldElement = document.createElement("input");
                 setElementAttributes(fieldElement, [
                     ["spellcheck", "false"],
                     ["autocomplete", "off"],
-                    ...attributes,
+                    // ["name", label],
+                    ["placeholder", placeholder],
                 ]);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                this.wrapper.append(fieldElement);
                 if (params.value) fieldElement.value = params.value;
                 if (this.required) {
                     const field = this;
@@ -127,11 +117,12 @@ class Field {
                 break;
             }
             case "input_text": {
-                let fieldElement = document.createElement("textarea"),
-                    h2 = document.createElement("h2");
-                h2.textContent = params.label ?? this.name;
-                setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                let fieldElement = document.createElement("textarea");
+                setElementAttributes(fieldElement, [
+                    // ["name", label],
+                    ["placeholder", placeholder],
+                ]);
+                this.wrapper.append(fieldElement);
                 fieldElement.textContent = params.value ?? "";
                 if (this.required) {
                     const field = this;
@@ -146,9 +137,7 @@ class Field {
             case "password":
             case "current-password":
             case "new-password": {
-                let h2 = document.createElement("h2"),
-                    fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
+                let fieldElement = document.createElement("input");
                 fieldElement.className = "password";
                 setElementAttributes(fieldElement, [
                     ["type", "password"],
@@ -157,10 +146,11 @@ class Field {
                         "^(?=.*[a-z])(?=.*[A-Z])(?=.*[\\d])(?=.*[!@#$%^&*]).{12,}$",
                     ],
                     ["maxlength", "64"],
-                    ["placeholder", params.placeholder ?? ""],
+                    // ["name", label],
+                    ["placeholder", placeholder],
                     ["autocomplete", this.type !== "password" ? this.type : ""],
                 ]);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                this.wrapper.append(fieldElement);
                 this.wrapper.insertAdjacentHTML(
                     "beforeend",
                     `<svg viewBox="0 0 24 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" tabindex="0">
@@ -194,11 +184,12 @@ class Field {
                 break;
             }
             case "phone": {
-                let h2 = document.createElement("h2"),
-                    fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
-                setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                let fieldElement = document.createElement("input");
+                setElementAttributes(fieldElement, [
+                    ["name", label],
+                    ["placeholder", placeholder],
+                ]);
+                this.wrapper.append(fieldElement);
                 this.intlTel = intlTelInput(fieldElement, {
                     utilsScript: "./assets/intlTelInput/js/utils.js",
                     initialCountry: "fr",
@@ -222,25 +213,24 @@ class Field {
                 break;
             }
             case "select": {
-                const message = {
+                let container = document.createElement("div"),
+                    fieldElement = document.createElement("input");
+                this.ul = document.createElement("ul");
+                socket.send({
                     f: 7,
                     s: this.task,
-                };
-                let container = document.createElement("div"),
-                    h2 = document.createElement("h2"),
-                    fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
-                this.ul = document.createElement("ul");
-                socket.send(message);
+                });
                 this.ul.className = "fadeout";
+                this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
                     ["readonly", "true"],
                     ["data-value", params.value],
-                    ...attributes,
+                    // ["name", label],
+                    ["placeholder", placeholder],
                 ]);
                 container.className = "select-container";
                 container.append(fieldElement, this.ul);
-                appendChildren(this.wrapper, [h2, container]);
+                this.wrapper.append(container);
                 this.input.push(fieldElement);
                 break;
             }
@@ -248,19 +238,18 @@ class Field {
                 const field = this;
                 let container = document.createElement("div"),
                     add = document.createElement("button"),
-                    h2 = document.createElement("h2"),
                     fieldElement = document.createElement("input");
-                h2.textContent = params.label ?? this.name;
                 this.selected = {
                     wrapper: document.createElement("div"),
                     items: [],
                 };
                 this.ul = document.createElement("ul");
                 this.ul.className = "fadeout";
+                this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
                     ["spellcheck", "false"],
                     ["autocomplete", "off"],
-                    ...attributes,
+                    ["placeholder", placeholder],
                 ]);
                 container.className = "selectize-container";
                 container.append(fieldElement, this.ul);
@@ -306,14 +295,10 @@ class Field {
                             email: item.email ?? undefined,
                             group: item.group ?? undefined,
                         });
-                        this.selected.wrapper.appendChild(span);
+                        this.selected.wrapper.append(span);
                     }
                 }
-                appendChildren(this.wrapper, [
-                    h2,
-                    container,
-                    this.selected.wrapper,
-                ]);
+                this.wrapper.append(container, this.selected.wrapper);
                 fieldElement.addEventListener("input", () => {
                     // const field = Field.find(fieldElement);
                     field.fetchDataTimer();
@@ -395,11 +380,8 @@ class Field {
                 break;
             }
             case "boptable": {
-                let fieldElement = document.createElement("div"),
-                    h2 = document.createElement("h2");
-                h2.textContent = params.label ?? this.name;
-                setElementAttributes(fieldElement, attributes);
-                appendChildren(this.wrapper, [h2, fieldElement]);
+                let fieldElement = document.createElement("div");
+                this.wrapper.append(fieldElement);
                 params.options.caption = this.name;
                 params.options.wrapper = fieldElement;
                 new BopTable(params.options);
@@ -429,7 +411,7 @@ class Field {
             this.selected.items = [];
         }
         this.selected.items.push(selected);
-        this.selected.wrapper.appendChild(span);
+        this.selected.wrapper.append(span);
         span.addEventListener("click", () => {
             field.selected.items.splice(
                 field.selected.items.indexOf(selected),
@@ -527,8 +509,7 @@ class Field {
         }
     }
     getValid() {
-        const legend = this.wrapper.firstChild,
-            el = this.input[0];
+        const el = this.input[0];
         // el = document.contains(this.wrapper) ? this.wrapper : this.input[0];
         switch (this.type) {
             case "email":
@@ -540,17 +521,20 @@ class Field {
                         this.isValid = true;
                         el.classList.add("valid");
                         el.classList.remove("invalid");
-                        legend.textContent = this.name;
+                        this.wrapper.setAttribute("aria-label", this.name);
                     } else {
                         this.isValid = false;
                         el.classList.add("invalid");
                         el.classList.remove("valid");
-                        legend.textContent = this.name + " (invalide)";
+                        this.wrapper.setAttribute(
+                            "aria-label",
+                            this.name + " (invalide)"
+                        );
                     }
                 } else {
                     this.isValid = false;
                     el.classList.remove("invalid", "valid");
-                    legend.textContent = this.name;
+                    this.wrapper.setAttribute("aria-label", this.name);
                 }
                 break;
             case "input_string":
@@ -564,19 +548,22 @@ class Field {
                         this.phone = this.intlTel.getNumber();
                         el.classList.add("valid");
                         el.classList.remove("invalid");
-                        legend.textContent = this.name;
+                        this.wrapper.setAttribute("aria-label", this.name);
                     } else {
                         this.isValid = false;
                         this.phone = undefined;
                         el.classList.add("invalid");
                         el.classList.remove("valid");
-                        legend.textContent = this.name + " (invalide)";
+                        this.wrapper.setAttribute(
+                            "aria-label",
+                            this.name + " (invalide)"
+                        );
                     }
                 } else {
                     this.isValid = false;
                     this.phone = undefined;
                     el.classList.remove("invalid", "valid");
-                    legend.textContent = this.name;
+                    this.wrapper.setAttribute("aria-label", this.name);
                 }
                 break;
             case "selectize":
@@ -669,7 +656,7 @@ class Field {
                         }
                         ul.children.length > 0
                             ? fadeIn(ul, {
-                                  dropdown: ul.closest("fieldset"),
+                                  dropdown: ul.closest(".field"),
                               })
                             : fadeOut(ul);
                     } else fadeOut(ul);
@@ -745,13 +732,13 @@ class Field {
                     }
                     field.input[0].addEventListener("focus", () => {
                         fadeIn(ul, {
-                            dropdown: ul.closest("fieldset"),
+                            dropdown: ul.closest(".field"),
                         });
                         ul.children[0].focus();
                     });
                     field.input[0].addEventListener("click", () => {
                         fadeIn(ul, {
-                            dropdown: ul.closest("fieldset"),
+                            dropdown: ul.closest(".field"),
                         });
                         ul.children[0].focus();
                     });

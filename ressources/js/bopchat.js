@@ -35,8 +35,8 @@ class BopChat {
             this.searchTab.hidden = true;
             this.searchTab.textContent = `Vous pouvez utiliser la zone d'écriture ci dessous pour chercher un utilisateur avec qui ouvrir un chat.`;
             this.searchTab.setAttribute("data-i", 0);
-            this.content.appendChild(this.searchTab);
-            this.footer.appendChild(this.ul);
+            this.content.append(this.searchTab);
+            this.footer.append(this.ul);
             this.chatButton.textContent = "📟";
             this.chatButton.addEventListener("click", () => {
                 this.chatButton.blur();
@@ -67,12 +67,11 @@ class BopChat {
                 this.searchButton.blur();
                 this.showTab(this.searchTab);
             });
-            appendChildren(this.header, [
+            this.header.append(
                 this.chatButton,
                 this.minmaxButton,
-                // this.emailButton,
-                this.searchButton,
-            ]);
+                this.searchButton
+            );
         }
         this.wrapper.classList.add("user-min");
         this.chatTabs.setAttribute("tabindex", "-1");
@@ -84,7 +83,7 @@ class BopChat {
                 none: true,
             });
         });
-        appendChildren(this.header, [this.chatTabs, this.usersButton]);
+        this.header.append(this.chatTabs, this.usersButton);
         setElementAttributes(this.input, [
             ["data-f", "7"],
             ["data-s", "8"],
@@ -162,18 +161,9 @@ class BopChat {
             this.validate();
         });
         // this.footer.insertBefore(this.input, this.footer.firstElementChild);
-        appendChildren(this.footer, [
-            this.inviteButton,
-            this.input,
-            this.sendButton,
-        ]);
-        // this.footer.appendChild(this.sendButton);
-        appendChildren(this.wrapper, [
-            this.header,
-            this.content,
-            this.users,
-            this.footer,
-        ]);
+        this.footer.append(this.inviteButton, this.input, this.sendButton);
+        // this.footer.append(this.sendButton);
+        this.wrapper.append(this.header, this.content, this.users, this.footer);
         this.wrapper.classList.add("bopchat");
         if (idchat.length > 0) {
             for (const id of idchat)
@@ -215,8 +205,8 @@ class BopChat {
             users = document.createElement("datalist");
             tabButton.textContent = params.name;
             tabButton.setAttribute("data-i", params.id);
-            this.chatTabs.appendChild(tabButton);
-            this.content.appendChild(tab);
+            this.chatTabs.append(tabButton);
+            this.content.append(tab);
             tabButton.addEventListener("click", () => {
                 tabButton.blur();
                 if (this.active !== params.id) {
@@ -255,9 +245,9 @@ class BopChat {
                 ],
                 ["data-status", user.status],
             ]);
-            users.appendChild(option);
+            users.append(option);
         }
-        tab.appendChild(users);
+        tab.append(users);
         // refresh chat data
         for (const message of params.content) {
             this.addMessage(message);
@@ -305,7 +295,7 @@ class BopChat {
             dataAvatar.substring(0, 1) === "/"
                 ? (avatar.style.backgroundImage = dataAvatar)
                 : (avatar.textContent = dataAvatar);
-            appendChildren(field, [legend, timestamp, avatar, content]);
+            field.append(legend, timestamp, avatar, content);
 
             // separator
             timestamp.textContent = time.toLocaleTimeString(
@@ -682,8 +672,8 @@ class BopChat {
                         dataAvatar.substring(0, 1) === "/"
                             ? (avatar.style.backgroundImage = dataAvatar)
                             : (avatar.textContent = dataAvatar);
-                        appendChildren(li, [avatar, name]);
-                        this.users.appendChild(li);
+                        li.append(avatar, name);
+                        this.users.append(li);
                         fadeIn([this.usersButton, this.users]);
                     }
                 }
@@ -748,7 +738,7 @@ class BopChat {
                     ["data-status", user.status],
                 ]);
                 userList.push(user.iduser);
-                datalist.appendChild(option);
+                datalist.append(option);
             }
             // then compare datalist with user list if chat active
             if (this.active === parseInt(chat.id)) {
@@ -782,18 +772,14 @@ class BopChat {
                         dataAvatar.substring(0, 1) === "/"
                             ? (avatar.style.backgroundImage = dataAvatar)
                             : (avatar.textContent = dataAvatar);
-                        appendChildren(li, [avatar, name]);
-                        this.users.appendChild(li);
+                        li.append(avatar, name);
+                        this.users.append(li);
                         fadeIn(li);
                     }
                 }
                 for (const dataId of compare.only_2) {
                     el = this.users.querySelector(`[data-id='${dataId}']`);
                     el.remove();
-                    // fadeOut(el);
-                    // setTimeout((el) => {
-                    //     el.remove();
-                    // }, 1000);
                 }
                 for (const dataId of compare.both) {
                     const status = parseInt(

@@ -11,9 +11,10 @@ if (is_chrome && is_opera) {
 }
 
 /**
- * Appends several elements to parent.
+ * Appends several elements to parent
  * @param {HTMLElement} parent
  * @param {HTMLElement[]} children
+ * @deprecated use element.append() instead
  */
 function appendChildren(parent, children) {
     for (const child of children) {
@@ -485,7 +486,7 @@ function selectText(node) {
  */
 function setElementAttributes(el, att) {
     for (let [key, value] of att) {
-        el.setAttribute(key, value);
+        if (typeof value === "number" || value) el.setAttribute(key, value);
     }
 }
 /**

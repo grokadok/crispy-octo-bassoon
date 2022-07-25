@@ -103,11 +103,7 @@ class Modal {
             }
             this.btns = this.footer.getElementsByTagName("button");
             this.header.appendChild(this.title);
-            appendChildren(this.wrapper, [
-                this.header,
-                this.content,
-                this.footer,
-            ]);
+            this.wrapper.append(this.header, this.content, this.footer);
 
             if (typeof this.childOf === "undefined") {
                 modalContainer.appendChild(this.wrapper);
