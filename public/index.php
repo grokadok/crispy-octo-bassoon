@@ -7,6 +7,7 @@ $jsfiles = getenv('ISLOCAL') ? [
     'js/fscreen.js',
     'js/fetch.js',
     'js/fields.js',
+    'vendor/quill/quill.js',
     'vendor/intlTelInput/js/intlTelInput.js',
     'vendor/intlTelInput/js/utils.js',
     'js/login.js',

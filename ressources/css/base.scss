@@ -90,7 +90,7 @@
 .setdark {
     --text: var(--gray1);
     --text-highlight: var(--accent);
-    --text-placeholder: var(--gray2);
+    --text-placeholder: var(--gray4);
     --bg: var(--coolor4);
     --bg-field: rgb(0, 0, 0, 0.8);
     --bg-chat: rgb(0, 0, 0, 0.8);
@@ -135,6 +135,7 @@
 
 ::placeholder {
     color: var(--text-placeholder);
+    opacity: 1;
 }
 
 /* :focus-visible {
@@ -245,6 +246,7 @@ input {
         font-size: 14px;
     }
 }
+
 .field {
     position: relative;
     background: var(--bg-field);
@@ -299,6 +301,143 @@ input {
         border: none;
         outline: none;
     }
+    & .ql-toolbar.ql-snow {
+        position: absolute;
+        bottom: 100%;
+        border: none;
+        border-radius: 5px 5px 0 0;
+        box-sizing: unset;
+        padding: 0 0 0.8rem 0;
+        background-color: var(--bg-field);
+        opacity: 0;
+        transform: scaleY(0);
+        transform-origin: bottom;
+        transition: opacity var(--transition-global),
+            transform var(--transition-global);
+    }
+    & .ql-container {
+        min-height: 5rem;
+        font-family: inherit;
+        font-size: inherit;
+        border: none;
+        & p.ql-align-justify {
+            white-space: normal;
+        }
+        & .ql-editor {
+            &.ql-blank::before {
+                color: var(--text-placeholder);
+                font-style: normal;
+            }
+        }
+        &.ql-bubble .ql-tooltip {
+            border-radius: 15px;
+            z-index: 1;
+        }
+    }
+    &.selectize,
+    &.select {
+        border-radius: 5px;
+        /* box-shadow: 0px 0px 0px 1px var(--text); */
+        background-color: var(--bg-chat);
+        & .container {
+            position: relative;
+            height: 2.4rem;
+            display: flex;
+            flex-direction: row;
+            & input {
+                padding: 0.45rem 1.7rem 0.45rem 0.9rem;
+                box-shadow: none;
+                background-color: transparent;
+            }
+            /* input '+' button */
+            & > button {
+                position: absolute;
+                inset: 0 0 auto auto;
+                height: 2.4rem;
+                padding: 0 0.5rem;
+                background-color: transparent;
+                color: var(--text);
+            }
+            & li {
+                padding-inline: 0.4rem;
+                transition: var(--transition-global);
+                user-select: none;
+                -webkit-user-select: none;
+                cursor: pointer;
+                &:hover,
+                &:focus {
+                    background: var(--accent-secondary);
+                    color: var(--gray1);
+                    & span {
+                        color: var(--gray1);
+                    }
+                }
+                & > span:nth-child(2) {
+                    margin-left: 0.5rem;
+                    color: var(--text-placeholder);
+                }
+                /* role button */
+                & > button {
+                    height: 1.5rem;
+                    padding: 0 0.2rem;
+                    background-color: transparent;
+                    color: var(--accent-secondary);
+                    transition: var(--transition-global);
+                    pointer-events: none;
+                }
+                &:hover > button,
+                &:focus > button {
+                    color: var(--bg);
+                }
+            }
+            & > ul {
+                position: absolute;
+                inset: 1.4rem auto auto 0;
+                width: 100%;
+                max-height: 200px;
+                border: none;
+                border-radius: 0 0 5px 5px;
+                padding: 0;
+                background: var(--bg-field);
+                overflow: auto;
+                list-style: none;
+                transition: var(--transition-global);
+                z-index: 2;
+                & li {
+                    display: flex;
+                    flex-wrap: wrap;
+                }
+                & li:first-child {
+                    border-radius: 3px 3px 0 0;
+                }
+                & li:last-child {
+                    padding-bottom: 0.1rem;
+                    border-radius: 0 0 3px 3px;
+                }
+            }
+        }
+        & > .selected {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+            & > span {
+                margin-inline: 0.2rem;
+                user-select: none;
+                -webkit-user-select: none;
+                cursor: pointer;
+                text-align: center;
+                transition: var(--transition-global);
+
+                &:focus,
+                &:hover {
+                    color: red;
+                    /* text-shadow: 0 0 16px red; */
+                    outline: none;
+                }
+            }
+        }
+    }
     &::after {
         content: attr(aria-label);
         position: absolute;
@@ -327,107 +466,13 @@ input {
         /* & > input {
             box-sizing: border-box;
         } */
-        &.selectize,
-        &.select {
-            border-radius: 5px;
-            /* box-shadow: 0px 0px 0px 1px var(--text); */
-            background-color: var(--bg-chat);
-            & .container {
-                position: relative;
-                height: 2.4rem;
-                display: flex;
-                flex-direction: row;
-                & input {
-                    padding: 0.45rem 1.7rem 0.45rem 0.9rem;
-                    box-shadow: none;
-                    background-color: transparent;
-                }
-                /* input '+' button */
-                & > button {
-                    position: absolute;
-                    inset: 0 0 auto auto;
-                    height: 2.4rem;
-                    padding: 0 0.5rem;
-                    background-color: transparent;
-                    color: var(--text);
-                }
-                & li {
-                    padding-inline: 0.4rem;
-                    transition: var(--transition-global);
-                    user-select: none;
-                    -webkit-user-select: none;
-                    cursor: pointer;
-                    &:hover,
-                    &:focus {
-                        background: var(--accent-secondary);
-                        color: var(--gray1);
-                        & span {
-                            color: var(--gray1);
-                        }
-                    }
-                    & > span:nth-child(2) {
-                        margin-left: 0.5rem;
-                        color: var(--text-placeholder);
-                    }
-                    /* role button */
-                    & > button {
-                        height: 1.5rem;
-                        padding: 0 0.2rem;
-                        background-color: transparent;
-                        color: var(--accent-secondary);
-                        transition: var(--transition-global);
-                        pointer-events: none;
-                    }
-                    &:hover > button,
-                    &:focus > button {
-                        color: var(--bg);
-                    }
-                }
-                & > ul {
-                    position: absolute;
-                    top: 0.8rem;
-                    left: -0.5rem;
-                    max-height: 200px;
-                    padding: 0;
-                    overflow: auto;
-                    background: var(--bg);
-                    border: 2px solid var(--text);
-                    border-radius: 5px;
-                    list-style: none;
-                    transition: var(--transition-global);
-                    z-index: 30;
-                    & li:first-child {
-                        border-radius: 3px 3px 0 0;
-                    }
-                    & li:last-child {
-                        padding-bottom: 0.1rem;
-                        border-radius: 0 0 3px 3px;
-                    }
-                }
-            }
-            & > .selected {
-                display: flex;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: space-evenly;
-                & > span {
-                    margin-inline: 0.2rem;
-                    user-select: none;
-                    -webkit-user-select: none;
-                    cursor: pointer;
-                    text-align: center;
-                    transition: var(--transition-global);
-
-                    &:focus,
-                    &:hover {
-                        color: red;
-                        /* text-shadow: 0 0 16px red; */
-                        outline: none;
-                    }
-                }
-            }
-        }
         &:focus-within::after {
+            opacity: 1;
+            transform: scaleY(1);
+        }
+    }
+    &:focus-within {
+        & .ql-toolbar.ql-snow {
             opacity: 1;
             transform: scaleY(1);
         }

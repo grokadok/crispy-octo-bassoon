@@ -1,4 +1,7 @@
 @import "vendor/intlTelInput/css/intlTelInput.css";
+@import "vendor/quill/quill.core.css";
+@import "vendor/quill/quill.bubble.css";
+@import "vendor/quill/quill.snow.css";
 @import "css/btn.scss";
 @import "css/modal.scss";
 @import "css/navbar.scss";

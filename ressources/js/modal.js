@@ -656,7 +656,7 @@ function loadNewEmail(contacts) {
                 name: "Contenu",
                 placeholder: "Contenu de votre email.",
                 required: true,
-                type: "input_text",
+                type: "quill",
             },
         ],
         task: 8,
