@@ -55,6 +55,7 @@
     --text-highlight: var(--accent-secondary);
     --text-placeholder: var(--gray3);
     --bg: var(--gray1);
+    --bg-field: rgb(255, 255, 255, 0.8);
     --bg-chat: rgb(255, 255, 255, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
@@ -70,9 +71,12 @@
     --mark-over: var(--accent);
     --title-gradient: linear-gradient(
         60deg,
-        var(--coolor3) 0%,
+        /* var(--coolor3) 0%,
         var(--coolor2) 50%,
-        var(--coolor3) 100%
+        var(--coolor3) 100% */
+            var(--gray1) 0%,
+        var(--coolor2) 50%,
+        var(--gray1) 100%
     );
     --table-header: var(--accent-secondary);
     --table-header-focus: var(--coolor6);
@@ -88,6 +92,7 @@
     --text-highlight: var(--accent);
     --text-placeholder: var(--gray2);
     --bg: var(--coolor4);
+    --bg-field: rgb(0, 0, 0, 0.8);
     --bg-chat: rgb(0, 0, 0, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
@@ -225,28 +230,14 @@ pre {
 }
 
 input {
-    margin: 0.4rem;
+    margin: 0;
     padding: 0.45rem 0.9rem;
-    background-color: var(--bg);
+    background-color: transparent;
     border: 0;
     border-radius: 5px;
-    box-shadow: 0px 0px 0px 1px var(--text);
     font-size: 1.2rem;
     color: var(--text);
     transition: var(--transition-global);
-    &.password {
-        padding-right: 2.1rem;
-    }
-    &:focus {
-        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--coolor2);
-        outline: none;
-    }
-    &.invalid:focus {
-        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--danger);
-    }
-    &.valid:focus {
-        box-shadow: 0px 0px 0px 1px var(--text), 0px 0px 6px 3px var(--success);
-    }
 }
 
 @media only screen and (max-width: 599px), screen and (max-height: 599px) {
@@ -256,30 +247,57 @@ input {
 }
 .field {
     position: relative;
-    background: #181c29;
+    background: var(--bg-field);
     border-radius: 9px;
     box-shadow: 2px 2px 0px 2px black;
     transition: var(--transition-global);
     & input {
         position: relative;
         width: 100%;
-        margin: 0;
-        &.password ~ svg {
-            position: absolute;
-            top: 0.55rem;
-            right: 0.7rem;
-            height: 1.5rem;
-            opacity: 0.7;
-            & path {
-                fill: var(--text);
-                opacity: 1;
-                transition: opacity 0.2s cubic-bezier(0.17, 0.84, 0.44, 1);
-            }
-            & path.hide {
-                opacity: 0;
-                transition: opacity 0.4s ease-in;
+        box-sizing: border-box;
+        &.password {
+            padding-right: 2.1rem;
+            & ~ svg {
+                position: absolute;
+                top: 0.55rem;
+                right: 0.7rem;
+                height: 1.5rem;
+                opacity: 0.7;
+                & path {
+                    fill: var(--text);
+                    opacity: 1;
+                    transition: opacity 0.2s cubic-bezier(0.17, 0.84, 0.44, 1);
+                }
+                & path.hide {
+                    opacity: 0;
+                    transition: opacity 0.4s ease-in;
+                }
             }
         }
+        &:focus {
+            box-shadow: 0px 0px 6px 3px var(--coolor2);
+            outline: none;
+        }
+        &.invalid:focus {
+            box-shadow: 0px 0px 0px 1px var(--danger),
+                0px 0px 6px 3px var(--danger);
+        }
+        &.valid:focus {
+            box-shadow: 0px 0px 0px 1px var(--success),
+                0px 0px 6px 3px var(--success);
+        }
+    }
+    & textarea {
+        height: 100%;
+        min-width: 100%;
+        margin-top: -0.3rem;
+        background: transparent;
+        color: var(--text);
+        font-family: inherit;
+        font-weight: 300;
+        font-size: 1rem;
+        border: none;
+        outline: none;
     }
     &::after {
         content: attr(aria-label);
@@ -292,7 +310,7 @@ input {
         border: none;
         border-radius: 5px;
         box-shadow: none;
-        background: transparent;
+        width: 100%;
         &::after {
             content: attr(aria-label);
             position: absolute;
@@ -306,21 +324,107 @@ input {
             transition: transform var(--transition-global),
                 opacity var(--transition-global);
         }
-        & > input {
+        /* & > input {
             box-sizing: border-box;
-            width: 100%;
-            margin: 0;
-        }
-        & div.selectize-container {
+        } */
+        &.selectize,
+        &.select {
             border-radius: 5px;
-            box-shadow: 0px 0px 0px 1px var(--text);
-            & input {
-                box-shadow: none;
+            /* box-shadow: 0px 0px 0px 1px var(--text); */
+            background-color: var(--bg-chat);
+            & .container {
+                position: relative;
+                height: 2.4rem;
+                display: flex;
+                flex-direction: row;
+                & input {
+                    padding: 0.45rem 1.7rem 0.45rem 0.9rem;
+                    box-shadow: none;
+                    background-color: transparent;
+                }
+                /* input '+' button */
+                & > button {
+                    position: absolute;
+                    inset: 0 0 auto auto;
+                    height: 2.4rem;
+                    padding: 0 0.5rem;
+                    background-color: transparent;
+                    color: var(--text);
+                }
+                & li {
+                    padding-inline: 0.4rem;
+                    transition: var(--transition-global);
+                    user-select: none;
+                    -webkit-user-select: none;
+                    cursor: pointer;
+                    &:hover,
+                    &:focus {
+                        background: var(--accent-secondary);
+                        color: var(--gray1);
+                        & span {
+                            color: var(--gray1);
+                        }
+                    }
+                    & > span:nth-child(2) {
+                        margin-left: 0.5rem;
+                        color: var(--text-placeholder);
+                    }
+                    /* role button */
+                    & > button {
+                        height: 1.5rem;
+                        padding: 0 0.2rem;
+                        background-color: transparent;
+                        color: var(--accent-secondary);
+                        transition: var(--transition-global);
+                        pointer-events: none;
+                    }
+                    &:hover > button,
+                    &:focus > button {
+                        color: var(--bg);
+                    }
+                }
+                & > ul {
+                    position: absolute;
+                    top: 0.8rem;
+                    left: -0.5rem;
+                    max-height: 200px;
+                    padding: 0;
+                    overflow: auto;
+                    background: var(--bg);
+                    border: 2px solid var(--text);
+                    border-radius: 5px;
+                    list-style: none;
+                    transition: var(--transition-global);
+                    z-index: 30;
+                    & li:first-child {
+                        border-radius: 3px 3px 0 0;
+                    }
+                    & li:last-child {
+                        padding-bottom: 0.1rem;
+                        border-radius: 0 0 3px 3px;
+                    }
+                }
             }
-            & > button {
-                position: absolute;
-                inset: 0 0 auto auto;
-                padding: 0 0.5rem;
+            & > .selected {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-evenly;
+                & > span {
+                    margin-inline: 0.2rem;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: var(--transition-global);
+
+                    &:focus,
+                    &:hover {
+                        color: red;
+                        /* text-shadow: 0 0 16px red; */
+                        outline: none;
+                    }
+                }
             }
         }
         &:focus-within::after {

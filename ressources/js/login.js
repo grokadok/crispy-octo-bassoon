@@ -61,7 +61,7 @@ class ClassLogin {
                 this.commentDiff.classList.add("up");
             }
         } else {
-            this.checkPassword.input[0].className = "";
+            this.checkPassword.input[0].classList.remove("invalid");
             this.commentDiff.classList.remove("up");
         }
     }

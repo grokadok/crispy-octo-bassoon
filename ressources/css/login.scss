@@ -63,8 +63,8 @@
     position: relative;
     width: 30rem;
     padding-block: 1rem;
-    background: var(--bg);
-    border-radius: 9px;
+    background-color: transparent;
+    /* border-radius: 9px; */
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -85,6 +85,12 @@
     & > button {
         margin-top: 0.5rem;
     } */
+    & .field {
+        width: 75%;
+        &::after {
+            color: var(--bg-chat);
+        }
+    }
     & > span:not(:first-of-type) {
         text-align: center;
         padding-inline: 2rem;
@@ -99,7 +105,7 @@
     letter-spacing: 0.3ch;
     color: var(--coolor2);
     user-select: none;
-    -webkit-user-select: none;
+    filter: drop-shadow(5px 5px 2px rgba(0, 0, 0, 0.4));
 }
 
 @supports (--css: variables) {

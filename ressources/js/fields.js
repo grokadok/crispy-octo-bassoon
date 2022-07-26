@@ -228,7 +228,8 @@ class Field {
                     // ["name", label],
                     ["placeholder", placeholder],
                 ]);
-                container.className = "select-container";
+                this.wrapper.classList.add("select");
+                container.className = "container";
                 container.append(fieldElement, this.ul);
                 this.wrapper.append(container);
                 this.input.push(fieldElement);
@@ -251,9 +252,10 @@ class Field {
                     ["autocomplete", "off"],
                     ["placeholder", placeholder],
                 ]);
-                container.className = "selectize-container";
+                this.wrapper.classList.add("selectize");
+                container.className = "container";
                 container.append(fieldElement, this.ul);
-                this.selected.wrapper.className = "selectize-selected";
+                this.selected.wrapper.className = "selected";
                 if (params.add) {
                     // remove the + when modal children at max capacity
                     add.textContent = "+";

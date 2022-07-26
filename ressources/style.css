@@ -1,6 +1,5 @@
 @import "vendor/intlTelInput/css/intlTelInput.css";
 @import "css/btn.scss";
-@import "css/login.scss";
 @import "css/modal.scss";
 @import "css/navbar.scss";
 @import "css/topbar.scss";
@@ -9,3 +8,4 @@
 @import "css/bopchat.scss";
 @import "css/boptable.scss";
 @import "css/base.scss";
+@import "css/login.scss";
