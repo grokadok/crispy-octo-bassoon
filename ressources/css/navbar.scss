@@ -377,6 +377,8 @@
             & > li > ul {
                 inset: auto 0 100% 0;
                 max-width: none;
+                display: flex;
+                flex-direction: column-reverse;
             }
         }
         & ~ div#chat {

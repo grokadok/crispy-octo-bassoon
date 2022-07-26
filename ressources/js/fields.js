@@ -337,7 +337,6 @@ class Field {
                 }
                 this.wrapper.append(container, this.selected.wrapper);
                 fieldElement.addEventListener("input", () => {
-                    // const field = Field.find(fieldElement);
                     field.fetchDataTimer();
                 });
                 fieldElement.addEventListener("keydown", (e) => {

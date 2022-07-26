@@ -52,6 +52,7 @@
 .light,
 .setlight {
     --text: var(--coolor3);
+    --text-secondary: var(--gray3);
     --text-highlight: var(--accent-secondary);
     --text-placeholder: var(--gray3);
     --bg: var(--gray1);
@@ -59,6 +60,13 @@
     --bg-chat: rgb(255, 255, 255, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
+    --dropdown-bg: white;
+    --dropdown-button: var(--accent-secondary);
+    --dropdown-select: var(--gray0);
+    --dropdown-select-button: var(--accent);
+    --dropdown-select-secondary: var(--gray1);
+    --dropdown-select-bg: rgba(86, 149, 237, 0.88);
+    --dropdown-outline: var(--text);
     --nav-text: var(--gray1);
     --nav-text-focus: var(--gray0);
     --fieldset: var(--gray3);
@@ -89,6 +97,7 @@
 .dark,
 .setdark {
     --text: var(--gray1);
+    --text-secondary: var(--gray2);
     --text-highlight: var(--accent);
     --text-placeholder: var(--gray4);
     --bg: var(--coolor4);
@@ -96,12 +105,24 @@
     --bg-chat: rgb(0, 0, 0, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
+    --dropdown-bg: rgb(0, 0, 0, 0.8);
+    --dropdown-button: var(--accent);
+    --dropdown-select: var(--text);
+    --dropdown-select-button: var(--accent);
+    --dropdown-select-secondary: var(--text-secondary);
+    --dropdown-select-bg: rgb(23, 78, 128);
+    --dropdown-outline: var(--accent);
     --nav-text: var(--gray1);
     --nav-text-focus: var(--gray0);
     --fieldset: var(--gray2);
-    --login-gradient: linear-gradient(
+    /* --login-gradient: linear-gradient(
         60deg,
         var(--gray1) 0%,
+        var(--coolor2) 100%
+    ); */
+    --login-gradient: linear-gradient(
+        60deg,
+        var(--coolor3) 0%,
         var(--coolor2) 100%
     );
     --mark: var(--accent);
@@ -197,14 +218,28 @@ a {
 
 ul {
     list-style-type: square;
+    & mark {
+        color: var(--mark);
+        background: transparent;
+    }
 }
-ul mark {
-    color: var(--mark);
-    background: transparent;
-}
-li:hover mark,
-li:focus mark {
-    color: var(--mark-over);
+li {
+    transition: background var(--transition-nav-li),
+        color var(--transition-global);
+    &:hover,
+    &:focus {
+        background-color: var(--dropdown-select-bg);
+        color: var(--dropdown-select);
+        transition: background 0s, color 0s;
+        & mark {
+            color: var(--mark-over);
+        }
+    }
+    &:focus-visible {
+        border: inset dashed 2px var(--dropdown-outline);
+        box-sizing: border-box;
+        outline: none;
+    }
 }
 legend {
     background: var(--bg);
@@ -277,16 +312,17 @@ input {
             }
         }
         &:focus {
-            box-shadow: 0px 0px 6px 3px var(--coolor2);
+            box-shadow: 0px 0px 0px 1px var(--coolor2) inset,
+                0px 0px 6px 2px var(--coolor2) inset;
             outline: none;
         }
         &.invalid:focus {
-            box-shadow: 0px 0px 0px 1px var(--danger),
-                0px 0px 6px 3px var(--danger);
+            box-shadow: 0px 0px 0px 1px var(--danger) inset,
+                0px 0px 6px 3px var(--danger) inset;
         }
         &.valid:focus {
-            box-shadow: 0px 0px 0px 1px var(--success),
-                0px 0px 6px 3px var(--success);
+            box-shadow: 0px 0px 0px 1px var(--success) inset,
+                0px 0px 6px 3px var(--success) inset;
         }
     }
     & textarea {
@@ -331,6 +367,8 @@ input {
         }
         &.ql-bubble .ql-tooltip {
             border-radius: 15px;
+            box-shadow: 2px 2px 0 1px var(--bg-field);
+            background-color: var(--bg);
             z-index: 1;
         }
     }
@@ -348,46 +386,14 @@ input {
                 padding: 0.45rem 1.7rem 0.45rem 0.9rem;
                 box-shadow: none;
                 background-color: transparent;
-            }
-            /* input '+' button */
-            & > button {
-                position: absolute;
-                inset: 0 0 auto auto;
-                height: 2.4rem;
-                padding: 0 0.5rem;
-                background-color: transparent;
-                color: var(--text);
-            }
-            & li {
-                padding-inline: 0.4rem;
-                transition: var(--transition-global);
-                user-select: none;
-                -webkit-user-select: none;
-                cursor: pointer;
-                &:hover,
-                &:focus {
-                    background: var(--accent-secondary);
-                    color: var(--gray1);
-                    & span {
-                        color: var(--gray1);
-                    }
-                }
-                & > span:nth-child(2) {
-                    margin-left: 0.5rem;
-                    color: var(--text-placeholder);
-                }
-                /* role button */
-                & > button {
-                    height: 1.5rem;
-                    padding: 0 0.2rem;
+                /* input '+' button */
+                & ~ button {
+                    position: absolute;
+                    inset: 0 0 auto auto;
+                    height: 2.4rem;
+                    padding: 0 0.5rem 0.2rem;
                     background-color: transparent;
-                    color: var(--accent-secondary);
-                    transition: var(--transition-global);
-                    pointer-events: none;
-                }
-                &:hover > button,
-                &:focus > button {
-                    color: var(--bg);
+                    color: var(--text);
                 }
             }
             & > ul {
@@ -398,7 +404,7 @@ input {
                 border: none;
                 border-radius: 0 0 5px 5px;
                 padding: 0;
-                background: var(--bg-field);
+                background: var(--dropdown-bg);
                 overflow: auto;
                 list-style: none;
                 transition: var(--transition-global);
@@ -406,6 +412,31 @@ input {
                 & li {
                     display: flex;
                     flex-wrap: wrap;
+                    padding-inline: 0.4rem;
+                    user-select: none;
+                    cursor: pointer;
+                    & > span:nth-child(2) {
+                        margin-left: 0.5rem;
+                        color: var(--text-secondary);
+                    }
+                    /* role button */
+                    & > button {
+                        height: 1.5rem;
+                        padding: 0 0.2rem;
+                        background-color: transparent;
+                        color: var(--dropdown-button);
+                        transition: var(--transition-global);
+                        pointer-events: none;
+                    }
+                    &:hover,
+                    &:focus {
+                        & > span:nth-child(2) {
+                            color: var(--dropdown-select-secondary);
+                        }
+                        & > button {
+                            color: var(--dropdown-select-button);
+                        }
+                    }
                 }
                 & li:first-child {
                     border-radius: 3px 3px 0 0;
@@ -428,11 +459,9 @@ input {
                 cursor: pointer;
                 text-align: center;
                 transition: var(--transition-global);
-
                 &:focus,
                 &:hover {
                     color: red;
-                    /* text-shadow: 0 0 16px red; */
                     outline: none;
                 }
             }
