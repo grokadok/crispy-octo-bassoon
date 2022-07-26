@@ -317,6 +317,11 @@ input {
             & input {
                 box-shadow: none;
             }
+            & > button {
+                position: absolute;
+                inset: 0 0 auto auto;
+                padding: 0 0.5rem;
+            }
         }
         &:focus-within::after {
             opacity: 1;

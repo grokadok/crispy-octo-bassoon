@@ -258,11 +258,15 @@ function fetchDataTimer(el, type) {
 /**
  * Adds an eventlistener on document to fadeOut element on click outside of itself or it's ancestor.
  * @param {HTMLElement} el - Element to fadeOut on click.
- * @param {HTMLElement} [anc=el] - Optional ancestor, defaults to el itself.
+ * @param {HTMLElement} [anc] - Optional ancestor, defaults to el itself.
  */
-function hideOnClickOutside(el, anc = el) {
+function hideOnClickOutside(el, anc) {
+    const ancestor = anc ?? el;
     const outsideClickListener = (event) => {
-        if (!anc.contains(event.target) && !el.classList.contains("fadeout")) {
+        if (
+            !ancestor.contains(event.target) &&
+            !el.classList.contains("fadeout")
+        ) {
             fadeOut(el);
         }
         removeClickListener();

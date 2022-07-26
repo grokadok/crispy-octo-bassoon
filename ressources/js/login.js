@@ -57,7 +57,7 @@ class ClassLogin {
                 this.loadPhone();
                 this.phone.input[0].focus();
             } else {
-                this.checkPassword.input[0].className = "invalid";
+                this.checkPassword.input[0].classList.add("invalid");
                 this.commentDiff.classList.add("up");
             }
         } else {
