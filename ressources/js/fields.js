@@ -251,11 +251,12 @@ class Field {
                 let container = document.createElement("div"),
                     fieldElement = document.createElement("input");
                 this.ul = document.createElement("ul");
+                this.ul.className = "fadeout";
                 socket.send({
                     f: 7,
                     s: this.task,
                 });
-                this.ul.className = "fadeout";
+                // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
                     ["readonly", "true"],
@@ -267,6 +268,9 @@ class Field {
                 container.className = "container";
                 container.append(fieldElement, this.ul);
                 this.wrapper.append(container);
+                fieldElement.addEventListener("click", () => {
+                    this.ul.classList.toggle("fadeout");
+                });
                 this.input.push(fieldElement);
                 break;
             }
@@ -280,7 +284,7 @@ class Field {
                     items: [],
                 };
                 this.ul = document.createElement("ul");
-                this.ul.className = "fadeout";
+                // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
                     ["spellcheck", "false"],
@@ -301,7 +305,7 @@ class Field {
                             names.push(child.textContent);
                         }
                         if (!names.includes(fieldElement.value)) {
-                            fadeOut(field.ul, { hide: true });
+                            // fadeOut(field.ul, { hide: true });
                             params.add(fieldElement);
                         }
                     });
@@ -345,7 +349,7 @@ class Field {
                     switch (e.code) {
                         case "ArrowDown":
                             e.preventDefault();
-                            if (!field.ul.classList.contains("fadeout"))
+                            if (field.ul.getElementsByTagName("li").length > 0)
                                 field.ul.getElementsByTagName("li")[0].focus();
                             else if (
                                 field.wrapper.nextElementSibling?.getElementsByTagName(
@@ -384,8 +388,7 @@ class Field {
                                     .focus();
                             break;
                         case "Escape":
-                            if (!field.ul.classList.contains("fadeout"))
-                                fadeOut(field.ul);
+                            fieldElement.blur();
                             break;
                         case "Enter":
                             // const modal = Modal.find(field.wrapper);
@@ -469,7 +472,7 @@ class Field {
             }
         });
         this.input[0].value = "";
-        fadeOut(this.ul);
+        // fadeOut(this.ul);
         removeChildren(this.ul, true);
         setTimeout(() => {
             field.input[0].focus();
@@ -511,7 +514,7 @@ class Field {
                 }, 50);
             } else {
                 clearTimeout(this.timer);
-                fadeOut(this.ul);
+                // fadeOut(this.ul);
                 removeChildren(this.ul, true);
             }
         }
@@ -613,91 +616,85 @@ class Field {
                 const field = Field.fields[data.x],
                     input = field.input[0],
                     ul = field.ul;
-                if (data.response[0]) {
-                    if (data.response[0].fail) {
-                        msg.new({
-                            content: data.response[0].fail,
-                            btn0listener: () => input.focus(),
-                        });
-                        input.value = input.value.trim();
-                    } else if (data.response[0].content) {
-                        let ulList = [];
-                        for (const item of field.selected.items) {
-                            ulList.push(item.id);
-                        }
+                if (data.response[0]?.fail) {
+                    msg.new({
+                        content: data.response[0].fail,
+                        btn0listener: () => input.focus(),
+                    });
+                    input.value = input.value.trim();
+                } else if (data.response[0]?.content) {
+                    let ulList = [];
+                    for (const item of field.selected.items) {
+                        ulList.push(item.id);
+                    }
 
-                        removeChildren(ul, true);
-                        for (const obj of data.response) {
-                            if (
-                                obj.id !== null &&
-                                !ulList.includes(`${obj.id}`)
-                            ) {
-                                let li = document.createElement("li"),
-                                    span = document.createElement("span");
-                                li.setAttribute("data-select", obj.id);
-                                li.setAttribute("tabindex", "0");
-                                span.textContent = obj.content;
+                    removeChildren(ul, true);
+                    for (const obj of data.response) {
+                        if (obj.id !== null && !ulList.includes(`${obj.id}`)) {
+                            let li = document.createElement("li"),
+                                span = document.createElement("span");
+                            li.setAttribute("data-select", obj.id);
+                            // li.setAttribute("tabindex", "0");
+                            span.textContent = obj.content;
+                            li.append(span);
+                            if (obj.secondary) {
+                                let span = document.createElement("span");
+                                span.textContent = `(${obj.secondary})`;
                                 li.append(span);
-                                if (obj.secondary) {
-                                    let span = document.createElement("span");
-                                    span.textContent = `(${obj.secondary})`;
-                                    li.append(span);
-                                }
-                                if (obj.role) {
-                                    const roles = obj.role.split(",");
-                                    for (const role of roles) {
-                                        let btn =
-                                            document.createElement("button");
-                                        btn.textContent = role;
-                                        btn.disabled = true;
-                                        li.append(btn);
-                                    }
-                                }
-                                if (obj.email) {
-                                    li.setAttribute("data-email", obj.email);
-                                    let email = document.createElement("span");
-                                    email.textContent = `(${obj.email})`;
-                                    span.insertAdjacentElement(
-                                        "afterend",
-                                        email
-                                    );
-                                }
-                                if (
-                                    (obj.status && obj.status === 1) ||
-                                    (obj.inchat && obj.inchat === 1)
-                                ) {
-                                    li.classList.add("offline");
-                                }
-                                ul.append(li);
                             }
+                            if (obj.role) {
+                                const roles = obj.role.split(",");
+                                for (const role of roles) {
+                                    let btn = document.createElement("button");
+                                    btn.textContent = role;
+                                    btn.disabled = true;
+                                    li.append(btn);
+                                }
+                            }
+                            if (obj.email) {
+                                li.setAttribute("data-email", obj.email);
+                                let email = document.createElement("span");
+                                email.textContent = `(${obj.email})`;
+                                span.insertAdjacentElement("afterend", email);
+                            }
+                            if (
+                                (obj.status && obj.status === 1) ||
+                                (obj.inchat && obj.inchat === 1)
+                            ) {
+                                li.classList.add("offline");
+                            }
+                            ul.append(li);
                         }
-                        highlightSearch(
-                            Array.from(ul.getElementsByTagName("span")),
-                            input.value.split(" ")
+                    }
+                    highlightSearch(
+                        Array.from(ul.getElementsByTagName("span")),
+                        input.value.split(" ")
+                    );
+                    for (const child of ul.children) {
+                        child.addEventListener("keydown", (e) =>
+                            field.selectizeKeysNav(e)
                         );
-                        for (const child of ul.children) {
-                            child.addEventListener("keydown", (e) =>
-                                field.selectizeKeysNav(e)
+                        child.addEventListener("click", (e) => {
+                            let arr = [];
+                            Array.from(
+                                e.currentTarget.getElementsByTagName("span")
+                            ).map((e) => arr.push(e.textContent));
+                            field.addSelectize(
+                                e.currentTarget.getAttribute("data-select"),
+                                arr.join(" ")
                             );
-                            child.addEventListener("click", (e) => {
-                                let arr = [];
-                                Array.from(
-                                    e.currentTarget.getElementsByTagName("span")
-                                ).map((e) => arr.push(e.textContent));
-                                field.addSelectize(
-                                    e.currentTarget.getAttribute("data-select"),
-                                    arr.join(" ")
-                                );
-                            });
-                        }
-                        ul.children.length > 0
-                            ? fadeIn(ul, {
-                                  dropdown: ul.closest(".field"),
-                              })
-                            : fadeOut(ul);
-                    } else fadeOut(ul);
-                } else fadeOut(ul);
-            } else if (data.response[0]["content"]) {
+                        });
+                    }
+                    // ul.children.length > 0
+                    //     ? fadeIn(ul, {
+                    //           dropdown: ul.closest(".field"),
+                    //       })
+                    //     : fadeOut(ul);
+                } else removeChildren(ul, true);
+                // else fadeOut(ul);
+
+                // else fadeOut(ul);
+            } else if (data.response[0]?.content) {
                 // for selects
                 let fields = Field.find({
                     type: "select",
@@ -728,7 +725,7 @@ class Field {
                             span = document.createElement("span");
                         setElementAttributes(li, [
                             ["data-select", obj.id],
-                            ["tabindex", "0"],
+                            // ["tabindex", "0"],
                         ]);
                         span.textContent = obj["content"];
                         if (loadingValue && loadingValue === obj.id) {
@@ -766,24 +763,24 @@ class Field {
                         field.input[0].value =
                             first.getElementsByTagName("span")[0].textContent;
                     }
-                    field.input[0].addEventListener("focus", () => {
-                        fadeIn(ul, {
-                            dropdown: ul.closest(".field"),
-                        });
-                        ul.children[0].focus();
-                    });
-                    field.input[0].addEventListener("click", () => {
-                        fadeIn(ul, {
-                            dropdown: ul.closest(".field"),
-                        });
-                        ul.children[0].focus();
-                    });
-                    ul.addEventListener("keydown", (e) => {
-                        switch (e.code) {
-                            case "Escape":
-                                fadeOut(ul);
-                        }
-                    });
+                    // field.input[0].addEventListener("focus", () => {
+                    //     fadeIn(ul, {
+                    //         dropdown: ul.closest(".field"),
+                    //     });
+                    //     ul.children[0].focus();
+                    // });
+                    // field.input[0].addEventListener("click", () => {
+                    //     fadeIn(ul, {
+                    //         dropdown: ul.closest(".field"),
+                    //     });
+                    //     ul.children[0].focus();
+                    // });
+                    // ul.addEventListener("keydown", (e) => {
+                    //     switch (e.code) {
+                    //         case "Escape":
+                    //             fadeOut(ul);
+                    //     }
+                    // });
                 }
             }
         } else if (data.f === 12 && data.response.id)

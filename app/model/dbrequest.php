@@ -29,7 +29,8 @@ class DBRequest
                 ->withDbName(getenv('MYSQL_ADDON_DB'))
                 ->withCharset('utf8mb4')
                 ->withUsername(getenv('MYSQL_ADDON_USER'))
-                ->withPassword(getenv('MYSQL_ADDON_PASSWORD')),
+                ->withPassword(getenv('MYSQL_ADDON_PASSWORD'))
+                ->withOptions([mysqli_report(MYSQLI_REPORT_INDEX)]),
             4
         );
     }

@@ -192,7 +192,7 @@ function fadeIn(el, options) {
         }
         setTimeout(el.classList.remove("fadeout"), 50);
         if (options && options["dropdown"]) {
-            hideOnClickOutside(el, el.closest("fieldset"));
+            hideOnClickOutside(el, el.closest(".field"));
         }
     };
     if (Array.isArray(el)) {
