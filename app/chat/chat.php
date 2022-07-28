@@ -1,12 +1,15 @@
 <?php
-class SweetChat extends FWServer
+
+namespace bopdev;
+
+trait SweetChat
 {
-    public static function addMessage(int $user, int $chat, string $message)
+    private function addMessage(int $user, int $chat, string $message)
     {
         // get last message data
-        $last = self::getLastMessage($chat);
+        $last = $this->getLastMessage($chat);
         // insert new message
-        $new = self::insertMessage($user, $chat, $message);
+        $new = $this->insertMessage($user, $chat, $message);
         return [
             "last" => $last,
             "new" => [
@@ -15,14 +18,14 @@ class SweetChat extends FWServer
                 "iduser" => $user,
                 "created" => $new["created"],
             ],
-            "users" => self::getChatUsersFd($chat),
+            "users" => $this->getChatUsersFd($chat),
         ];
     }
-    public static function chatRequest(int $from, int $to)
+    private function chatRequest(int $from, int $to)
     {
         // select $to fd,name,role
-        $recipient = self::getUserInfo($to);
-        $sender = self::getUserInfo($from);
+        $recipient = $this->getUserInfo($to);
+        $sender = $this->getUserInfo($from);
         if ($recipient) {
             return [
                 "recipient" => $recipient,
@@ -31,7 +34,7 @@ class SweetChat extends FWServer
         }
         return false;
     }
-    public static function chatRequestOK(
+    private function chatRequestOK(
         int $sender,
         int $recipient,
         ?int $chat
@@ -39,82 +42,94 @@ class SweetChat extends FWServer
         // if chat
         if (isset($chat)) {
             // insert recipient in chat
-            self::userJoins($recipient, $chat);
+            $this->userJoins($recipient, $chat);
             // refresh chat for users
         } else {
             // else create chat
-            $senderInfo = self::getUserInfo($sender);
-            $idchat = self::createChat($senderInfo["name"]);
+            $senderInfo = $this->getUserInfo($sender);
+            $idchat = $this->createChat($senderInfo["name"]);
             // insert both recipient and sender to chat
         }
     }
-    public static function chatUserLogout(int $user)
+    private function chatUserLogout(int $user)
     {
         // check every chat he's in to warn other users he's logout
         // get chat list
         $batch = [];
-        foreach (self::getChatList($user) as $chat) {
+        foreach ($this->getChatList($user) as $chat) {
             // for each chat
             // get userlist
             $batch[$chat["idchat"]]["id"] = $chat["idchat"];
-            $batch[$chat["idchat"]]["list"] = self::getUsersList(
+            $batch[$chat["idchat"]]["list"] = $this->getUsersList(
                 $chat["idchat"]
             );
             // get online users
-            $batch[$chat["idchat"]]["users"] = self::getChatUsersFd(
+            $batch[$chat["idchat"]]["users"] = $this->getChatUsersFd(
                 $chat["idchat"],
                 $user
             );
         }
         return $batch;
     }
-    public static function createChat(string $name)
+    private function createChat(string $name)
     {
-        new DBRequest([
+        $this->db->request([
             "query" => "INSERT INTO chat (name) VALUES (?);",
-            "param_type" => "s",
-            "param_content" => [$name],
+            "type" => "s",
+            "content" => [$name],
         ]);
-        $fetch = new DBRequest([
+        // $fetch = $this->db->request([
+        //     "query" => 'SELECT MAX(idchat) "idchat" FROM chat WHERE name = ?;',
+        //     "type" => "s",
+        //     "content" => [$name],
+        // ]);
+        return $this->db->request([
             "query" => 'SELECT MAX(idchat) "idchat" FROM chat WHERE name = ?;',
-            "param_type" => "s",
-            "param_content" => [$name],
-        ]);
-        return $fetch->result[0]["idchat"];
+            "type" => "s",
+            "content" => [$name],
+        ])[0]["idchat"];
     }
-    public static function createChatForUsers(int $host, array $guests)
+    private function createChatForUsers(int $host, array $guests)
     {
-        $hostInfo = self::getUserInfo($host);
-        $idchat = self::createChat($hostInfo["name"]);
-        $hostJoin = self::userJoins($host, $idchat);
+        $hostInfo = $this->getUserInfo($host);
+        $idchat = $this->createChat($hostInfo["name"]);
+        $hostJoin = $this->userJoins($host, $idchat);
         $guestJoin = [];
         foreach ($guests as $guest) {
-            $guestJoin[] = self::userJoins($guest, $idchat);
+            $guestJoin[] = $this->userJoins($guest, $idchat);
         }
         return [
             "host" => $hostJoin,
             "guests" => $guestJoin,
         ];
     }
-    public static function getChatList(int $user)
+    private function getChatList(int $user)
     {
-        $fetch = new DBRequest([
+        // $fetch = $this->db->request([
+        //     "query" => "SELECT idchat FROM user_in_chat WHERE iduser = ?;",
+        //     "type" => "i",
+        //     "content" => [$user],
+        // ]);
+        return $this->db->request([
             "query" => "SELECT idchat FROM user_in_chat WHERE iduser = ?;",
-            "param_type" => "i",
-            "param_content" => [$user],
+            "type" => "i",
+            "content" => [$user],
         ]);
-        return $fetch->result;
     }
-    public static function getChatName(int $chat)
+    private function getChatName(int $chat)
     {
-        $fetch = new DBRequest([
+        // $fetch = $this->db->request([
+        //     "query" => "SELECT name FROM chat WHERE idchat = ?;",
+        //     "type" => "i",
+        //     "content" => [$chat],
+        // ]);
+        return $this->db->request([
             "query" => "SELECT name FROM chat WHERE idchat = ?;",
-            "param_type" => "i",
-            "param_content" => [$chat],
-        ]);
-        return $fetch->result[0]["name"];
+            "type" => "i",
+            "content" => [$chat],
+        ])[0]["name"];
     }
-    public static function getChatUsersFd(int $chat, ?int $user = null)
+    private function getChatUsersFd(int $chat, ?int $user = null)
     {
         $userCheck = "";
         $paramType = "iii";
@@ -124,7 +139,7 @@ class SweetChat extends FWServer
             $paramType = "iiiii";
             $paramContent = [$chat, $chat, $user, $chat, $user];
         }
-        $fetch = new DBRequest([
+        $res = $this->db->request([
             "query" => "SELECT fd, ticket.iduser,1 as 'assignee',
                 IF((SELECT COUNT(*)
                     FROM user_in_chat
@@ -141,37 +156,45 @@ class SweetChat extends FWServer
                 WHERE idchat = ?
                 AND fd IS NOT NULL
                 AND (session.iduser != ticket.iduser OR ticket.iduser IS NULL){$userCheck}",
-            "param_type" => $paramType,
-            "param_content" => $paramContent,
+            "type" => $paramType,
+            "content" => $paramContent,
         ]);
-        return $fetch->result ?? false;
+        return $res ?? false;
     }
-    public static function getLastMessage(int $chat)
+    private function getLastMessage(int $chat)
     {
-        $fetch = new DBRequest([
+        $res = $this->db->request([
             "query" =>
-                "SELECT created,iduser FROM message WHERE idchat = ? AND created = (SELECT MAX(created) FROM message WHERE idchat = ?) GROUP BY idmessage;",
-            "param_type" => "ii",
-            "param_content" => [$chat, $chat],
+            "SELECT created,iduser FROM message WHERE idchat = ? AND created = (SELECT MAX(created) FROM message WHERE idchat = ?) GROUP BY idmessage;",
+            "type" => "ii",
+            "content" => [$chat, $chat],
         ]);
-        return $fetch->result[0] ?? false;
+        return $res[0] ?? false;
     }
-    public static function getMessages(int $chat)
+    private function getMessages(int $chat)
     {
-        $fetch = new DBRequest([
+        // $fetch = $this->db->request([
+        //     "query" => "SELECT idchat,content,created,message.iduser,GROUP_CONCAT(DISTINCT message_read_by.iduser) 'readby'
+        //                 FROM message
+        //                 LEFT JOIN message_read_by USING (idmessage)
+        //                 WHERE idchat = ?
+        //                 GROUP BY idmessage;",
+        //     "type" => "i",
+        //     "content" => [$chat],
+        // ]);
+        return $this->db->request([
             "query" => "SELECT idchat,content,created,message.iduser,GROUP_CONCAT(DISTINCT message_read_by.iduser) 'readby'
                         FROM message
                         LEFT JOIN message_read_by USING (idmessage)
                         WHERE idchat = ?
                         GROUP BY idmessage;",
-            "param_type" => "i",
-            "param_content" => [$chat],
+            "type" => "i",
+            "content" => [$chat],
         ]);
-        return $fetch->result;
     }
-    public static function getUsersList(int $chat)
+    private function getUsersList(int $chat)
     {
-        $fetch = new DBRequest([
+        $res = $this->db->request([
             "query" => "SELECT user_in_chat.iduser,image,CONCAT_WS(' ',last_name,first_name) 'name',ISNULL(session.fd) 'status',
                 CASE
                     WHEN user_in_chat.iduser = ticket.iduser THEN 'assignee'
@@ -207,49 +230,56 @@ class SweetChat extends FWServer
                 LEFT JOIN ticket ON message.idchat = ticket.idchat
                 WHERE message.idchat = ? AND (SELECT COUNT(*) FROM user_in_chat WHERE idchat = message.idchat AND iduser = message.iduser) = 0
                 GROUP BY iduser;",
-            "param_type" => "iii",
-            "param_content" => [$chat, $chat, $chat],
+            "type" => "iii",
+            "content" => [$chat, $chat, $chat],
         ]);
-        return $fetch->result;
+        return $res;
     }
-    public static function insertMessage(int $user, int $chat, string $message)
+    private function insertMessage(int $user, int $chat, string $message)
     {
-        new DBRequest([
+        $this->db->request([
             "query" =>
-                "INSERT INTO message (iduser,idchat,content,created) VALUES (?,?,?,UNIX_TIMESTAMP());",
-            "param_type" => "iis",
-            "param_content" => [$user, $chat, $message],
+            "INSERT INTO message (iduser,idchat,content,created) VALUES (?,?,?,UNIX_TIMESTAMP());",
+            "type" => "iis",
+            "content" => [$user, $chat, $message],
         ]);
-        $fetch = new DBRequest([
+        // $fetch = $this->db->request([
+        //     "query" => "SELECT idmessage,created,GROUP_CONCAT(DISTINCT message_read_by.iduser) 'readby'
+        //         FROM message
+        //         LEFT JOIN message_read_by USING (idmessage)
+        //         WHERE idchat = ? AND message.iduser = ? AND content = ? AND created = (SELECT MAX(created) FROM message) GROUP BY idmessage;",
+        //     "type" => "iis",
+        //     "content" => [$chat, $user, $message],
+        // ]);
+        return $this->db->request([
             "query" => "SELECT idmessage,created,GROUP_CONCAT(DISTINCT message_read_by.iduser) 'readby'
                 FROM message
                 LEFT JOIN message_read_by USING (idmessage)
                 WHERE idchat = ? AND message.iduser = ? AND content = ? AND created = (SELECT MAX(created) FROM message) GROUP BY idmessage;",
-            "param_type" => "iis",
-            "param_content" => [$chat, $user, $message],
-        ]);
-        return $fetch->result[0];
+            "type" => "iis",
+            "content" => [$chat, $user, $message],
+        ])[0];
     }
-    public static function insertUser(int $user, int $chat)
+    private function insertUser(int $user, int $chat)
     {
-        new DBRequest([
+        $this->db->request([
             "query" => "INSERT INTO user_in_chat (iduser,idchat) VALUES (?,?);",
-            "param_type" => "ii",
-            "param_content" => [$user, $chat],
+            "type" => "ii",
+            "content" => [$user, $chat],
         ]);
-        return self::getUsersList($chat);
+        return $this->getUsersList($chat);
     }
-    public static function removeUser(int $user, int $chat)
+    private function removeUser(int $user, int $chat)
     {
-        new DBRequest([
+        $this->db->request([
             "query" =>
-                "DELETE FROM user_in_chat WHERE iduser = ? AND idchat = ?;",
-            "param_type" => "ii",
-            "param_content" => [$user, $chat],
+            "DELETE FROM user_in_chat WHERE iduser = ? AND idchat = ?;",
+            "type" => "ii",
+            "content" => [$user, $chat],
         ]);
-        return self::getUsersList($chat);
+        return $this->getUsersList($chat);
     }
-    public static function setUsersList(array $list, int $user)
+    private function setUsersList(array $list, int $user)
     {
         $corrected = [];
         foreach ($list as $row) {
@@ -260,50 +290,50 @@ class SweetChat extends FWServer
         }
         return $corrected;
     }
-    public static function userInChat(int $user, int $chat)
+    private function userInChat(int $user, int $chat)
     {
-        $fetch = new DBRequest([
+        $res = $this->db->request([
             "query" =>
-                "SELECT COUNT(*) FROM user_in_chat WHERE iduser = ? AND idchat = ?;",
-            "param_type" => "ii",
-            "param_content" => [$user, $chat],
+            "SELECT COUNT(*) FROM user_in_chat WHERE iduser = ? AND idchat = ?;",
+            "type" => "ii",
+            "content" => [$user, $chat],
             "array" => true,
         ]);
-        return $fetch->result[0][0] > 0 ? true : false;
+        return $res[0][0] > 0 ? true : false;
     }
-    public static function userJoins(int $user, int $chat)
+    private function userJoins(int $user, int $chat)
     {
-        $inChat = self::userInChat($user, $chat);
+        $inChat = $this->userInChat($user, $chat);
         // if user in chat, get sessions not connected to it and connect them.
 
         // else join chat on all sessions and inform other users of it.
 
         return [
-            "content" => self::getMessages($chat),
+            "content" => $this->getMessages($chat),
             "id" => $chat,
             "list" => $inChat
-                ? self::getUsersList($chat)
-                : self::insertUser($user, $chat),
-            "name" => self::getChatName($chat),
-            "other" => self::getChatUsersFd($chat, $user),
-            "user" => self::getUserFd($user),
+                ? $this->getUsersList($chat)
+                : $this->insertUser($user, $chat),
+            "name" => $this->getChatName($chat),
+            "other" => $this->getChatUsersFd($chat, $user),
+            "user" => $this->getUserFd($user),
         ];
     }
-    public static function userLeaves(int $user, int $chat)
+    private function userLeaves(int $user, int $chat)
     {
-        $list = self::removeUser($user, $chat);
-        self::deleteUnused();
-        $users = self::getChatUsersFd($chat, $user);
+        $list = $this->removeUser($user, $chat);
+        $this->deleteUnused();
+        $users = $this->getChatUsersFd($chat, $user);
         return [
             "id" => $chat,
-            "deserter" => self::getUserFd($user),
+            "deserter" => $this->getUserFd($user),
             "list" => $list,
             "users" => $users,
         ];
     }
-    public static function deleteUnused()
+    private function deleteUnused()
     {
-        new DBRequest([
+        $this->db->request([
             "query" => 'DELETE chat FROM chat
             LEFT JOIN ticket USING (idchat)
             LEFT JOIN user_in_chat USING (idchat)

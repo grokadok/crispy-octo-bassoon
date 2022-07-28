@@ -1,23 +1,25 @@
 <?php
-$httpTask = __DIR__ . "/app/model/task.php";
+
+namespace bopdev;
+
 $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
-foreach ([$httpTask, $functions, $dbrequest, $chat] as $value) require_once $value;
+foreach ([$dbrequest, $functions, $chat] as $value) require_once $value;
 
 use Swoole\Coroutine as Co;
+use Swoole\Table;
 use Swoole\WebSocket\Server;
 use Swoole\Http\Request;
+use Swoole\Http\Response;
 use Swoole\WebSocket\Frame;
-// use ContextManager as CM;
-use SweetChat as SC;
+use bopdev\DBRequest;
 
-Co::set(["hook_flags" => SWOOLE_HOOK_TCP]);
+// use ContextManager as CM;
 
 class FWServer
 {
-    private $serv;
-    private $table;
+    use SweetChat;
     private $tabs = [
         // 0=>[
         //     "icon" => '',
@@ -442,14 +444,16 @@ class FWServer
         ],
     ];
 
-    public function __construct()
-    {
-        $this->table = new Swoole\Table(1024);
-        $this->table->column("user", Swoole\Table::TYPE_INT);
-        $this->table->column("session", Swoole\Table::TYPE_INT);
+    public function __construct(
+        private $db = new DBRequest(),
+        private $serv = new Server("0.0.0.0", 8080),
+        private $table = new Table(1024),
+    ) {
+        // $this->table = new Table(1024);
+        $this->table->column("user", Table::TYPE_INT);
+        $this->table->column("session", Table::TYPE_INT);
         $this->table->create();
-        $this->serv = new Server("0.0.0.0", 8080);
-        // $this->serv = new Server("0.0.0.0", 8080, SWOOLE_BASE, SWOOLE_SOCK_TCP | SWOOLE_SSL);
+        // $this->serv = new Server("0.0.0.0", 8080);
         // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
         // $this->serv->set(["open_http2_protocol" => true]);
         // $this->serv->set([
@@ -461,11 +465,11 @@ class FWServer
         // $cert = file_get_contents(__DIR__ . "/ssl.crt");
         // var_dump($cert);
         // $this->serv->set([
-        //  'worker_num' => 2, // Open 2 Worker Process
-        //  'max_request' => 4, // Each worker process max_request is set to 4 times
-        //  'document_root'   => '',
-        //  'enable_static_handler' => true,
-        //  'daemonize' => false, // daems (TRUE / FALSE)
+        //     'worker_num' => 4, // Open 4 Worker Process
+        //     //  'max_request' => 4, // Each worker process max_request is set to 4 times
+        //     //  'document_root'   => '',
+        //     //  'enable_static_handler' => true,
+        //     //  'daemonize' => false, // daems (TRUE / FALSE)
         // ]);
         $this->serv->on("Start", [$this, "onStart"]);
         $this->serv->on("WorkerStart", [$this, "onWorkStart"]);
@@ -477,29 +481,26 @@ class FWServer
         $this->serv->table = $this->table;
         $this->serv->start();
     }
-    public static function getUserInfo(int $user)
+    private function getUserInfo(int $user)
     {
-        $fetch = new DBRequest([
+        return $this->db->request([
             "query" => 'SELECT CONCAT_WS(" ",first_name,last_name) "name", role.name "role" 
                 FROM user
                 LEFT JOIN user_has_role USING (iduser)
                 LEFT JOIN role USING (idrole)
                 WHERE iduser = ?;',
-            "param_type" => "i",
-            "param_content" => [$user],
-        ]);
-        return $fetch->result[0] ?? false;
+            "type" => "i",
+            "content" => [$user],
+        ])[0] ?? false;
     }
-    public static function getUserFd(int $user)
+    private function getUserFd(int $user)
     {
-        $fetch = new DBRequest([
+        $res = $this->db->request([
             "query" => "SELECT fd FROM session WHERE iduser = ?;",
-            "param_type" => "i",
-            "param_content" => [$user],
+            "type" => "i",
+            "content" => [$user],
             "array" => true,
         ]);
-
-        $res = $fetch->result;
         $fds = [];
         if ($res) {
             foreach ($res as $fd) {
@@ -508,7 +509,66 @@ class FWServer
         }
         return $fds ?? false;
     }
-    public function login($request)
+    private function httpTask($post)
+    {
+        try {
+            $f = intval($post["f"]);
+
+            /////////////////////////////////////////////////////
+            // CHECK MAIL  (3)
+            /////////////////////////////////////////////////////
+
+            if ($f === 3 && $post["a"]) {
+                $responseType = "text/html; charset=UTF-8";
+                $email = $post["a"];
+                $res = $this->db->request([
+                    "query" => "SELECT null FROM user WHERE email = ?;",
+                    "type" => "s",
+                    "content" => [$email],
+                ]);
+                $responseContent = count($res);
+            }
+
+            /////////////////////////////////////////////////////
+            // REGISTER  (4)
+            /////////////////////////////////////////////////////
+
+            if ($f === 4) {
+                $responseType = "text/html; charset=UTF-8";
+                $email = $post["email"];
+                $password = password_hash($post["password"], PASSWORD_DEFAULT);
+                $phone = $post["phone"];
+
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $this->db->request([
+                        "query" =>
+                        "INSERT INTO user (email,password,phone_number) VALUES (?,?,?);",
+                        "type" => "sss",
+                        "content" => [$email, $password, $phone],
+                    ]);
+                    $this->db->request([
+                        "query" =>
+                        "INSERT INTO user_has_role (iduser) VALUES ((SELECT iduser FROM user WHERE email = ?));",
+                        "type" => "s",
+                        "content" => [$email],
+                    ]);
+                    $responseContent = 1;
+                }
+            }
+
+            /////////////////////////////////////////////////////
+            // FORGOTTEN PASSWORD  (5)
+            /////////////////////////////////////////////////////
+
+            return [
+                "type" => $responseType,
+                "content" => $responseContent,
+            ];
+        } catch (\Exception $e) {
+            throw $e;
+        }
+    }
+    private function login($request)
     {
         if (
             isset($request["email"]) &&
@@ -516,16 +576,15 @@ class FWServer
             $request["password"]
         ) {
             $status = 0;
-            $fetch = new DBRequest([
+            $res = $this->db->request([
                 "query" => 'SELECT iduser,password,phone_number,CONCAT_WS(" ",IFNULL(first_name,""),IFNULL(last_name,"")) "name", value, total_since_last, grand_total, timer
                 FROM user
                 LEFT JOIN pw_counter USING (iduser)
                 WHERE email = ?
                 GROUP BY iduser;',
-                "param_type" => "s",
-                "param_content" => [$request["email"]],
+                "type" => "s",
+                "content" => [$request["email"]],
             ]);
-            $res = $fetch->result;
             $data = [
                 "attempts" => $res[0]["value"],
                 "attempts_grand" => $res[0]["grand_total"],
@@ -551,22 +610,21 @@ class FWServer
                 if (
                     password_verify($request["password"], $res[0]["password"])
                 ) {
-                    new DBRequest([
+                    $this->db->request([
                         "query" => 'INSERT INTO pw_counter (iduser) VALUES (?)
                         ON DUPLICATE KEY UPDATE value = 0, total_since_last = 0;',
-                        "param_type" => "i",
-                        "param_content" => [$iduser],
+                        "type" => "i",
+                        "content" => [$iduser],
                     ]);
 
                     // roles
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT idrole FROM user_has_role WHERE iduser = ?;",
-                        "param_type" => "i",
-                        "param_content" => [$iduser],
+                        "type" => "i",
+                        "content" => [$iduser],
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     array_map(function ($value) use (&$data) {
                         $data["role"][] = $value[0];
                     }, $res);
@@ -578,51 +636,47 @@ class FWServer
                     } else {
                         $user = $this->serv->getClientInfo($request["fd"]);
                         $ip = $user["remote_ip"] . ":" . $user["remote_port"];
-                        new DBRequest([
+                        $this->db->request([
                             "query" => "INSERT INTO session (iduser,fd,ip,refresh_time,total_time)
                                 VALUES (?,?,?,UNIX_TIMESTAMP(),UNIX_TIMESTAMP());",
-                            "param_type" => "iis",
-                            "param_content" => [$iduser, $request["fd"], $ip],
+                            "type" => "iis",
+                            "content" => [$iduser, $request["fd"], $ip],
                         ]);
-                        $fetch = new DBRequest([
+                        $session = $this->db->request([
                             "query" =>
                             "SELECT MAX(idsession) 'idsession' FROM session WHERE iduser=?;",
-                            "param_type" => "i",
-                            "param_content" => [$iduser],
-                        ]);
-                        $session = $fetch->result[0]["idsession"];
+                            "type" => "i",
+                            "content" => [$iduser],
+                        ])[0]["idsession"];
                         $status = 1;
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" =>
                             "SELECT idchat FROM user_in_chat WHERE iduser = ?;",
-                            "param_type" => "i",
-                            "param_content" => [$iduser],
+                            "type" => "i",
+                            "content" => [$iduser],
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         array_map(function ($value) use (&$data) {
                             $data["chat"][] = $value[0];
                         }, $res);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" =>
                             "SELECT theme,solar,animations FROM options WHERE iduser = ?;",
-                            "param_type" => "i",
-                            "param_content" => [$iduser],
+                            "type" => "i",
+                            "content" => [$iduser],
                         ]);
-                        $res = $fetch->result;
                         $data["options"] = $res[0] ?? null;
 
                         // if active tab set, get this tab, else get default tab (id1)
                         $data["active_tab"] = isset($request["active"]) ? $request["active"] : 1;
                         // get tabs (if not admin, admin as all tabs by default, or has he?)
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" =>
                             "SELECT idtab FROM user_has_role LEFT JOIN role_has_tab USING (idrole) WHERE iduser = ? GROUP BY idtab;",
-                            "param_type" => "i",
-                            "param_content" => [$iduser],
+                            "type" => "i",
+                            "content" => [$iduser],
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         if ($res[0][0]) {
                             foreach ($res as $tab) {
                                 if ($data["active_tab"] === $tab[0]) {
@@ -670,11 +724,11 @@ class FWServer
                         $data["attempts_grand"] === null
                         ? 1
                         : intval($data["attempts_grand"]) + 1;
-                    new DBRequest([
+                    $this->db->request([
                         "query" => 'INSERT INTO pw_counter (iduser) VALUES (?)
                       ON DUPLICATE KEY UPDATE value = ?, total_since_last = ?, grand_total = ?;',
-                        "param_type" => "iiii",
-                        "param_content" => [$iduser, $val, $tot, $grd],
+                        "type" => "iiii",
+                        "content" => [$iduser, $val, $tot, $grd],
                     ]);
                     $data = $val;
                 }
@@ -690,7 +744,7 @@ class FWServer
         ];
     }
     public function onClose(
-        Swoole\WebSocket\Server $server,
+        Server $server,
         int $fd,
         int $reactorId
     ) {
@@ -700,13 +754,13 @@ class FWServer
         $iduser = $server->table->get($fd, "user");
         if ($session) {
             echo "delete session: " . $session . PHP_EOL;
-            new DBRequest([
+            $this->db->request([
                 "query" => "DELETE FROM session WHERE idsession = ?",
-                "param_type" => "i",
-                "param_content" => [$session],
+                "type" => "i",
+                "content" => [$session],
             ]);
             $this->serv->table->del($fd);
-            foreach (SC::chatUserLogout($iduser) as $chat) {
+            foreach ($this->chatUserLogout($iduser) as $chat) {
                 foreach ($chat["users"] as $chatUser) {
                     if ($chatUser["inchat"] === 1) {
                         $this->serv->push(
@@ -734,8 +788,8 @@ class FWServer
         swoole_set_process_name("swoole_process_server_manager");
     }
     public function onMessage(
-        Swoole\WebSocket\Server $server,
-        Swoole\WebSocket\Frame $frame
+        Server $server,
+        Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
             echo "login request from socket {$frame->fd}" . PHP_EOL;
@@ -783,7 +837,7 @@ class FWServer
                     ]);
                     $server->push($frame->fd, $message);
                 }
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 echo "Exception reçue : " . $e->getMessage() . PHP_EOL;
                 $response = json_encode([
                     "response" => [
@@ -797,16 +851,16 @@ class FWServer
         }
     }
     public function onOpen(
-        Swoole\WebSocket\Server $server,
-        Swoole\Http\Request $request
+        Server $server,
+        Request $request
     ) {
         $user = $server->getClientInfo($request->fd);
         echo "connection {$request->fd} open for {$user["remote_ip"]}:{$user["remote_port"]}" .
             PHP_EOL;
     }
     public function onRequest(
-        Swoole\Http\Request $request,
-        Swoole\Http\Response $response
+        Request $request,
+        Response $response
     ) {
         $response->header("Server", "SeaServer");
         $open_basedir = __DIR__ . "/public";
@@ -837,7 +891,7 @@ class FWServer
             }
         } else {
             if ($server["request_method"] === "POST") {
-                $res = task($request->post);
+                $res = $this->httpTask($request->post);
                 $response->header("Content-Type", $res["type"] ?? "");
                 $response->end(json_encode($res["content"]) ?? "");
             } elseif ($request_uri === "/" || $request_uri === "/index.php") {
@@ -855,10 +909,31 @@ class FWServer
         echo "master_pid: {$serv->master_pid}" . PHP_EOL;
         echo "manager_pid: {$serv->manager_pid}" . PHP_EOL;
         echo "########" . PHP_EOL . PHP_EOL;
-        new DBRequest([
+
+        // DB query BENCHMARK
+        // $s = microtime(true);
+        // Co\run(
+        //     function () {
+        //         for ($n = 100000; $n--;) {
+        //             Co::create(
+        //                 function () {
+        //                     $this->db->request([
+        //                         'query' => 'SELECT ? + ?',
+        //                         'type' => 'ii',
+        //                         'content' => [mt_rand(1, 100), mt_rand(1, 100)]
+        //                     ]);
+        //                 }
+        //             );
+        //         }
+        //     }
+        // );
+        // $s = microtime(true) - $s;
+        // echo PHP_EOL . 'Use ' . $s . 's for 100000 queries' . PHP_EOL . PHP_EOL;
+
+        $this->db->request([
             "query" => "DELETE FROM session;",
         ]);
-        new DBRequest([
+        $this->db->request([
             "query" => "ALTER TABLE session AUTO_INCREMENT=1; ;",
         ]);
     }
@@ -874,7 +949,7 @@ class FWServer
         //     }
         // });
     }
-    public function wsTask(array $task)
+    private function wsTask(array $task)
     {
         try {
             $f = $task["f"] ?? "";
@@ -1024,8 +1099,8 @@ class FWServer
                 // if entreprise/lead tech, show tickets related to entreprise, ability to edit/assign
                 // $query =
                 // if technicien, show tickets related to entreprise assigned to him or unassigned, ability to edit
-                $fetch = new DBRequest(["query" => $query]);
-                $table_conf["data"] = $fetch->result;
+                $table_conf["data"] = $this->db->request(["query" => $query]);
+                // $table_conf["data"] = $fetch->result;
                 return $table_conf;
             }
 
@@ -1049,21 +1124,21 @@ class FWServer
                     // contacts' email
                     $name_where = [];
                     $corp_where = [];
-                    $param_content = [];
+                    $content = [];
                     foreach ($search as $word) {
                         $name_where[] =
                             "(last_name LIKE ? OR first_name LIKE ? OR email LIKE ?)";
                         $corp_where[] = "(name LIKE ? OR email LIKE ?)";
-                        array_splice($param_content, 3 * $i, 0, [
+                        array_splice($content, 3 * $i, 0, [
                             "%{$word}%",
                             "%{$word}%",
                             "%{$word}%",
                         ]);
-                        array_push($param_content, "%{$word}%", "%{$word}%");
+                        array_push($content, "%{$word}%", "%{$word}%");
                     }
                     $name_where = implode(" AND ", $name_where);
                     $corp_where = implode(" AND ", $corp_where);
-                    $param_type = str_repeat("s", count($param_content));
+                    $type = str_repeat("s", count($content));
                     $request = [
                         "query" =>
                         'SELECT CONCAT_WS(" ",last_name,first_name) AS "content", email, CONCAT("u_",iduser) AS "id", GROUP_CONCAT(DISTINCT role.short) AS "role"
@@ -1082,63 +1157,58 @@ class FWServer
                             ' AND email IS NOT NULL
                         GROUP BY idcorp
                         LIMIT 100;',
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 } elseif (intval($task["s"]) === 1 && $search) {
                     // tags
                     $where = [];
-                    $param_content = [];
+                    $content = [];
                     foreach ($search as $word) {
                         $where[] = "name LIKE ?";
-                        $param_content[] = "%{$word}%";
+                        $content[] = "%{$word}%";
                     }
-                    $param_type = str_repeat("s", count($param_content));
+                    $type = str_repeat("s", count($content));
                     $where = implode(" AND ", $where);
                     $request = [
                         "query" =>
                         'SELECT name AS "content", idtag AS "id" FROM tag WHERE ' .
                             $where .
                             " ORDER BY name;",
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 } elseif (intval($task["s"]) === 2 && $search) {
                     // companies
                     $where = [];
-                    $param_content = [];
+                    $content = [];
                     foreach ($search as $word) {
                         $where[] = "name LIKE ?";
-                        $param_content[] = "%{$word}%";
+                        $content[] = "%{$word}%";
                     }
-                    $param_type = str_repeat("s", count($param_content));
+                    $type = str_repeat("s", count($content));
                     $where = implode(" AND ", $where);
                     $request = [
                         "query" =>
                         'SELECT name AS "content",idcorp AS "id" FROM corp WHERE ' .
                             $where .
                             " ORDER BY name;",
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 } elseif (intval($task["s"]) === 3 && $search) {
                     // employees
                     $where = [];
-                    $param_content = [];
+                    $content = [];
                     foreach ($search as $word) {
                         $where[] = "(last_name LIKE ? OR first_name LIKE ?)";
-                        array_splice($param_content, 2 * $i++, 0, [
+                        array_splice($content, 2 * $i++, 0, [
                             "%{$word}%",
                             "%{$word}%",
                         ]);
-                        // array_push(
-                        //     $param_content,
-                        //     "%{$word}%",
-                        //     "%{$word}%"
-                        // );
                     }
                     $where = implode(" AND ", $where);
-                    $param_type = str_repeat("s", count($param_content));
+                    $type = str_repeat("s", count($content));
                     $request = [
                         "query" =>
                         'SELECT CONCAT_WS(" ",last_name,first_name) AS "content", iduser as "id",GROUP_CONCAT(DISTINCT role.short) AS "role"
@@ -1149,21 +1219,21 @@ class FWServer
                             $where .
                             ' AND idrole != 10
                         GROUP BY iduser',
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 } elseif (intval($task["s"]) === 4 && $search) {
                     // groups & users/group
                     $name_where = [];
                     $fname_where = [];
-                    $param_content = [];
+                    $content = [];
                     foreach ($search as $word) {
                         $name_where[] = "name LIKE ?";
                         $fname_where[] =
                             "(last_name LIKE ? OR first_name LIKE ? OR user_group.name LIKE ?)";
-                        array_splice($param_content, $i++, 0, "%{$word}%");
+                        array_splice($content, $i++, 0, "%{$word}%");
                         array_push(
-                            $param_content,
+                            $content,
                             "%{$word}%",
                             "%{$word}%",
                             "%{$word}%"
@@ -1171,7 +1241,7 @@ class FWServer
                     }
                     $name_where = implode(" AND ", $name_where);
                     $fname_where = implode(" AND ", $fname_where);
-                    $param_type = str_repeat("s", count($param_content));
+                    $type = str_repeat("s", count($content));
                     $request = [
                         "query" =>
                         'SELECT name AS "content", CONCAT("g_",idgroup) AS "id", NULL AS "role", NULL AS "secondary"
@@ -1191,8 +1261,8 @@ class FWServer
                             $fname_where .
                             ' AND idrole < 10
                         GROUP BY iduser;',
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 } elseif (intval($task["s"]) === 5) {
                     // ticket type
@@ -1215,30 +1285,30 @@ class FWServer
                 } elseif (intval($task["s"]) === 8 && $search) {
                     // chat users
                     $name_where = [];
-                    $param_content = [];
+                    $content = [];
                     $chat_where = "";
-                    $param_type = "";
+                    $type = "";
                     if (isset($task["c"])) {
                         $chat_where =
                             ',IF((SELECT COUNT(*) FROM user_in_chat WHERE iduser = user.iduser AND idchat = ?)>0,1,0) "inchat"';
-                        $param_content[] = $task["c"];
-                        $param_type = "i";
+                        $content[] = $task["c"];
+                        $type = "i";
                     }
                     foreach ($search as $word) {
                         $name_where[] =
                             "(last_name LIKE ? OR first_name LIKE ?)";
-                        array_splice($param_content, 2 * $i + 1, 0, [
+                        array_splice($content, 2 * $i + 1, 0, [
                             "%{$word}%",
                             "%{$word}%",
                         ]);
                     }
                     $name_where = implode(" AND ", $name_where);
-                    $param_type .=
+                    $type .=
                         str_repeat(
                             "s",
-                            count($param_content) - (isset($task["c"]) ? 1 : 0)
+                            count($content) - (isset($task["c"]) ? 1 : 0)
                         ) . "i";
-                    $param_content[] = $iduser;
+                    $content[] = $iduser;
 
                     $request = [
                         "query" => "SELECT iduser 'id',CONCAT_WS(' ',last_name,first_name) 'content',GROUP_CONCAT(DISTINCT role.short) AS 'role',ISNULL(fd) 'status'{$chat_where}
@@ -1249,13 +1319,13 @@ class FWServer
                         WHERE {$name_where} AND idrole != 10 AND idrole != 11 AND iduser != ?
                         GROUP BY iduser
                         ORDER BY iduser, last_name, first_name;",
-                        "param_type" => $param_type,
-                        "param_content" => $param_content,
+                        "type" => $type,
+                        "content" => $content,
                     ];
                 }
-                $fetch = new DBRequest($request);
-                return count($fetch->result) > 0
-                    ? $fetch->result
+                $res = $this->db->request($request);
+                return count($res) > 0
+                    ? $res
                     : ["content" => []];
             }
 
@@ -1304,12 +1374,12 @@ class FWServer
                       FROM ticket
                       WHERE idstate != 5 AND about = ?
                       GROUP BY idticket;",
-                        "param_type" => "i",
-                        "param_content" => [$idclient],
+                        "type" => "i",
+                        "content" => [$idclient],
                     ];
-                    $fetch = new DBRequest($request);
-                    if (is_array($fetch->result) && count($fetch->result) > 0) {
-                        print_r($fetch->result);
+                    $res = $this->db->request($request);
+                    if (is_array($res) && count($res) > 0) {
+                        print_r($res);
                         return [
                             "data" => $data,
                             "confirm" => [
@@ -1320,13 +1390,12 @@ class FWServer
                     }
                 }
                 $idass = intval(substr($assignee, 2));
-                // $res = $fetch->result;
                 if (str_starts_with($assignee, "u_")) {
-                    $fetch = new DBRequest([
+                    $this->db->request([
                         "query" => 'INSERT INTO ticket (subject,description,about,isfrom,iduser,idgroup,idstate,idpriority)
                               VALUES (?,?,?,?,?,(SELECT idgroup FROM user_in_group WHERE iduser = ?),?,?);',
-                        "param_type" => "ssiiiiii",
-                        "param_content" => [
+                        "type" => "ssiiiiii",
+                        "content" => [
                             $subject,
                             $description,
                             $idclient,
@@ -1338,11 +1407,11 @@ class FWServer
                         ],
                     ]);
                 } elseif (str_starts_with($assignee, "g_")) {
-                    $fetch = new DBRequest([
+                    $this->db->request([
                         "query" => 'INSERT INTO ticket (subject,description,about,isfrom,idgroup,idstate,idpriority)
                               VALUES (?,?,?,?,?,?,?);',
-                        "param_type" => "ssiiiii",
-                        "param_content" => [
+                        "type" => "ssiiiii",
+                        "content" => [
                             $subject,
                             $description,
                             $idclient,
@@ -1353,27 +1422,26 @@ class FWServer
                         ],
                     ]);
                 }
-                $fetch = new DBRequest([
+                $ticket = $this->db->request([
                     "query" =>
                     'SELECT MAX(idticket) "idticket" FROM ticket WHERE about = ? AND isfrom = ? AND subject = ?',
-                    "param_type" => "iis",
-                    "param_content" => [$idclient, $iduser, $subject],
+                    "type" => "iis",
+                    "content" => [$idclient, $iduser, $subject],
                 ]);
-                $ticket = $fetch->result;
                 $idticket = $ticket[0]["idticket"];
                 $chatName = "T#" . $idticket;
-                $idchat = SC::createChat($chatName);
-                new DBRequest([
+                $idchat = $this->createChat($chatName);
+                $this->db->request([
                     "query" =>
                     "UPDATE ticket SET idchat = ? WHERE idticket = ?",
-                    "param_type" => "ii",
-                    "param_content" => [$idchat, $idticket],
+                    "type" => "ii",
+                    "content" => [$idchat, $idticket],
                 ]);
-                $fetch = new DBRequest([
+                $this->db->request([
                     "query" =>
                     "INSERT INTO ticket_has_type (idticket,idticket_type) VALUES (?,?);",
-                    "param_type" => "ii",
-                    "param_content" => [$idticket, $types],
+                    "type" => "ii",
+                    "content" => [$idticket, $types],
                 ]);
                 // later tickets may have more than one type :
 
@@ -1385,23 +1453,23 @@ class FWServer
                 // }
                 if ($tags) {
                     foreach ($tags as $tag) {
-                        $fetch = new DBRequest([
+                        $this->db->request([
                             "query" =>
                             "INSERT INTO ticket_has_tag (idticket,idtag) VALUES (?,?);",
-                            "param_type" => "ii",
-                            "param_content" => [$idticket, intVal($tag)],
+                            "type" => "ii",
+                            "content" => [$idticket, intVal($tag)],
                         ]);
                     }
                 }
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" => 'SELECT idticket AS "data-select", subject AS "content", ? AS "success"
                   FROM ticket
                   WHERE idticket = ?;',
-                    "param_type" => "si",
-                    "param_content" => [$user_success_message, $idticket],
+                    "type" => "si",
+                    "content" => [$user_success_message, $idticket],
                 ]);
-                $fetch->result[0]["tables"] = $linked_tables;
-                return $fetch->result[0];
+                $res[0]["tables"] = $linked_tables;
+                return $res[0];
             }
 
             /////////////////////////////////////////////////////
@@ -1430,11 +1498,11 @@ class FWServer
                     'La création du contact n\'a pu aboutir, merci de réessayer ultérieurement.';
 
                 // create client
-                new DBRequest([
+                $this->db->request([
                     "query" =>
                     "INSERT INTO user (first_name,last_name,email,phone_number,address_1,address_2,address_3,image) VALUES (?,?,?,?,?,?,?,?);",
-                    "param_type" => "ssssssss",
-                    "param_content" => [
+                    "type" => "ssssssss",
+                    "content" => [
                         $first_name,
                         $last_name,
                         $email,
@@ -1446,26 +1514,25 @@ class FWServer
                     ],
                 ]);
                 // get iduser
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" => "SELECT iduser FROM user WHERE email=?;",
-                    "param_type" => "s",
-                    "param_content" => [$email],
+                    "type" => "s",
+                    "content" => [$email],
                 ]);
-                $res = $fetch->result;
                 $iduser = $res[0]["iduser"];
                 // set role = 11 (client)
-                new DBRequest([
+                $this->db->request([
                     "query" =>
                     "INSERT INTO user_has_role (iduser,idrole) VALUES (?,11);",
-                    "param_type" => "i",
-                    "param_content" => [$iduser],
+                    "type" => "i",
+                    "content" => [$iduser],
                 ]);
                 if ($corp !== null) {
-                    new DBRequest([
+                    $this->db->request([
                         "query" =>
                         "INSERT INTO user_is_from (iduser,idcorp) VALUES (?,?);",
-                        "param_type" => "ii",
-                        "param_content" => [
+                        "type" => "ii",
+                        "content" => [
                             $iduser,
                             intval($corp["data-select"]),
                         ],
@@ -1473,33 +1540,24 @@ class FWServer
                 }
                 if ($tags !== null) {
                     foreach ($tags as $tag) {
-                        new DBRequest([
+                        $this->db->request([
                             "query" =>
                             "INSERT INTO user_has_tag (iduser, idtag) VALUES (?, ?);",
-                            "param_type" => "ii",
-                            "param_content" => [
+                            "type" => "ii",
+                            "content" => [
                                 $iduser,
                                 intval($tag["data-select"]),
                             ],
                         ]);
                     }
                 }
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" =>
                     'SELECT iduser AS "id",CONCAT_WS(" ",last_name,first_name) AS "name",email, ? AS "success" FROM user WHERE iduser = ?;',
-                    "param_type" => "ss",
-                    "param_content" => [$user_success_message, $iduser],
+                    "type" => "ss",
+                    "content" => [$user_success_message, $iduser],
                 ]);
-                return $fetch->result[0];
-                // } catch (Exception $e) {
-                //     echo "Exception reçue : ", $e->getMessage(), "\n";
-                //     return [
-                //         "data" => $data,
-                //         "error" => $e->getMessage(),
-                //         "fail" => $user_error_message,
-                //     ];
-                // }
-                // exit();
+                return $res[0];
             }
 
             /////////////////////////////////////////////////////
@@ -1523,11 +1581,11 @@ class FWServer
                     'La création de l\'entreprise n\'a pu aboutir, merci de réessayer ultérieurement.';
 
                 // create corp
-                $fetch = new DBRequest([
+                $this->db->request([
                     "query" =>
                     "INSERT INTO corp (name,email,phone_number,address_1,address_2,address_3,img) VALUES (?,?,?,?,?,?,?);",
-                    "param_type" => "sssssss",
-                    "param_content" => [
+                    "type" => "sssssss",
+                    "content" => [
                         $name,
                         $email,
                         $phone_number,
@@ -1540,11 +1598,11 @@ class FWServer
                 // add tags
                 if ($tags !== null) {
                     foreach ($tags as $tag) {
-                        $fetch = new DBRequest([
+                        $this->db->request([
                             "query" =>
                             "INSERT INTO corp_has_tag (idcorp, idtag) VALUES ((SELECT idcorp FROM corp WHERE name = ?), ?);",
-                            "param_type" => "si",
-                            "param_content" => [
+                            "type" => "si",
+                            "content" => [
                                 $name,
                                 intval($tag["data-select"]),
                             ],
@@ -1554,22 +1612,20 @@ class FWServer
                 if ($employees !== null) {
                     foreach ($employees as $employee) {
                         $iduser = intval($employee["data-select"]);
-                        $query =
-                            "INSERT INTO user_is_from (iduser, idcorp) VALUES (?, (SELECT idcorp FROM corp WHERE name = ?))";
-                        $fetch = new DBRequest([
-                            "query" => $query,
-                            "param_type" => "is",
-                            "param_content" => [$iduser, $name],
+                        $this->db->request([
+                            "query" => "INSERT INTO user_is_from (iduser, idcorp) VALUES (?, (SELECT idcorp FROM corp WHERE name = ?))",
+                            "type" => "is",
+                            "content" => [$iduser, $name],
                         ]);
                     }
                 }
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" =>
                     'SELECT name, idcorp AS "id", email, ? AS "success" FROM corp WHERE name = ?',
-                    "param_type" => "ss",
-                    "param_content" => [$user_success_message, $name],
+                    "type" => "ss",
+                    "content" => [$user_success_message, $name],
                 ]);
-                return $fetch->result[0];
+                return $res[0];
             }
 
             /////////////////////////////////////////////////////
@@ -1579,17 +1635,17 @@ class FWServer
             if ($f === 12) {
                 $user_error_message =
                     'La création du tag n\'a pu aboutir, merci de réessayer ultérieurement.';
-                $fetch = new DBRequest([
+                $this->db->request([
                     "query" => "INSERT INTO tag (name) VALUES (?);",
-                    "param_type" => "s",
-                    "param_content" => [$task["t"]],
+                    "type" => "s",
+                    "content" => [$task["t"]],
                 ]);
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" => 'SELECT idtag AS "id" FROM tag WHERE name = ?;',
-                    "param_type" => "s",
-                    "param_content" => [$task["t"]],
+                    "type" => "s",
+                    "content" => [$task["t"]],
                 ]);
-                return $fetch->result[0];
+                return $res[0];
             }
 
             /////////////////////////////////////////////////////
@@ -1678,23 +1734,23 @@ class FWServer
                         LEFT JOIN corp userco ON user_is_from.idcorp = userco.idcorp
                         WHERE idticket=?
                         GROUP BY idticket;';
-                    $fetch = new DBRequest([
+                    $fetch = $this->db->request([
                         "query" => $query,
-                        "param_type" => "i",
-                        "param_content" => [$task["i"]],
+                        "type" => "i",
+                        "content" => [$task["i"]],
                     ]);
                     $res = [
-                        "ticket" => json_decode($fetch->result[0]["ticket"]),
+                        "ticket" => json_decode($fetch[0]["ticket"]),
                         "assignee" => json_decode(
-                            $fetch->result[0]["assignee"]
+                            $fetch[0]["assignee"]
                         ),
-                        "client" => json_decode($fetch->result[0]["client"]),
-                        "corp" => json_decode($fetch->result[0]["corp"]),
+                        "client" => json_decode($fetch[0]["client"]),
+                        "corp" => json_decode($fetch[0]["corp"]),
                         "chat" => [
-                            "id" => $fetch->result[0]["chat"],
+                            "id" => $fetch[0]["chat"],
                         ],
                     ];
-                    $chatData = SC::userJoins($iduser, $res["chat"]["id"]);
+                    $chatData = $this->userJoins($iduser, $res["chat"]["id"]);
 
                     // send user chat data
                     if ($chatData["user"]) {
@@ -1707,7 +1763,7 @@ class FWServer
                                         "id" => $chatData["id"],
                                         "content" => $chatData["content"],
                                         "name" => $chatData["name"],
-                                        "participants" => SC::setUsersList(
+                                        "participants" => $this->setUsersList(
                                             $chatData["list"],
                                             $iduser
                                         ),
@@ -1725,7 +1781,7 @@ class FWServer
                                 "chat" => [
                                     "id" => $chatData["id"],
                                     "name" => $chatData["name"],
-                                    "participants" => SC::setUsersList(
+                                    "participants" => $this->setUsersList(
                                         $chatData["list"],
                                         $row["iduser"]
                                     ),
@@ -1746,7 +1802,7 @@ class FWServer
                 $task["i"]
                 // && isset($task["z"])
             ) {
-                $chatData = SC::userJoins($iduser, $task["i"]);
+                $chatData = $this->userJoins($iduser, $task["i"]);
                 // send user chat data
                 $user = $chatData["user"] ?? [$fd];
                 foreach ($user as $session) {
@@ -1759,7 +1815,7 @@ class FWServer
                                 "id" => $chatData["id"],
                                 "content" => $chatData["content"],
                                 "name" => $chatData["name"],
-                                "participants" => SC::setUsersList(
+                                "participants" => $this->setUsersList(
                                     $chatData["list"],
                                     $iduser
                                 ),
@@ -1776,7 +1832,7 @@ class FWServer
                             "f" => 19,
                             "chat" => [
                                 "id" => $task["i"],
-                                "participants" => SC::setUsersList(
+                                "participants" => $this->setUsersList(
                                     $chatData["list"],
                                     $row["iduser"]
                                 ),
@@ -1792,7 +1848,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             if ($f === 15 && $task["i"]) {
-                $fds = SC::getChatUsersFd($task["i"], $iduser);
+                $fds = $this->getChatUsersFd($task["i"], $iduser);
                 foreach ($fds as $fd) {
                     $this->serv->push(
                         $fd["fd"],
@@ -1816,7 +1872,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             if ($f === 16 && $task["i"] && $task["m"]) {
-                $mess = SC::addMessage($iduser, $task["i"], $task["m"]);
+                $mess = $this->addMessage($iduser, $task["i"], $task["m"]);
                 $users = $mess["users"];
                 unset($mess["users"]);
                 foreach ($users as $user) {
@@ -1839,7 +1895,7 @@ class FWServer
             if ($f === 17) {
                 if (isset($task["i"])) {
                     $sender = self::getUserInfo($iduser);
-                    $chat = $task["c"] ?? SC::createChat("new");
+                    $chat = $task["c"] ?? $this->createChat("new");
                     foreach ($task["i"] as $recipient) {
                         $recipient = self::getUserFd($recipient);
                         if ($recipient) {
@@ -1878,9 +1934,9 @@ class FWServer
                     // response, j=0:refusal,j=1:postpone,j=2:accept
                     if ($task["j"] === 2) {
                         // if getusersinchat false, insert task['u'] in chat
-                        if (!SC::getChatUsersFd($task["c"])) {
+                        if (!$this->getChatUsersFd($task["c"])) {
                             // insert host in chat
-                            $chatData = SC::userJoins($task["u"], $task["c"]);
+                            $chatData = $this->userJoins($task["u"], $task["c"]);
                             foreach ($chatData["user"] as $session) {
                                 $this->serv->push(
                                     $session,
@@ -1890,7 +1946,7 @@ class FWServer
                                             "id" => $chatData["id"],
                                             "content" => $chatData["content"],
                                             "name" => $chatData["name"],
-                                            "participants" => SC::setUsersList(
+                                            "participants" => $this->setUsersList(
                                                 $chatData["list"],
                                                 $task["u"]
                                             ),
@@ -1901,7 +1957,7 @@ class FWServer
                         }
 
                         // if (isset($task["c"])) {
-                        $chatData = SC::userJoins($iduser, $task["c"]);
+                        $chatData = $this->userJoins($iduser, $task["c"]);
                         $user = $chatData["user"] ?? [$fd];
                         foreach ($user as $session) {
                             $this->serv->push(
@@ -1912,7 +1968,7 @@ class FWServer
                                         "id" => $chatData["id"],
                                         "content" => $chatData["content"],
                                         "name" => $chatData["name"],
-                                        "participants" => SC::setUsersList(
+                                        "participants" => $this->setUsersList(
                                             $chatData["list"],
                                             $iduser
                                         ),
@@ -1928,7 +1984,7 @@ class FWServer
                                     "f" => 19,
                                     "chat" => [
                                         "id" => $chatData["id"],
-                                        "participants" => SC::setUsersList(
+                                        "participants" => $this->setUsersList(
                                             $chatData["list"],
                                             $row["iduser"]
                                         ),
@@ -1936,64 +1992,6 @@ class FWServer
                                 ])
                             );
                         }
-                        // }
-                        // else {
-                        //     // else create chat
-                        //     $privateChat = SC::createChatForUsers(
-                        //         $iduser,
-                        //         $task["u"],
-                        //     );
-                        //     // send host chat data
-                        //     $this->serv->push(
-                        //         $privateChat["host"]["user"],
-                        //         json_encode([
-                        //             "f" => 14,
-                        //             "chat" => [
-                        //                 "id" => $privateChat["host"]["id"],
-                        //                 "content" =>
-                        //                     $privateChat["host"]["content"],
-                        //                 "name" => $privateChat["host"]["name"],
-                        //                 "participants" => SC::setUsersList(
-                        //                     $privateChat["host"]["list"],
-                        //                     $task["u"]
-                        //                 ),
-                        //             ],
-                        //         ])
-                        //     );
-                        //     // send guest chat data
-                        //     $this->serv->push(
-                        //         $privateChat["guest"]["user"],
-                        //         json_encode([
-                        //             "f" => 14,
-                        //             "chat" => [
-                        //                 "id" => $privateChat["guest"]["id"],
-                        //                 "content" =>
-                        //                     $privateChat["guest"]["content"],
-                        //                 "name" => $privateChat["guest"]["name"],
-                        //                 "participants" => SC::setUsersList(
-                        //                     $privateChat["guest"]["list"],
-                        //                     $iduser
-                        //                 ),
-                        //             ],
-                        //         ])
-                        //     );
-                        //     // send host userlist update
-                        //     foreach ($privateChat["guest"]["other"] as $row) {
-                        //         $this->serv->push(
-                        //             $row["fd"],
-                        //             json_encode([
-                        //                 "f" => 19,
-                        //                 "chat" => [
-                        //                     "id" => $privateChat["guest"]["id"],
-                        //                     "participants" => SC::setUsersList(
-                        //                         $privateChat["guest"]["list"],
-                        //                         $row["iduser"]
-                        //                     ),
-                        //                 ],
-                        //             ])
-                        //         );
-                        //     }
-                        // }
                     } elseif ($task["j"] === 0) {
                         $type = "refused";
                     } elseif ($task["j"] === 1) {
@@ -2001,7 +1999,7 @@ class FWServer
                     }
                     $users = [
                         ...$this->getUserFd($task["u"]),
-                        ...array_filter(SC::getUserFd($iduser), function (
+                        ...array_filter($this->getUserFd($iduser), function (
                             $v
                         ) use ($fd) {
                             return $v !== $fd;
@@ -2034,7 +2032,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             if ($f === 19 && $task["i"]) {
-                $chatData = SC::userLeaves($iduser, $task["i"]);
+                $chatData = $this->userLeaves($iduser, $task["i"]);
                 foreach ($chatData["deserter"] as $deserter) {
                     $this->serv->push(
                         $deserter,
@@ -2055,7 +2053,7 @@ class FWServer
                                 "f" => 19,
                                 "chat" => [
                                     "id" => $task["i"],
-                                    "participants" => SC::setUsersList(
+                                    "participants" => $this->setUsersList(
                                         $chatData["list"],
                                         $row["iduser"]
                                     ),
@@ -2073,14 +2071,13 @@ class FWServer
 
             if ($f === 20 && $task["i"]) {
                 // check if iduser has right to load tab
-                $fetch = new DBRequest([
+                $res = $this->db->request([
                     "query" =>
                     "SELECT COUNT(*) FROM user_has_role LEFT JOIN role_has_tab USING (idrole) WHERE iduser = ? AND idtab = ?;",
-                    "param_type" => "ii",
-                    "param_content" => [$iduser, $task["i"]],
+                    "type" => "ii",
+                    "content" => [$iduser, $task["i"]],
                     "array" => true,
                 ]);
-                $res = $fetch->result;
                 if ($res[0][0] > 0) {
                     return $this->tabs[$task["i"]];
                 } else {
@@ -2098,7 +2095,7 @@ class FWServer
             if ($f === 2501) {
                 if ($task["t"] === 0) {
                     // get tickets data
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => 'SELECT idticket, iduser, idgroup, isfrom, about, subject, idstate, idpriority, modified, created
                     FROM ticket
                     WHERE idstate!=5
@@ -2106,7 +2103,6 @@ class FWServer
                     ORDER BY idticket;',
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     $tickets = [];
                     $idtickets = [];
                     $idusers = [];
@@ -2220,11 +2216,10 @@ class FWServer
                     //////////////////////
                     // get ticket_has_type
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT idticket,idticket_type FROM ticket_has_type WHERE idticket IN ($idtickets);",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     if ($result) {
                         array_map(function ($value) use (&$response) {
                             $response["tickets"][$value[0]][10][] = $value[1];
@@ -2234,11 +2229,10 @@ class FWServer
                     //////////////////////
                     // get ticket_has_tag
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT idticket,idtag FROM ticket_has_tag WHERE idticket IN ($idtickets);",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     $tags = [];
                     if ($result) {
                         array_map(function ($value) use (&$response, &$tags) {
@@ -2250,11 +2244,10 @@ class FWServer
                     //////////////////////
                     // get ticket states
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT idstate,name FROM state;",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     array_map(function ($value) use (&$response) {
                         $response["options"]["states"][$value[0]]["name"] =
                             $value[1];
@@ -2263,11 +2256,10 @@ class FWServer
                     //////////////////////
                     // get priorities
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT idpriority,name FROM priority;",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     array_map(function ($value) use (&$response) {
                         $response["options"]["priorities"][$value[0]]["name"] =
                             $value[1];
@@ -2276,12 +2268,11 @@ class FWServer
                     //////////////////////
                     // get ticket types
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" =>
                         "SELECT idticket_type,name FROM ticket_type;",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     array_map(function ($value) use (&$response) {
                         $response["options"]["types"][$value[0]]["name"] =
                             $value[1];
@@ -2290,11 +2281,10 @@ class FWServer
                     //////////////////////
                     // get groups
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT idgroup,name FROM user_group;",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     array_map(function ($value) use (&$response) {
                         $response["options"]["groups"][$value[0]]["name"] =
                             $value[1];
@@ -2305,11 +2295,10 @@ class FWServer
                     //////////////////////
                     if (count($tags) > 0) {
                         $tags = implode(",", $tags);
-                        $fetch = new DBRequest([
+                        $result = $this->db->request([
                             "query" => "SELECT idtag,name FROM tag WHERE idtag IN ($tags)",
                             "array" => true,
                         ]);
-                        $result = $fetch->result;
                         array_map(function ($value) use (&$response) {
                             $response["options"]["tags"][$value[0]]["name"] =
                                 $value[1];
@@ -2319,11 +2308,10 @@ class FWServer
                     //////////////////////
                     // get users data
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT iduser,CONCAT_WS(' ',first_name,last_name) FROM user WHERE iduser IN ($idusers);",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     array_map(function ($value) use (&$response) {
                         $response["options"]["users"][$value[0]]["name"] =
                             $value[1];
@@ -2332,11 +2320,10 @@ class FWServer
                     //////////////////////
                     // get user_in_group
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT iduser,idgroup FROM user_in_group WHERE iduser IN ($idusers);",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     if ($result) {
                         array_map(function ($value) use (&$response) {
                             $response["options"]["users"][$value[0]]["groups"][] = $value[1];
@@ -2345,11 +2332,10 @@ class FWServer
                     //////////////////////
                     // get companies data
                     //////////////////////
-                    $fetch = new DBRequest([
+                    $result = $this->db->request([
                         "query" => "SELECT iduser,idcorp FROM user_is_from WHERE iduser IN ($idusers);",
                         "array" => true,
                     ]);
-                    $result = $fetch->result;
                     $idcorps = [];
                     if (!empty($result)) {
                         array_map(function ($value) use (&$idcorps) {
@@ -2362,11 +2348,10 @@ class FWServer
                             // addIfNotNullNorExists($value[1], $idcorps);
                         }, $result);
                         $idcorps = implode(",", $idcorps);
-                        $fetch = new DBRequest([
+                        $result = $this->db->request([
                             "query" => "SELECT idcorp,name FROM corp WHERE idcorp IN ($idcorps);",
                             "array" => true,
                         ]);
-                        $result = $fetch->result;
                         array_map(function ($value) use (&$response) {
                             $response["options"]["corps"][$value[0]]["name"] =
                                 $value[1];
@@ -2378,12 +2363,11 @@ class FWServer
                     unset($response["tickets"]);
                 } elseif ($task["t"] === 1) {
                     // get items data
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,ref,name,frtitle,version,label,published,stock,nostockorder,price,idtracklist,created,modified FROM item;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     $items = [];
                     foreach ($res as $item) {
                         $items[$item[0]] = $item;
@@ -2546,11 +2530,10 @@ class FWServer
                         }
                     }
                     $labels = implode(",", $labels);
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" => "SELECT idcorp,name FROM corp WHERE idcorp IN ($labels) ;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         foreach ($res as $value) {
                             $response["options"]["labels"][$value[0]]["name"] =
@@ -2568,23 +2551,21 @@ class FWServer
                         }
                     }
                     $tracklists = implode(",", $tracklists);
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" => "SELECT idtracklist,text FROM tracklist WHERE idtracklist IN ($tracklists);",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         foreach ($res as $value) {
                             $response["options"]["tracklists"][$value[0]]["name"] = $value[1];
                         }
                     }
                     // get upc
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idupc,code FROM itemident LEFT JOIN upc USING (idupc) WHERE iditem IS NOT NULL AND idupc IS NOT NULL;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         foreach ($res as $upc) {
                             $response["items"][$upc[0]][13][] = $upc[1];
@@ -2593,11 +2574,10 @@ class FWServer
                         }
                     }
                     // get tags
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" => "SELECT iditem,idtag FROM item_has_tag;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         $tags = [];
                         foreach ($res as $value) {
@@ -2605,23 +2585,21 @@ class FWServer
                             $tags[] = $value[1];
                         }
                         $tags = implode(",", $tags);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idtag,name FROM tag WHERE idtag IN ($tags);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["tags"][$value[0]]["name"] =
                                 $value[1];
                         }
                     }
                     // get supplier availability data
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idcorpitem,idcorp FROM itemident LEFT JOIN corpitem USING (idcorpitem) WHERE idcorpitem IS NOT NULL AND iditem IS NOT NULL;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         $idcorpitems = [];
                         $idcorps = [];
@@ -2638,29 +2616,26 @@ class FWServer
                         }
                         $idcorpitems = implode(",", $idcorpitems);
                         $idcorps = implode(",", $idcorps);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idcorpitem,idavailability FROM corpitem_has_invstat LEFT JOIN corpinvstat USING (idcorpinvstat) WHERE idcorpitem IN ($idcorpitems);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["items"][$corpitems[$value[0]]][16]["corpitem"]["$value[0]"]["availability"] = $value[1];
                         }
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idcorp,name FROM corp WHERE idcorp IN ($idcorps);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["corps"][$value[0]]["name"] =
                                 $value[1];
                         }
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" =>
                             "SELECT idavailability,name FROM availability;",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["availabilities"][$value[0]]["name"] = $value[1];
                         }
@@ -2679,33 +2654,30 @@ class FWServer
                     }
 
                     // get supports
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idsupport FROM item_has_support;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         foreach ($res as $value) {
                             $response["items"][$value[0]][17][] = $value[1];
                         }
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idsupport,name FROM support;",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["supports"][$value[0]]["name"] = $value[1];
                         }
                     }
 
                     // get formats
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idformat FROM item_has_format;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         $formats = [];
                         foreach ($res as $value) {
@@ -2715,11 +2687,10 @@ class FWServer
                             }
                         }
                         $formats = implode(",", $formats);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idformat,name FROM format WHERE idformat IN ($formats);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         if ($res) {
                             foreach ($res as $value) {
                                 $response["options"]["formats"][$value[0]]["name"] = $value[1];
@@ -2728,11 +2699,10 @@ class FWServer
                     }
 
                     // get genres
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" => "SELECT iditem,idgenre FROM item_has_genre;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         $genres = [];
                         foreach ($res as $value) {
@@ -2742,11 +2712,10 @@ class FWServer
                             }
                         }
                         $genres = implode(",", $genres);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idgenre,name FROM genre WHERE idgenre IN ($genres);",
                             "array" => false,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["genres"][$value[0]]["name"] =
                                 $value[1];
@@ -2754,12 +2723,11 @@ class FWServer
                     }
 
                     // get artists
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idartist FROM item_has_artist;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     if ($res) {
                         $artists = [];
                         foreach ($res as $value) {
@@ -2769,11 +2737,10 @@ class FWServer
                             }
                         }
                         $artists = implode(",", $artists);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idartist,name FROM artist WHERE idartist IN ($artists);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["artists"][$value[0]]["name"] =
                                 $value[1];
@@ -2781,12 +2748,11 @@ class FWServer
                     }
 
                     // get media types
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idmediatype FROM item_has_mediatype;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     $media = [];
                     if ($res) {
                         foreach ($res as $value) {
@@ -2796,11 +2762,10 @@ class FWServer
                             }
                         }
                         $media = implode(",", $media);
-                        $fetch = new DBRequest([
+                        $res = $this->db->request([
                             "query" => "SELECT idmediatype,name FROM mediatype WHERE idmediatype IN ($media);",
                             "array" => true,
                         ]);
-                        $res = $fetch->result;
                         foreach ($res as $value) {
                             $response["options"]["medias"][$value[0]]["name"] =
                                 $value[1];
@@ -2808,12 +2773,11 @@ class FWServer
                     }
 
                     //get wades
-                    $fetch = new DBRequest([
+                    $res = $this->db->request([
                         "query" =>
                         "SELECT iditem,idwadereview,idbopreview FROM item_has_review;",
                         "array" => true,
                     ]);
-                    $res = $fetch->result;
                     // $wade = [];
                     // $bop = [];
                     if ($res) {
@@ -2886,7 +2850,7 @@ class FWServer
                     $cols[] = $arrselect[$col];
                 }
                 $select = implode($cols);
-                $fetch = new DBRequest([
+                $data = $this->db->request([
                     "query" => "SELECT $select
                     FROM $from
                     $join
@@ -2895,12 +2859,11 @@ class FWServer
                     $order
                     $sortDir
                     $limit;",
-                    "param_type" => $type,
-                    "param_content" => $content,
+                    "type" => $type,
+                    "content" => $content,
                     "array" => true,
                 ]);
-                $data = $fetch->result;
-                $fetch = new DBRequest([
+                $ids = $this->db->request([
                     "query" => "SELECT {$arrselect[0]}
                     FROM $from
                     GROUP BY $group
@@ -2908,7 +2871,6 @@ class FWServer
                     $sortDir;",
                     // "query" => $count,
                 ]);
-                $ids = $fetch->result;
                 return [
                     // "cols" => $cols,
                     "tickets" => $data,
@@ -2922,10 +2884,12 @@ class FWServer
             if ($f === 999) {
                 return $this->tabs[4];
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw $e;
         }
     }
 }
+
+// foreach ([$chat] as $value) require_once $value;
 
 $server = new FWServer();

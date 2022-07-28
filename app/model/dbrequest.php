@@ -1,8 +1,16 @@
 <?php
+
+namespace bopdev;
+
+use Swoole\Coroutine as Co;
+
+use Swoole\Database\MysqliConfig;
+use Swoole\Database\MysqliPool;
+
 class DBRequest
 {
-    private $mysqli;
-    public $result;
+    // public $result;
+    private $pool;
 
     /**
      * Performs a mysqli request with prepared statement.
@@ -12,42 +20,46 @@ class DBRequest
      * @param string $request[param_type] Blip bloup.
      * @param array $request[param_content] Pouet tagada.
      */
-    public function __construct($request)
+    public function __construct()
     {
-        $dbHost = getenv('MYSQL_ADDON_HOST');
-        $dbUser = getenv('MYSQL_ADDON_USER');
-        $dbPassword = getenv('MYSQL_ADDON_PASSWORD');
-        $dbDatabase = getenv('MYSQL_ADDON_DB');
-        $dbPort = getenv('MYSQL_ADDON_PORT') ?? '';
+        $this->pool = new MysqliPool((new MysqliConfig)
+                ->withHost(getenv('MYSQL_ADDON_HOST'))
+                ->withPort(getenv('MYSQL_ADDON_PORT') ?? '')
+                // ->withUnixSocket('/tmp/mysql.sock')
+                ->withDbName(getenv('MYSQL_ADDON_DB'))
+                ->withCharset('utf8mb4')
+                ->withUsername(getenv('MYSQL_ADDON_USER'))
+                ->withPassword(getenv('MYSQL_ADDON_PASSWORD')),
+            4
+        );
+    }
+    public function request($request)
+    {
+
         try {
-            $this->mysqli = new Mysqli(
-                $dbHost,
-                $dbUser,
-                $dbPassword,
-                $dbDatabase,
-                $dbPort,
-            );
-            $stmt = $this->mysqli->prepare($request["query"]);
+            $mysqli = $this->pool->get();
+            $stmt = $mysqli->prepare($request["query"]);
             if (
-                isset($request["param_type"]) &&
-                isset($request["param_content"])
+                isset($request["type"]) &&
+                isset($request["content"])
             ) {
                 $stmt->bind_param(
-                    $request["param_type"],
-                    ...$request["param_content"]
+                    $request["type"],
+                    ...$request["content"]
                 );
             }
             $stmt->execute();
             $result = $stmt->get_result();
-            $stmt->close();
+            // $stmt->close();
             if (str_starts_with($request["query"], "SELECT")) {
-                // $res = [];
                 $mode = isset($request["array"]) ? MYSQLI_NUM : MYSQLI_ASSOC;
                 $res = $result->fetch_all($mode);
             }
-            $this->result = $res ?? $result;
+            $this->pool->put($mysqli);
+            // $this->result = $res ?? $result;
+            return $res ?? $result;
             // $this->num_rows = count($this->result);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw $e;
         }
     }
