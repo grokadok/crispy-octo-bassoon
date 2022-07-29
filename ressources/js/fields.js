@@ -634,7 +634,7 @@ class Field {
                             let li = document.createElement("li"),
                                 span = document.createElement("span");
                             li.setAttribute("data-select", obj.id);
-                            // li.setAttribute("tabindex", "0");
+                            li.setAttribute("tabindex", "0");
                             span.textContent = obj.content;
                             li.append(span);
                             if (obj.secondary) {
@@ -725,7 +725,7 @@ class Field {
                             span = document.createElement("span");
                         setElementAttributes(li, [
                             ["data-select", obj.id],
-                            // ["tabindex", "0"],
+                            ["tabindex", "0"],
                         ]);
                         span.textContent = obj["content"];
                         if (loadingValue && loadingValue === obj.id) {
