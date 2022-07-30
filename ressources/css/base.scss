@@ -371,58 +371,70 @@ input {
             z-index: 1;
         }
     }
-    &.selectize,
-    &.select {
-        & .container {
-            & > ul {
-                position: absolute;
-                inset: 1.4rem auto auto 0;
-                width: 100%;
-                max-height: 200px;
-                /* border: none; */
-                border-radius: 0 0 5px 5px;
-                padding: 0;
-                background: var(--dropdown-bg);
-                list-style: none;
-                overflow: auto;
-                transition: opacity var(--transition-global);
-                z-index: 2;
-                & li {
-                    display: flex;
-                    flex-wrap: wrap;
-                    padding-inline: 0.4rem;
-                    user-select: none;
-                    cursor: pointer;
+    & .container {
+        & > div {
+            font-size: 1.2rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 5px;
+            background-color: transparent;
+            transition: box-shadow var(--transition-global);
+            &.empty {
+                color: var(--text-placeholder);
+            }
+            &:focus {
+                box-shadow: 0px 0px 0px 1px var(--coolor2) inset,
+                    0px 0px 6px 2px var(--coolor2) inset;
+                outline: none;
+            }
+        }
+        & > ul {
+            position: absolute;
+            inset: 1.4rem auto auto 0;
+            width: 100%;
+            max-height: 200px;
+            /* border: none; */
+            border-radius: 0 0 5px 5px;
+            padding: 0;
+            background: var(--dropdown-bg);
+            list-style: none;
+            overflow: auto;
+            transition: opacity var(--transition-global);
+            z-index: 2;
+            & li {
+                display: flex;
+                flex-wrap: wrap;
+                padding-inline: 0.4rem;
+                user-select: none;
+                cursor: pointer;
+                & > span:nth-child(2) {
+                    margin-left: 0.5rem;
+                    color: var(--text-secondary);
+                }
+                /* role button */
+                & > button {
+                    height: 1.5rem;
+                    padding: 0 0.2rem;
+                    background-color: transparent;
+                    color: var(--dropdown-button);
+                    transition: var(--transition-global);
+                    pointer-events: none;
+                }
+                &:hover,
+                &:focus {
                     & > span:nth-child(2) {
-                        margin-left: 0.5rem;
-                        color: var(--text-secondary);
+                        color: var(--dropdown-select-secondary);
                     }
-                    /* role button */
                     & > button {
-                        height: 1.5rem;
-                        padding: 0 0.2rem;
-                        background-color: transparent;
-                        color: var(--dropdown-button);
-                        transition: var(--transition-global);
-                        pointer-events: none;
-                    }
-                    &:hover,
-                    &:focus {
-                        & > span:nth-child(2) {
-                            color: var(--dropdown-select-secondary);
-                        }
-                        & > button {
-                            color: var(--dropdown-select-button);
-                        }
+                        color: var(--dropdown-select-button);
                     }
                 }
-                & li:first-child {
-                    border-radius: 3px 3px 0 0;
-                }
-                & li:last-child {
-                    padding-bottom: 0.1rem;
-                    border-radius: 0 0 3px 3px;
-                }
+            }
+            & li:first-child {
+                border-radius: 3px 3px 0 0;
+            }
+            & li:last-child {
+                padding-bottom: 0.1rem;
+                border-radius: 0 0 3px 3px;
             }
         }
     }
@@ -466,6 +478,17 @@ input {
                     color: red;
                     outline: none;
                 }
+            }
+        }
+    }
+    &.select {
+        & .container {
+            /* & > input {
+                user-select: none;
+                cursor: pointer;
+            } */
+            & > ul.fadeout {
+                display: none;
             }
         }
     }

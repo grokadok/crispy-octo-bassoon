@@ -33,7 +33,7 @@ class Field {
             this.wrapper.classList.add("compact");
         this.wrapper.classList.add("field");
         this.wrapper.setAttribute("aria-label", this.name);
-        const placeholder = params.placeholder ?? "",
+        const placeholder = params.placeholder ?? this.name,
             label = params.label ?? this.name;
         // const attributes = [
         //     ["placeholder", params.placeholder ?? ""],
@@ -249,7 +249,7 @@ class Field {
             }
             case "select": {
                 let container = document.createElement("div"),
-                    fieldElement = document.createElement("input");
+                    fieldElement = document.createElement("div");
                 this.ul = document.createElement("ul");
                 this.ul.className = "fadeout";
                 socket.send({
@@ -259,17 +259,44 @@ class Field {
                 // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
-                    ["readonly", "true"],
+                    // ["readonly", "true"],
                     ["data-value", params.value],
                     // ["name", label],
-                    ["placeholder", placeholder],
+                    // ["placeholder", placeholder],
+                    ["tabindex", "0"],
                 ]);
+                fieldElement.textContent = placeholder;
+                fieldElement.classList.add("empty");
                 this.wrapper.classList.add("select");
                 container.className = "container";
                 container.append(fieldElement, this.ul);
                 this.wrapper.append(container);
-                fieldElement.addEventListener("click", () => {
-                    this.ul.classList.toggle("fadeout");
+                const ulToggle = () => {
+                    console.log("ulToggle");
+                    if (this.ul.classList.contains("fadeout")) {
+                        this.ul.classList.remove("fadeout");
+                        hideOnClickOutside(this.ul, container);
+                    } else this.ul.classList.add("fadeout");
+                };
+                fieldElement.addEventListener("click", () => ulToggle());
+                fieldElement.addEventListener("keydown", (e) => {
+                    switch (e.code) {
+                        case "ArrowDown":
+                            if (this.ul.children.length > 0) {
+                                this.ul.classList.remove("fadeout");
+                                this.ul.children[0].focus();
+                            }
+                            break;
+                        case "Escape":
+                        case "Tab":
+                            this.ul.classList.add("fadeout");
+                            break;
+                        // case escape: hide ul
+                        // case tab: hide ul
+                        // case shift tab: hide ul
+
+                        // same with li: if up while first li, hide ul, focus fieldElement
+                    }
                 });
                 this.input.push(fieldElement);
                 break;
@@ -710,8 +737,9 @@ class Field {
                         "data-s",
                     ]);
                     function switchSelect(el) {
-                        field.input[0].value =
+                        field.input[0].textContent =
                             el.getElementsByTagName("span")[0].textContent;
+                        field.input[0].classList.remove("empty");
                         for (let child of el.parentNode.children) {
                             child === el
                                 ? (child.className = "selected")
@@ -729,7 +757,8 @@ class Field {
                         ]);
                         span.textContent = obj["content"];
                         if (loadingValue && loadingValue === obj.id) {
-                            field.input[0].value = obj["content"];
+                            field.input[0].textContent = obj["content"];
+                            field.input[0].classList.remove("empty");
                             li.className = "selected";
                         }
                         li.append(span);
@@ -746,12 +775,15 @@ class Field {
                                     e.preventDefault();
                                     if (li !== ul.firstChild)
                                         li.previousElementSibling.focus();
+                                    else field.input[0].focus();
                                     break;
                                 case "ArrowDown":
                                     e.preventDefault();
                                     if (li !== ul.lastChild)
                                         li.nextElementSibling.focus();
                                     break;
+                                case "Tab":
+                                    fadeOut(ul);
                             }
                         });
                         ul.append(li);

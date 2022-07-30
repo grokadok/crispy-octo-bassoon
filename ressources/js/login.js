@@ -95,7 +95,7 @@ class ClassLogin {
                 <div class="login-box-buddy"></div>
             </div>
             <div class="login-footer">
-                <span>2021 © SeaDesk | bopdev <span class="fullscreen">[ ]</span></span>
+                <span>2022 © SeaDesk | bopdev <span class="fullscreen">[ ]</span></span>
             </div>
         </div>`;
         this.box = this.wrapper.getElementsByClassName("login-box")[0];

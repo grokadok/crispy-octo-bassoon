@@ -255,22 +255,48 @@ function fetchDataTimer(el, type) {
         }, 50);
     }
 }
+function focusNextElement() {
+    //add all elements we want to include in our selection
+    const focussableElements =
+        'a:not([disabled],.fadeout,[hidden]), button:not([disabled],.fadeout,[hidden]), input[type=text]:not([disabled],.fadeout,[hidden]), [tabindex]:not([disabled],.fadeout,[hidden]):not([tabindex="-1"])';
+    if (document.activeElement && document.activeElement.form) {
+        const focussable = Array.prototype.filter.call(
+            document.activeElement.form.querySelectorAll(focussableElements),
+            function (element) {
+                //check for visibility while always include the current activeElement
+                return (
+                    element.offsetWidth > 0 ||
+                    element.offsetHeight > 0 ||
+                    element === document.activeElement
+                );
+            }
+        );
+        let index = focussable.indexOf(document.activeElement);
+        if (index > -1) {
+            const nextElement = focussable[index + 1] || focussable[0];
+            nextElement.focus();
+            console.warn(`focused ${nextElement}`);
+        }
+    }
+}
 /**
  * Adds an eventlistener on document to fadeOut element on click outside of itself or it's ancestor.
  * @param {HTMLElement} el - Element to fadeOut on click.
  * @param {HTMLElement} [anc] - Optional ancestor, defaults to el itself.
  */
 function hideOnClickOutside(el, anc) {
-    const ancestor = anc ?? el;
-    const outsideClickListener = (event) => {
-        if (
-            !ancestor.contains(event.target) &&
-            !el.classList.contains("fadeout")
-        ) {
-            fadeOut(el);
-        }
-        removeClickListener();
-    };
+    console.log(`hideonclick ${el} from ${anc ?? el}`);
+    const ancestor = anc ?? el,
+        outsideClickListener = (event) => {
+            if (
+                !ancestor.contains(event.target) &&
+                !el.classList.contains("fadeout")
+            ) {
+                console.warn("hide");
+                fadeOut(el);
+                removeClickListener();
+            }
+        };
     function removeClickListener() {
         document.removeEventListener("click", outsideClickListener);
     }
@@ -647,10 +673,20 @@ function setElementDraggable(el, param) {
 /**
  * Sets element resizable, duh.
  * @param {HTMLElement} el
- * @param {String} side - From which side(s) the element is resizable.
+ * @param {String[]} side - From which side(s) the element is resizable.
  */
 function setElementResizable(el, side) {
     // to be dealt with.
+}
+/**
+ *
+ * @param {HTMLElement|HTMLElement[]} el
+ */
+function setElementSelectable(el) {
+    const action = (e) => {
+        e.setAttribute("tabindex", "0");
+    };
+    Array.isArray(el) ? el.map((x) => action(x)) : action(el);
 }
 /**
  * Destroys tabulator(s) from element(s).
