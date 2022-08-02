@@ -60,6 +60,7 @@
     --bg-chat: rgb(255, 255, 255, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
+    --box-shadow: 2px 2px 4px 0px gray;
     --dropdown-bg: white;
     --dropdown-button: var(--accent-secondary);
     --dropdown-select: var(--gray0);
@@ -87,6 +88,7 @@
         var(--gray1) 100%
     );
     --table-header: var(--accent-secondary);
+    --table-header-text: black;
     --table-header-focus: var(--coolor6);
     --table-even: var(--gray1);
     --table-odd: var(--gray0);
@@ -105,6 +107,7 @@
     --bg-chat: rgb(0, 0, 0, 0.8);
     --bg-nav: var(--coolor3);
     --bg-nav-focus: var(--coolor4);
+    --box-shadow: 2px 2px 4px 0px var(--bg-field);
     --dropdown-bg: rgb(0, 0, 0, 0.8);
     --dropdown-button: var(--accent);
     --dropdown-select: var(--text);
@@ -133,11 +136,12 @@
         var(--coolor2) 50%,
         var(--gray1) 100%
     );
-    --table-header: var(--accent-secondary);
+    --table-header: rgba(21, 79, 138, 0.9);
+    --table-header-text: var(--text);
     --table-header-focus: var(--accent);
     --table-even: var(--coolor4);
     --table-odd: var(--gray6);
-    --table-focus: var(--coolor6);
+    --table-focus: rgba(23, 78, 128, 0.659);
     --table-selected: var(--coolor3);
 }
 
@@ -286,7 +290,7 @@ input {
     position: relative;
     background: var(--bg-field);
     border-radius: 9px;
-    box-shadow: 2px 2px 0px 2px black;
+    /* box-shadow: 2px 2px 0px 2px black; */
     transition: var(--transition-global);
     & input {
         width: 100%;
@@ -364,11 +368,29 @@ input {
                 font-style: normal;
             }
         }
-        &.ql-bubble .ql-tooltip {
-            border-radius: 15px;
-            box-shadow: 2px 2px 0 1px var(--bg-field);
-            background-color: var(--bg);
-            z-index: 1;
+        &.ql-bubble {
+            color: var(--text) !important;
+            & .ql-tooltip {
+                border-radius: 15px;
+                box-shadow: var(--box-shadow);
+                background-color: var(--bg);
+                color: var(--text);
+                z-index: 1;
+                & span {
+                    color: var(--text);
+                }
+                & .ql-stroke {
+                    stroke: var(--text);
+                }
+                & .ql-fill {
+                    fill: var(--text);
+                }
+                & .ql-picker-options {
+                    background-color: var(--bg);
+                    border-radius: 0 0 5px 5px;
+                    box-shadow: var(--box-shadow);
+                }
+            }
         }
     }
     & .container {
@@ -534,7 +556,7 @@ input {
 }
 .tab {
     position: absolute;
-    height: 100%;
+    /* height: 100%; */
     width: 100%;
     /* max-height: 100%; */
     padding: 3rem 2rem 2rem 2rem;

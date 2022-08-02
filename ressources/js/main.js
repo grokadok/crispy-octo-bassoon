@@ -211,6 +211,25 @@ class ClassMain {
         delete ClassMain.el;
     }
     getTab() {}
+    loadTab(id) {
+        if (this.tabs.data[id]?.fields) {
+            let title = document.createElement("h1");
+            title.textContent = this.tabs.data[id].name;
+            this.tabs.item[id].tab.appendChild(title);
+            // create fields and topbar elements
+            for (const field of this.tabs.data[id].fields) {
+                const el = new Field(field);
+                this.tabs.item[id].tab.appendChild(el.wrapper);
+                el.calendar?.render();
+            }
+            this.topbar.react.innerHTML = this.tabs.data[id].toolbar ?? "";
+        } else {
+            socket.send({
+                f: 20,
+                i: id,
+            });
+        }
+    }
     logout() {
         // destroy everything
         // call login
@@ -353,23 +372,6 @@ class ClassMain {
         fadeIn(this.tabs.item[id].tab);
         this.tabs.item[id].li.classList.add("active");
         this.tabs.active = id;
-    }
-    loadTab(id) {
-        if (this.tabs.data[id]?.fields) {
-            let title = document.createElement("h1");
-            title.textContent = this.tabs.data[id].name;
-            this.tabs.item[id].tab.appendChild(title);
-            // create fields and topbar elements
-            for (const field of this.tabs.data[id].fields) {
-                this.tabs.item[id].tab.appendChild(new Field(field).wrapper);
-            }
-            this.topbar.react.innerHTML = this.tabs.data[id].toolbar ?? "";
-        } else {
-            socket.send({
-                f: 20,
-                i: id,
-            });
-        }
     }
 }
 

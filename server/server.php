@@ -198,7 +198,13 @@ class FWServer
                 ],
             ],
             "icon" => "",
-            "fields" => [],
+            "fields" => [
+                [
+                    "grid" => "1/1/-1/-1",
+                    "name" => "Calendar",
+                    "type" => "calendar",
+                ],
+            ],
             "name" => "Calendar",
             "toolbar" => "",
         ],

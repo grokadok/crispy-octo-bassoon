@@ -6,7 +6,7 @@
         position: absolute;
         inset: 3rem auto auto 2rem;
         max-width: 80vw;
-        padding: 0.5rem 1.5rem;
+        /* padding: 0.5rem 1.5rem; */
         display: grid;
         gap: 1rem;
         background: var(--bg);
@@ -19,6 +19,9 @@
         }
         /* header */
         & > div:nth-of-type(1) {
+            background-color: var(--bg-field);
+            padding-block: 0.5rem;
+            border-radius: 9px 9px 0 0;
             & h2 {
                 margin: 0;
                 text-align: center;
@@ -34,6 +37,7 @@
             flex-direction: column;
             gap: 1rem;
             align-items: center;
+            padding-inline: 1.5rem;
             cursor: auto;
             &.g-6 {
                 display: grid;
@@ -53,80 +57,13 @@
                     resize: none;
                 }
             }
-            /* & .field {
-                display: flex;
-                flex-direction: column;
-                width: 100%;
-                background: var(--bg);
-                color: var(--fieldset);
-                transition: var(--transition-global);
-                &:focus-within {
-                    border: 2px solid var(--text);
-                    box-shadow: 0px 0px 6px 3px var(--coolor2);
-                    color: var(--text);
-                    &.invalid {
-                        box-shadow: 0px 0px 6px 3px var(--danger);
-                    }
-                    &.valid {
-                        box-shadow: 0px 0px 6px 3px var(--success);
-                    }
-                }
-                & input {
-                    margin: -0.2rem 0 0.3rem 0;
-                    width: 100%;
-                    padding: 0;
-                    border: none;
-                    box-shadow: none;
-                    font-size: 1rem;
-                    &:focus {
-                        box-shadow: none;
-                    }
-                }
-                & textarea {
-                    height: 100%;
-                    min-width: 100%;
-                    margin-top: -0.3rem;
-                    background: transparent;
-                    color: var(--text);
-                    font-family: inherit;
-                    font-weight: 300;
-                    font-size: 1rem;
-                    border: none;
-                    outline: none;
-                }
-                & div.iti {
-                    position: unset;
-                    margin: 0;
-                    justify-content: unset;
-                    & > input {
-                        position: unset;
-                        width: 100%;
-                        margin: 0 0 0.4rem 0;
-                        padding: 0;
-                    }
-                    & > div {
-                        margin: 0 0 0.3rem -0.4rem;
-                        position: unset;
-                        & > ul {
-                            margin: 0.3rem 0 0 -0.15rem;
-                            border: 2px solid var(--fieldset);
-                        }
-                    }
-                }
-                &.address {
-                    padding: 0 0.4rem 0.4rem;
-                    & .field {
-                        width: auto;
-                    }
-                }
-            } */
         }
         /* footer */
         & > div:nth-of-type(3) {
-            width: 100%;
             display: flex;
             flex-direction: row;
             justify-content: space-evenly;
+            padding: 0 0.5rem 0.7rem 0.5rem;
             & > button {
                 margin-inline: 0.2rem;
                 white-space: nowrap;

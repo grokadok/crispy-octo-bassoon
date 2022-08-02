@@ -47,6 +47,7 @@ class BopTable {
         this.table = document.createElement("div");
         this.table.setAttribute("role", "grid");
         this.thead = document.createElement("div");
+        this.thead.classList.add("menu");
         this.tbody = document.createElement("div");
         // this.tfoot = document.createElement("div");
         this.footer = document.createElement("div");
@@ -105,7 +106,6 @@ class BopTable {
             } else searchInput.disabled = true;
         });
         searchInput.addEventListener("focus", () => {
-            console.log(this.menu.col);
             if (this.menu.wrapper.classList.contains("head")) {
                 this.tbody
                     .querySelectorAll('[role="row"]')
@@ -286,6 +286,7 @@ class BopTable {
     dockMenu() {
         this.menuMove();
         this.menu.wrapper.classList.remove("head");
+        this.thead.classList.add("menu");
         this.menu.wrapper.style = "";
         this.menu.colsDrop.style = "";
         const searchInput = this.menu.search.getElementsByTagName("span")[0];
@@ -485,6 +486,7 @@ class BopTable {
             Math.floor(head.y + head.height - col.head.offsetTop - parent.y) +
             "px";
         this.menu.wrapper.classList.add("head");
+        this.thead.classList.remove("menu");
         this.menu.icons.innerHTML =
             this.menu.colsDrop.children[col.id].children[1].innerHTML;
         this.menu.icons.children[0].addEventListener("click", () => {

@@ -40,7 +40,7 @@ class Field {
         // ];
         switch (this.type) {
             case "address": {
-                this.wrapper;
+                // this.wrapper;
                 this.fields = [];
                 let street = document.createElement("input"),
                     postcode = document.createElement("input"),
@@ -72,6 +72,21 @@ class Field {
                 this.wrapper.append(street, postcode, city, country);
                 this.input.push([street, postcode, city, country]);
                 // later add address autocomplete/verification
+                break;
+            }
+            case "calendar": {
+                let fieldElement = document.createElement("div");
+                // fieldElement.classList.add("calendar");
+                this.calendar = new FullCalendar.Calendar(fieldElement, {
+                    initialView: "dayGridMonth",
+                    headerToolbar: {
+                        left: "prev,next today",
+                        center: "title",
+                        right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+                    },
+                });
+                this.wrapper.style.zIndex = 0;
+                this.wrapper.append(fieldElement);
                 break;
             }
             case "email": {
@@ -425,13 +440,10 @@ class Field {
                             ) {
                                 let names = [];
                                 for (const child of field.selected.wrapper
-                                    .children) {
+                                    .children)
                                     names.push(child.textContent);
-                                }
-                                if (!names.includes(fieldElement.value)) {
-                                    fadeOut(field.ul, { hide: true });
+                                if (!names.includes(fieldElement.value))
                                     params.add(fieldElement);
-                                }
                             }
                             break;
                     }

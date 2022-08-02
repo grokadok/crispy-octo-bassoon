@@ -8,6 +8,7 @@ $jsfiles = getenv('ISLOCAL') ? [
     'js/fetch.js',
     'js/fields.js',
     'vendor/quill/quill.js',
+    'vendor/fullCalendar/main.js',
     'vendor/intlTelInput/js/intlTelInput.js',
     'vendor/intlTelInput/js/utils.js',
     'js/login.js',
