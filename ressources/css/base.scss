@@ -290,7 +290,7 @@ input {
     position: relative;
     background: var(--bg-field);
     border-radius: 9px;
-    /* box-shadow: 2px 2px 0px 2px black; */
+    box-shadow: var(--box-shadow);
     transition: var(--transition-global);
     & input {
         width: 100%;
@@ -565,7 +565,7 @@ input {
     grid-template-columns: repeat(6, 1fr);
     grid-auto-rows: auto;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow: visible; /* scroll on mobile devices */
     opacity: 1;
     transition: all var(--transition-global), opacity 500ms;
     & h1 {

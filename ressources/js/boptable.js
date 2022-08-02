@@ -133,6 +133,14 @@ class BopTable {
             }
             this.searchTable(e.target.textContent);
         });
+        searchInput.addEventListener("keydown", (e) => {
+            if (e.code === "Enter") {
+                e.preventDefault();
+                if (this.menu.wrapper.classList.contains("head"))
+                    this.dockMenu();
+            }
+            // if menu head, dock menu
+        });
         this.menu.search.append(searchButton, searchInput);
         cols.appendChild(this.menu.colsDrop);
         this.menu.wrapper.append(this.menu.icons, this.menu.search, cols);
