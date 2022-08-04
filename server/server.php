@@ -470,13 +470,15 @@ class FWServer
         // ]);
         // $cert = file_get_contents(__DIR__ . "/ssl.crt");
         // var_dump($cert);
-        // $this->serv->set([
-        //     'worker_num' => 4, // Open 4 Worker Process
-        //     //  'max_request' => 4, // Each worker process max_request is set to 4 times
-        //     //  'document_root'   => '',
-        //     //  'enable_static_handler' => true,
-        //     //  'daemonize' => false, // daems (TRUE / FALSE)
-        // ]);
+        $this->serv->set([
+            'dispatch_mode' => 7,
+            'worker_num' => 4, // Open 4 Worker Process
+            'open_cpu_affinity' => true,
+            //     //  'max_request' => 4, // Each worker process max_request is set to 4 times
+            //     //  'document_root'   => '',
+            //     //  'enable_static_handler' => true,
+            //     //  'daemonize' => false, // daems (TRUE / FALSE)
+        ]);
         $this->serv->on("Start", [$this, "onStart"]);
         $this->serv->on("WorkerStart", [$this, "onWorkStart"]);
         $this->serv->on("ManagerStart", [$this, "onManagerStart"]);
@@ -915,9 +917,6 @@ class FWServer
         echo "master_pid: {$serv->master_pid}" . PHP_EOL;
         echo "manager_pid: {$serv->manager_pid}" . PHP_EOL;
         echo "########" . PHP_EOL . PHP_EOL;
-
-
-        var_dump(curl_version());
 
         // DB query BENCHMARK
         // $s = microtime(true);
