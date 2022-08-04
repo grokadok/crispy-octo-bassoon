@@ -5,7 +5,8 @@ namespace bopdev;
 $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
-foreach ([$dbrequest, $functions, $chat] as $value) require_once $value;
+$caldav = __DIR__ . "/app/simplecaldav/SimpleCalDAVClient.php";
+foreach ([$dbrequest, $functions, $chat, $caldav] as $value) require_once $value;
 
 use Swoole\Coroutine as Co;
 use Swoole\Table;
@@ -14,6 +15,8 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\WebSocket\Frame;
 use bopdev\DBRequest;
+
+\Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_NATIVE_CURL);
 
 // use ContextManager as CM;
 
@@ -459,8 +462,6 @@ class FWServer
         $this->table->column("user", Table::TYPE_INT);
         $this->table->column("session", Table::TYPE_INT);
         $this->table->create();
-        // $this->serv = new Server("0.0.0.0", 8080);
-        // $this->serv->set(["open_http2_protocol" => true]);
         // $this->serv->set([
         //     "ssl_cert_file" => __DIR__ . "/ssl/ssl.crt",
         //     "ssl_key_file" => __DIR__ . "/ssl/ssl.key",
@@ -474,6 +475,7 @@ class FWServer
             // 'dispatch_mode' => 7, // not compatible with onClose, for stateless server
             'worker_num' => 4, // Open 4 Worker Process
             'open_cpu_affinity' => true,
+            "open_http2_protocol" => true
             //     //  'max_request' => 4, // Each worker process max_request is set to 4 times
             //     //  'document_root'   => '',
             //     //  'enable_static_handler' => true,
