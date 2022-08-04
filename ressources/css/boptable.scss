@@ -339,6 +339,11 @@
         & > li:nth-of-type(3) {
             position: relative;
             border-radius: 0 5px 0 0;
+            color: var(--gray1);
+            transition: color var(--transition-global);
+            &:hover {
+                color: white;
+            }
             & > ul {
                 right: 0;
                 background-color: transparent;

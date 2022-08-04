@@ -916,6 +916,9 @@ class FWServer
         echo "manager_pid: {$serv->manager_pid}" . PHP_EOL;
         echo "########" . PHP_EOL . PHP_EOL;
 
+
+        var_dump(curl_version());
+
         // DB query BENCHMARK
         // $s = microtime(true);
         // Co\run(
