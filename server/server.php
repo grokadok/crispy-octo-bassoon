@@ -460,7 +460,6 @@ class FWServer
         $this->table->column("session", Table::TYPE_INT);
         $this->table->create();
         // $this->serv = new Server("0.0.0.0", 8080);
-        // $this->serv->set(["dispatch_mode" => 1]); // not compatible with onClose
         // $this->serv->set(["open_http2_protocol" => true]);
         // $this->serv->set([
         //     "ssl_cert_file" => __DIR__ . "/ssl/ssl.crt",
@@ -471,7 +470,8 @@ class FWServer
         // $cert = file_get_contents(__DIR__ . "/ssl.crt");
         // var_dump($cert);
         $this->serv->set([
-            'dispatch_mode' => 7,
+            // "dispatch_mode" => 1, // not compatible with onClose, for stateless server
+            // 'dispatch_mode' => 7, // not compatible with onClose, for stateless server
             'worker_num' => 4, // Open 4 Worker Process
             'open_cpu_affinity' => true,
             //     //  'max_request' => 4, // Each worker process max_request is set to 4 times
