@@ -17,6 +17,7 @@ services:
         restart: unless-stopped
         volumes:
             - ./server:/var/www
+            - ./config:/var/www/config
             - ./app:/var/www/app
             - ./public:/var/www/public
             - ./ressources/js:/var/www/public/assets/js

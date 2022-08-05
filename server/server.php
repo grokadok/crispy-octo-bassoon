@@ -6,7 +6,16 @@ $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
 $caldav = __DIR__ . "/app/simplecaldav/SimpleCalDAVClient.php";
-foreach ([$dbrequest, $functions, $chat, $caldav] as $value) require_once $value;
+$localenv = __DIR__ . "/config/env.php";
+foreach ([$dbrequest, $functions, $chat, $caldav] as $value) {
+    require_once $value;
+    unset($value);
+};
+if (getenv('ISLOCAL')) {
+    require_once $localenv;
+    unset($localenv);
+}
+
 
 use Swoole\Coroutine as Co;
 use Swoole\Table;
@@ -15,6 +24,7 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\WebSocket\Frame;
 use bopdev\DBRequest;
+use SimpleCalDAVClient;
 
 \Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_NATIVE_CURL);
 
@@ -22,7 +32,8 @@ use bopdev\DBRequest;
 
 class FWServer
 {
-    use SweetChat;
+    use BopChat;
+    // use BopCal;
     private $tabs = [
         // 0=>[
         //     "icon" => '',
@@ -452,13 +463,14 @@ class FWServer
             26 => [],
         ],
     ];
+    private $calendars = [];
 
     public function __construct(
         private $db = new DBRequest(),
         private $serv = new Server("0.0.0.0", 8080),
         private $table = new Table(1024),
+        private $caldav = new SimpleCalDAVClient(),
     ) {
-        // $this->table = new Table(1024);
         $this->table->column("user", Table::TYPE_INT);
         $this->table->column("session", Table::TYPE_INT);
         $this->table->create();
@@ -940,6 +952,18 @@ class FWServer
         // $s = microtime(true) - $s;
         // echo PHP_EOL . 'Use ' . $s . 's for 100000 queries' . PHP_EOL . PHP_EOL;
 
+        go(function () {
+            $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
+            print('#### CalDAV connected ####' . PHP_EOL);
+            $this->calendars = $this->caldav->findCalendars();
+            print('#### ' . count($this->calendars) . ' calendars loaded ####' . PHP_EOL);
+            // var_dump($this->calendars);
+            // $this->caldav->setCalendar($this->calendars["personal-1"]);
+            // $events = $this->caldav->getEvents('20220701T000000Z');
+            // var_dump($events);
+        });
+
+        // change session management to stateless asap with jwt or use dedicated library.
         $this->db->request([
             "query" => "DELETE FROM session;",
         ]);
@@ -2097,6 +2121,57 @@ class FWServer
                     ];
                 }
             }
+
+            /////////////////////////////////////////////////////
+            // FETCH CALDAV PERIOD DATA (21)
+            /////////////////////////////////////////////////////
+
+            if ($f === 21 && isset($task['p'])) {
+                // check if user has calendar
+                $res = $this->db->request([
+                    'query' => 'SELECT url,user,pass FROM user_has_caldav WHERE iduser = ?;',
+                    'type' => 'i',
+                    'content' => [$iduser],
+                    'array' => true,
+                ]);
+                if (isset($res[0])) {
+                    foreach ($res as $cal) {
+                        $res = $this->db->request([
+                            'query' => 'SELECT ;',
+                            'type' => '',
+                            'content' => [],
+                            'array' => true,
+                        ]);
+                    }
+                }
+                // fetch events/tasks from period
+
+                // send data
+            }
+
+            /////////////////////////////////////////////////////
+            // ADD CALDAV EVENT (22)
+            /////////////////////////////////////////////////////
+
+            /////////////////////////////////////////////////////
+            // UPDATE CALDAV EVENT (23)
+            /////////////////////////////////////////////////////
+
+            /////////////////////////////////////////////////////
+            // REMOVE CALDAV EVENT (24)
+            /////////////////////////////////////////////////////
+
+            /////////////////////////////////////////////////////
+            // CREATE CALDAV (25)
+            /////////////////////////////////////////////////////
+
+            /////////////////////////////////////////////////////
+            // ADD EXISTING CALDAV (26)
+            /////////////////////////////////////////////////////
+
+            /////////////////////////////////////////////////////
+            // SHARE CALDAV (27)
+            /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
             // FETCH boptable DATA (2501)

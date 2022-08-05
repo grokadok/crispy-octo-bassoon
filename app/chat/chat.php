@@ -2,7 +2,7 @@
 
 namespace bopdev;
 
-trait SweetChat
+trait BopChat
 {
     private function addMessage(int $user, int $chat, string $message)
     {

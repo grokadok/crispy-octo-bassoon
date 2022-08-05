@@ -472,26 +472,3 @@ class WSConnection {
         );
     }
 }
-
-// class socket {
-//     constructor(host, credentials) {
-//         new Websocket(host);
-//         this.onopen(this.open());
-//         this.onmessage(this.message());
-//         this.onclose(this.closed());
-//     }
-//     send(message) {
-//         checkAvailability = setInterval(() => {
-//             if (socket.bufferedAmount == 0) {
-//                 socket.send("xyz");
-//                 clearInterval(checkAvailability);
-//             }
-//         }, 100);
-//     }
-//     static open() {
-//         // send credentials
-//     }
-//     static message() {}
-//     static closed() {}
-//     close() {}
-// }

@@ -78,6 +78,7 @@ class Field {
                 let fieldElement = document.createElement("div");
                 // fieldElement.classList.add("calendar");
                 this.calendar = new FullCalendar.Calendar(fieldElement, {
+                    height: "100%",
                     initialView: "dayGridMonth",
                     headerToolbar: {
                         left: "prev,next today",
