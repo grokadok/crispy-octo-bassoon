@@ -958,10 +958,10 @@ class FWServer
             $this->calendars = $this->caldav->findCalendars();
             print('#### ' . count($this->calendars) . ' calendars loaded ####' . PHP_EOL);
             // var_dump($this->calendars);
-            sleep(20);
-            $this->caldav->setCalendar($this->calendars["personal-1"]);
-            $events = $this->caldav->getEvents('20220701T000000Z');
-            var_dump($events);
+            // sleep(20);
+            // $this->caldav->setCalendar($this->calendars["personal-1"]);
+            // $events = $this->caldav->getEvents('20220701T000000Z');
+            // var_dump($events);
         });
 
         // change session management to stateless asap with jwt or use dedicated library.

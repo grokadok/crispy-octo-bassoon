@@ -78,13 +78,18 @@ class Field {
                 let fieldElement = document.createElement("div");
                 // fieldElement.classList.add("calendar");
                 this.calendar = new FullCalendar.Calendar(fieldElement, {
-                    height: "100%",
-                    initialView: "dayGridMonth",
                     headerToolbar: {
                         left: "prev,next today",
                         center: "title",
                         right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
                     },
+                    height: "100%",
+                    initialView: "dayGridMonth",
+                    locale: "fr",
+                    navLinks: "true",
+                    nowIndicator: "true",
+                    weekNumbers: "true",
+                    weekNumberFormat: { week: "numeric" },
                 });
                 this.wrapper.style.zIndex = 0;
                 this.wrapper.append(fieldElement);

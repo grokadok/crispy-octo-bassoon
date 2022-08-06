@@ -213,7 +213,12 @@ class ClassMain {
             for (const field of this.tabs.data[id].fields) {
                 const el = new Field(field);
                 this.tabs.item[id].tab.appendChild(el.wrapper);
-                el.calendar?.render();
+                if (el.calendar) {
+                    // socket.send({
+                    //     // task to retrieve events
+                    // })
+                    el.calendar?.render();
+                }
             }
             this.topbar.react.innerHTML = this.tabs.data[id].toolbar ?? "";
         } else {
