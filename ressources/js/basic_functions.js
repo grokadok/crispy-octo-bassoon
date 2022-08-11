@@ -326,6 +326,38 @@ function highlightSearch(el, needle) {
         for (let e of el) textReplace(e);
     } else textReplace(el);
 }
+function icalToObject(ical) {
+    // find separator
+    const separator = ical.includes("\r\n") ? "\r\n" : "\n";
+    // set cursor
+    let icalObject = {},
+        cursor = [],
+        insertPoint;
+    // for each line
+    for (const cal of ical.split(separator).filter((x) => x !== "")) {
+        const val = cal.split(":");
+        switch (val[0]) {
+            case "BEGIN":
+                // store property object
+                insertPoint = icalObject;
+                for (let i = cursor.length - 1; i >= 0; i--)
+                    insertPoint = insertPoint[cursor[i]];
+                insertPoint[val[1]] = {};
+                cursor.unshift(val[1]);
+                break;
+            case "END":
+                cursor.shift();
+                break;
+            default:
+                // store property value
+                insertPoint = icalObject;
+                for (let i = cursor.length - 1; i >= 0; i--)
+                    insertPoint = insertPoint[cursor[i]];
+                insertPoint[val[0]] = val[1];
+        }
+    }
+    return icalObject;
+}
 /**
  * Removes class "valid", adds class "invalid" to element.
  * @param {HTMLElement} el - Element to be invalidated
@@ -705,6 +737,21 @@ function tabuDestroy(el) {
                 action(e);
             }
         } else action(el);
+    }
+}
+/**
+ * Format a date string to a string accepted by SimpleCalDAVClient.
+ * @param {String} date
+ * @returns {String|false} String in the format yyyymmddThhmmssZ
+ */
+function toCalDAVString(date) {
+    try {
+        return (
+            new Date(date).toISOString().replace(/:|-/g, "").slice(0, -5) + "Z"
+        );
+    } catch (e) {
+        console.error(e);
+        return false;
     }
 }
 /**

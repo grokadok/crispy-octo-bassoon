@@ -26,7 +26,7 @@ use Swoole\WebSocket\Frame;
 use bopdev\DBRequest;
 use SimpleCalDAVClient;
 
-\Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_NATIVE_CURL);
+// \Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_NATIVE_CURL);
 
 // use ContextManager as CM;
 
@@ -952,18 +952,6 @@ class FWServer
         // $s = microtime(true) - $s;
         // echo PHP_EOL . 'Use ' . $s . 's for 100000 queries' . PHP_EOL . PHP_EOL;
 
-        go(function () {
-            $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
-            print('#### CalDAV connected ####' . PHP_EOL);
-            $this->calendars = $this->caldav->findCalendars();
-            print('#### ' . count($this->calendars) . ' calendars loaded ####' . PHP_EOL);
-            // var_dump($this->calendars);
-            // sleep(20);
-            // $this->caldav->setCalendar($this->calendars["personal-1"]);
-            // $events = $this->caldav->getEvents('20220701T000000Z');
-            // var_dump($events);
-        });
-
         // change session management to stateless asap with jwt or use dedicated library.
         $this->db->request([
             "query" => "DELETE FROM session;",
@@ -983,6 +971,17 @@ class FWServer
         //         return;
         //     }
         // });
+        go(function () {
+            $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
+            print('#### CalDAV connected ####' . PHP_EOL);
+            $this->calendars = $this->caldav->findCalendars();
+            print('#### ' . count($this->calendars) . ' calendars loaded ####' . PHP_EOL);
+            // var_dump($this->calendars);
+            // sleep(20);
+            // $this->caldav->setCalendar($this->calendars["personal-1"]);
+            // $events = $this->caldav->getEvents('20220701T000000Z');
+            // var_dump($events);
+        });
     }
     private function wsTask(array $task)
     {
@@ -2124,30 +2123,31 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH CALDAV PERIOD DATA (21)
+            // FETCH CALDAV DATA (21)
             /////////////////////////////////////////////////////
 
-            if ($f === 21 && isset($task['p'])) {
-                // check if user has calendar
+            if ($f === 21) {
+                // check if user has calendar, get calendars title & role
                 $res = $this->db->request([
-                    'query' => 'SELECT url,user,pass FROM user_has_caldav WHERE iduser = ?;',
+                    'query' => 'SELECT name,role FROM user_has_caldav LEFT JOIN caldav USING (idcaldav) WHERE iduser = ?;',
                     'type' => 'i',
                     'content' => [$iduser],
                     'array' => true,
                 ]);
+                // fetch events/tasks from period
                 if (isset($res[0])) {
+                    $response = [];
                     foreach ($res as $cal) {
-                        $res = $this->db->request([
-                            'query' => 'SELECT ;',
-                            'type' => '',
-                            'content' => [],
-                            'array' => true,
-                        ]);
+                        $this->caldav->setCalendar($this->calendars[$cal[0]]);
+                        $response[] = [
+                            'data' => $this->caldav->getEvents($task['start'] ?? null, $task['end'] ?? null),
+                            'name' => $cal[0],
+                            'role' => $cal[1],
+                        ];
                     }
                 }
-                // fetch events/tasks from period
-
                 // send data
+                return $response;
             }
 
             /////////////////////////////////////////////////////
@@ -2163,7 +2163,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
-            // CREATE CALDAV (25)
+            // CREATE CALDAV CALENDAR (25)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////

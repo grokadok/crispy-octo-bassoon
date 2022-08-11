@@ -17,6 +17,8 @@ class Field {
      * @param {Whatever} [params.value] - The value to apply to the field on load.
      */
     constructor(params) {
+        Field.fields.push(this);
+        this.index = Field.fields.indexOf(this);
         this.wrapper = document.createElement("div");
         this.input = [];
         this.isValid = false;
@@ -75,9 +77,19 @@ class Field {
                 break;
             }
             case "calendar": {
+                const index = this.index;
                 let fieldElement = document.createElement("div");
                 // fieldElement.classList.add("calendar");
                 this.calendar = new FullCalendar.Calendar(fieldElement, {
+                    events: function (info, successCallback, failureCallback) {
+                        // console.warn(toCalDAVString(info.start.valueOf()));
+                        socket.send({
+                            f: 21,
+                            start: toCalDAVString(info.start.valueOf()),
+                            end: toCalDAVString(info.end.valueOf()),
+                            i: index,
+                        });
+                    },
                     headerToolbar: {
                         left: "prev,next today",
                         center: "title",
@@ -473,7 +485,6 @@ class Field {
             }
         }
         if (this.required) this.getValid();
-        Field.fields.push(this);
     }
     /**
      * Adds/replaces item to selectize's selected.
@@ -529,7 +540,7 @@ class Field {
      * Removes the field from Field.fields and DOM.
      */
     destroy() {
-        Field.fields.splice(Field.fields.indexOf(this), 1);
+        Field.fields.splice(this.index, 1);
         if (this.type === "table") tabuDestroy(this.wrapper);
         this.wrapper.remove();
     }
@@ -542,7 +553,7 @@ class Field {
             f: 7,
             s: this.task,
             i: this.input[0].value,
-            x: Field.fields.indexOf(this),
+            x: this.index,
         });
     }
     /**
@@ -650,191 +661,394 @@ class Field {
                     this.wrapper.setAttribute("aria-label", this.name);
                 }
                 break;
+            case "quill":
+                this.isValid =
+                    this.quill.container.innerText.trim().length > 0
+                        ? true
+                        : false;
+                break;
             case "selectize":
                 this.isValid = this.selected.length > 0 ? true : false;
                 break;
         }
     }
     static parseData(data) {
-        if (data.f === 7) {
-            if (data.i) {
-                const field = Field.fields[data.x],
-                    input = field.input[0],
-                    ul = field.ul;
-                if (data.response[0]?.fail) {
-                    msg.new({
-                        content: data.response[0].fail,
-                        btn0listener: () => input.focus(),
-                    });
-                    input.value = input.value.trim();
-                } else if (data.response[0]?.content) {
-                    let ulList = [];
-                    for (const item of field.selected.items) {
-                        ulList.push(item.id);
-                    }
+        switch (data.f) {
+            case 7:
+                if (data.i) {
+                    const field = Field.fields[data.x],
+                        input = field.input[0],
+                        ul = field.ul;
+                    if (data.response[0]?.fail) {
+                        msg.new({
+                            content: data.response[0].fail,
+                            btn0listener: () => input.focus(),
+                        });
+                        input.value = input.value.trim();
+                    } else if (data.response[0]?.content) {
+                        let ulList = [];
+                        for (const item of field.selected.items) {
+                            ulList.push(item.id);
+                        }
 
-                    removeChildren(ul, true);
-                    for (const obj of data.response) {
-                        if (obj.id !== null && !ulList.includes(`${obj.id}`)) {
+                        removeChildren(ul, true);
+                        for (const obj of data.response) {
+                            if (
+                                obj.id !== null &&
+                                !ulList.includes(`${obj.id}`)
+                            ) {
+                                let li = document.createElement("li"),
+                                    span = document.createElement("span");
+                                li.setAttribute("data-select", obj.id);
+                                li.setAttribute("tabindex", "0");
+                                span.textContent = obj.content;
+                                li.append(span);
+                                if (obj.secondary) {
+                                    let span = document.createElement("span");
+                                    span.textContent = `(${obj.secondary})`;
+                                    li.append(span);
+                                }
+                                if (obj.role) {
+                                    const roles = obj.role.split(",");
+                                    for (const role of roles) {
+                                        let btn =
+                                            document.createElement("button");
+                                        btn.textContent = role;
+                                        btn.disabled = true;
+                                        li.append(btn);
+                                    }
+                                }
+                                if (obj.email) {
+                                    li.setAttribute("data-email", obj.email);
+                                    let email = document.createElement("span");
+                                    email.textContent = `(${obj.email})`;
+                                    span.insertAdjacentElement(
+                                        "afterend",
+                                        email
+                                    );
+                                }
+                                if (
+                                    (obj.status && obj.status === 1) ||
+                                    (obj.inchat && obj.inchat === 1)
+                                ) {
+                                    li.classList.add("offline");
+                                }
+                                ul.append(li);
+                            }
+                        }
+                        highlightSearch(
+                            Array.from(ul.getElementsByTagName("span")),
+                            input.value.split(" ")
+                        );
+                        for (const child of ul.children) {
+                            child.addEventListener("keydown", (e) =>
+                                field.selectizeKeysNav(e)
+                            );
+                            child.addEventListener("click", (e) => {
+                                let arr = [];
+                                Array.from(
+                                    e.currentTarget.getElementsByTagName("span")
+                                ).map((e) => arr.push(e.textContent));
+                                field.addSelectize(
+                                    e.currentTarget.getAttribute("data-select"),
+                                    arr.join(" ")
+                                );
+                            });
+                        }
+                        // ul.children.length > 0
+                        //     ? fadeIn(ul, {
+                        //           dropdown: ul.closest(".field"),
+                        //       })
+                        //     : fadeOut(ul);
+                    } else removeChildren(ul, true);
+                    // else fadeOut(ul);
+
+                    // else fadeOut(ul);
+                } else if (data.response[0]?.content) {
+                    // for selects
+                    let fields = Field.find({
+                        type: "select",
+                        task: data.s,
+                    });
+                    for (let field of fields) {
+                        const loadingValue =
+                                field.input[0].getAttribute("data-value") ?? "",
+                            ul = field.ul;
+                        removeAttributes(field.input[0], [
+                            "data-value",
+                            "data-f",
+                            "data-s",
+                        ]);
+                        function switchSelect(el) {
+                            field.input[0].textContent =
+                                el.getElementsByTagName("span")[0].textContent;
+                            field.input[0].classList.remove("empty");
+                            for (let child of el.parentNode.children) {
+                                child === el
+                                    ? (child.className = "selected")
+                                    : (child.className = "");
+                            }
+                            field.selected = el.getAttribute("data-select");
+                            fadeOut(ul);
+                        }
+                        for (const obj of data.response) {
                             let li = document.createElement("li"),
                                 span = document.createElement("span");
-                            li.setAttribute("data-select", obj.id);
-                            li.setAttribute("tabindex", "0");
-                            span.textContent = obj.content;
+                            setElementAttributes(li, [
+                                ["data-select", obj.id],
+                                ["tabindex", "0"],
+                            ]);
+                            span.textContent = obj["content"];
+                            if (loadingValue && loadingValue === obj.id) {
+                                field.input[0].textContent = obj["content"];
+                                field.input[0].classList.remove("empty");
+                                li.className = "selected";
+                            }
                             li.append(span);
-                            if (obj.secondary) {
-                                let span = document.createElement("span");
-                                span.textContent = `(${obj.secondary})`;
-                                li.append(span);
-                            }
-                            if (obj.role) {
-                                const roles = obj.role.split(",");
-                                for (const role of roles) {
-                                    let btn = document.createElement("button");
-                                    btn.textContent = role;
-                                    btn.disabled = true;
-                                    li.append(btn);
+                            li.addEventListener("click", function () {
+                                switchSelect(li);
+                            });
+                            li.addEventListener("keydown", (e) => {
+                                switch (e.code) {
+                                    case "Enter":
+                                    case "Space":
+                                        switchSelect(li);
+                                        break;
+                                    case "ArrowUp":
+                                        e.preventDefault();
+                                        if (li !== ul.firstChild)
+                                            li.previousElementSibling.focus();
+                                        else field.input[0].focus();
+                                        break;
+                                    case "ArrowDown":
+                                        e.preventDefault();
+                                        if (li !== ul.lastChild)
+                                            li.nextElementSibling.focus();
+                                        break;
+                                    case "Tab":
+                                        fadeOut(ul);
                                 }
-                            }
-                            if (obj.email) {
-                                li.setAttribute("data-email", obj.email);
-                                let email = document.createElement("span");
-                                email.textContent = `(${obj.email})`;
-                                span.insertAdjacentElement("afterend", email);
-                            }
-                            if (
-                                (obj.status && obj.status === 1) ||
-                                (obj.inchat && obj.inchat === 1)
-                            ) {
-                                li.classList.add("offline");
-                            }
+                            });
                             ul.append(li);
                         }
-                    }
-                    highlightSearch(
-                        Array.from(ul.getElementsByTagName("span")),
-                        input.value.split(" ")
-                    );
-                    for (const child of ul.children) {
-                        child.addEventListener("keydown", (e) =>
-                            field.selectizeKeysNav(e)
-                        );
-                        child.addEventListener("click", (e) => {
-                            let arr = [];
-                            Array.from(
-                                e.currentTarget.getElementsByTagName("span")
-                            ).map((e) => arr.push(e.textContent));
-                            field.addSelectize(
-                                e.currentTarget.getAttribute("data-select"),
-                                arr.join(" ")
-                            );
-                        });
-                    }
-                    // ul.children.length > 0
-                    //     ? fadeIn(ul, {
-                    //           dropdown: ul.closest(".field"),
-                    //       })
-                    //     : fadeOut(ul);
-                } else removeChildren(ul, true);
-                // else fadeOut(ul);
-
-                // else fadeOut(ul);
-            } else if (data.response[0]?.content) {
-                // for selects
-                let fields = Field.find({
-                    type: "select",
-                    task: data.s,
-                });
-                for (let field of fields) {
-                    const loadingValue =
-                            field.input[0].getAttribute("data-value") ?? "",
-                        ul = field.ul;
-                    removeAttributes(field.input[0], [
-                        "data-value",
-                        "data-f",
-                        "data-s",
-                    ]);
-                    function switchSelect(el) {
-                        field.input[0].textContent =
-                            el.getElementsByTagName("span")[0].textContent;
-                        field.input[0].classList.remove("empty");
-                        for (let child of el.parentNode.children) {
-                            child === el
-                                ? (child.className = "selected")
-                                : (child.className = "");
+                        if (!field.input[0].value) {
+                            const first = ul.getElementsByTagName("li")[0];
+                            first.className = "selected";
+                            field.selected = first.getAttribute("data-select");
+                            field.input[0].value =
+                                first.getElementsByTagName(
+                                    "span"
+                                )[0].textContent;
                         }
-                        field.selected = el.getAttribute("data-select");
-                        fadeOut(ul);
+                        // field.input[0].addEventListener("focus", () => {
+                        //     fadeIn(ul, {
+                        //         dropdown: ul.closest(".field"),
+                        //     });
+                        //     ul.children[0].focus();
+                        // });
+                        // field.input[0].addEventListener("click", () => {
+                        //     fadeIn(ul, {
+                        //         dropdown: ul.closest(".field"),
+                        //     });
+                        //     ul.children[0].focus();
+                        // });
+                        // ul.addEventListener("keydown", (e) => {
+                        //     switch (e.code) {
+                        //         case "Escape":
+                        //             fadeOut(ul);
+                        //     }
+                        // });
                     }
-                    for (const obj of data.response) {
-                        let li = document.createElement("li"),
-                            span = document.createElement("span");
-                        setElementAttributes(li, [
-                            ["data-select", obj.id],
-                            ["tabindex", "0"],
-                        ]);
-                        span.textContent = obj["content"];
-                        if (loadingValue && loadingValue === obj.id) {
-                            field.input[0].textContent = obj["content"];
-                            field.input[0].classList.remove("empty");
-                            li.className = "selected";
-                        }
-                        li.append(span);
-                        li.addEventListener("click", function () {
-                            switchSelect(li);
-                        });
-                        li.addEventListener("keydown", (e) => {
-                            switch (e.code) {
-                                case "Enter":
-                                case "Space":
-                                    switchSelect(li);
-                                    break;
-                                case "ArrowUp":
-                                    e.preventDefault();
-                                    if (li !== ul.firstChild)
-                                        li.previousElementSibling.focus();
-                                    else field.input[0].focus();
-                                    break;
-                                case "ArrowDown":
-                                    e.preventDefault();
-                                    if (li !== ul.lastChild)
-                                        li.nextElementSibling.focus();
-                                    break;
-                                case "Tab":
-                                    fadeOut(ul);
-                            }
-                        });
-                        ul.append(li);
-                    }
-                    if (!field.input[0].value) {
-                        const first = ul.getElementsByTagName("li")[0];
-                        first.className = "selected";
-                        field.selected = first.getAttribute("data-select");
-                        field.input[0].value =
-                            first.getElementsByTagName("span")[0].textContent;
-                    }
-                    // field.input[0].addEventListener("focus", () => {
-                    //     fadeIn(ul, {
-                    //         dropdown: ul.closest(".field"),
-                    //     });
-                    //     ul.children[0].focus();
-                    // });
-                    // field.input[0].addEventListener("click", () => {
-                    //     fadeIn(ul, {
-                    //         dropdown: ul.closest(".field"),
-                    //     });
-                    //     ul.children[0].focus();
-                    // });
-                    // ul.addEventListener("keydown", (e) => {
-                    //     switch (e.code) {
-                    //         case "Escape":
-                    //             fadeOut(ul);
-                    //     }
-                    // });
                 }
-            }
-        } else if (data.f === 12 && data.response.id)
-            Field.fields[data.x].addSelectize(data.response.id, data.t);
+                break;
+            case 12:
+                if (data.response.id)
+                    Field.fields[data.x].addSelectize(data.response.id, data.t);
+                break;
+            case 21:
+                // populate calendar
+                break;
+        }
+
+        // if (data.f === 7) {
+        //     if (data.i) {
+        //         const field = Field.fields[data.x],
+        //             input = field.input[0],
+        //             ul = field.ul;
+        //         if (data.response[0]?.fail) {
+        //             msg.new({
+        //                 content: data.response[0].fail,
+        //                 btn0listener: () => input.focus(),
+        //             });
+        //             input.value = input.value.trim();
+        //         } else if (data.response[0]?.content) {
+        //             let ulList = [];
+        //             for (const item of field.selected.items) {
+        //                 ulList.push(item.id);
+        //             }
+
+        //             removeChildren(ul, true);
+        //             for (const obj of data.response) {
+        //                 if (obj.id !== null && !ulList.includes(`${obj.id}`)) {
+        //                     let li = document.createElement("li"),
+        //                         span = document.createElement("span");
+        //                     li.setAttribute("data-select", obj.id);
+        //                     li.setAttribute("tabindex", "0");
+        //                     span.textContent = obj.content;
+        //                     li.append(span);
+        //                     if (obj.secondary) {
+        //                         let span = document.createElement("span");
+        //                         span.textContent = `(${obj.secondary})`;
+        //                         li.append(span);
+        //                     }
+        //                     if (obj.role) {
+        //                         const roles = obj.role.split(",");
+        //                         for (const role of roles) {
+        //                             let btn = document.createElement("button");
+        //                             btn.textContent = role;
+        //                             btn.disabled = true;
+        //                             li.append(btn);
+        //                         }
+        //                     }
+        //                     if (obj.email) {
+        //                         li.setAttribute("data-email", obj.email);
+        //                         let email = document.createElement("span");
+        //                         email.textContent = `(${obj.email})`;
+        //                         span.insertAdjacentElement("afterend", email);
+        //                     }
+        //                     if (
+        //                         (obj.status && obj.status === 1) ||
+        //                         (obj.inchat && obj.inchat === 1)
+        //                     ) {
+        //                         li.classList.add("offline");
+        //                     }
+        //                     ul.append(li);
+        //                 }
+        //             }
+        //             highlightSearch(
+        //                 Array.from(ul.getElementsByTagName("span")),
+        //                 input.value.split(" ")
+        //             );
+        //             for (const child of ul.children) {
+        //                 child.addEventListener("keydown", (e) =>
+        //                     field.selectizeKeysNav(e)
+        //                 );
+        //                 child.addEventListener("click", (e) => {
+        //                     let arr = [];
+        //                     Array.from(
+        //                         e.currentTarget.getElementsByTagName("span")
+        //                     ).map((e) => arr.push(e.textContent));
+        //                     field.addSelectize(
+        //                         e.currentTarget.getAttribute("data-select"),
+        //                         arr.join(" ")
+        //                     );
+        //                 });
+        //             }
+        //             // ul.children.length > 0
+        //             //     ? fadeIn(ul, {
+        //             //           dropdown: ul.closest(".field"),
+        //             //       })
+        //             //     : fadeOut(ul);
+        //         } else removeChildren(ul, true);
+        //         // else fadeOut(ul);
+
+        //         // else fadeOut(ul);
+        //     } else if (data.response[0]?.content) {
+        //         // for selects
+        //         let fields = Field.find({
+        //             type: "select",
+        //             task: data.s,
+        //         });
+        //         for (let field of fields) {
+        //             const loadingValue =
+        //                     field.input[0].getAttribute("data-value") ?? "",
+        //                 ul = field.ul;
+        //             removeAttributes(field.input[0], [
+        //                 "data-value",
+        //                 "data-f",
+        //                 "data-s",
+        //             ]);
+        //             function switchSelect(el) {
+        //                 field.input[0].textContent =
+        //                     el.getElementsByTagName("span")[0].textContent;
+        //                 field.input[0].classList.remove("empty");
+        //                 for (let child of el.parentNode.children) {
+        //                     child === el
+        //                         ? (child.className = "selected")
+        //                         : (child.className = "");
+        //                 }
+        //                 field.selected = el.getAttribute("data-select");
+        //                 fadeOut(ul);
+        //             }
+        //             for (const obj of data.response) {
+        //                 let li = document.createElement("li"),
+        //                     span = document.createElement("span");
+        //                 setElementAttributes(li, [
+        //                     ["data-select", obj.id],
+        //                     ["tabindex", "0"],
+        //                 ]);
+        //                 span.textContent = obj["content"];
+        //                 if (loadingValue && loadingValue === obj.id) {
+        //                     field.input[0].textContent = obj["content"];
+        //                     field.input[0].classList.remove("empty");
+        //                     li.className = "selected";
+        //                 }
+        //                 li.append(span);
+        //                 li.addEventListener("click", function () {
+        //                     switchSelect(li);
+        //                 });
+        //                 li.addEventListener("keydown", (e) => {
+        //                     switch (e.code) {
+        //                         case "Enter":
+        //                         case "Space":
+        //                             switchSelect(li);
+        //                             break;
+        //                         case "ArrowUp":
+        //                             e.preventDefault();
+        //                             if (li !== ul.firstChild)
+        //                                 li.previousElementSibling.focus();
+        //                             else field.input[0].focus();
+        //                             break;
+        //                         case "ArrowDown":
+        //                             e.preventDefault();
+        //                             if (li !== ul.lastChild)
+        //                                 li.nextElementSibling.focus();
+        //                             break;
+        //                         case "Tab":
+        //                             fadeOut(ul);
+        //                     }
+        //                 });
+        //                 ul.append(li);
+        //             }
+        //             if (!field.input[0].value) {
+        //                 const first = ul.getElementsByTagName("li")[0];
+        //                 first.className = "selected";
+        //                 field.selected = first.getAttribute("data-select");
+        //                 field.input[0].value =
+        //                     first.getElementsByTagName("span")[0].textContent;
+        //             }
+        //             // field.input[0].addEventListener("focus", () => {
+        //             //     fadeIn(ul, {
+        //             //         dropdown: ul.closest(".field"),
+        //             //     });
+        //             //     ul.children[0].focus();
+        //             // });
+        //             // field.input[0].addEventListener("click", () => {
+        //             //     fadeIn(ul, {
+        //             //         dropdown: ul.closest(".field"),
+        //             //     });
+        //             //     ul.children[0].focus();
+        //             // });
+        //             // ul.addEventListener("keydown", (e) => {
+        //             //     switch (e.code) {
+        //             //         case "Escape":
+        //             //             fadeOut(ul);
+        //             //     }
+        //             // });
+        //         }
+        //     }
+        // } else if (data.f === 12 && data.response.id)
+        //     Field.fields[data.x].addSelectize(data.response.id, data.t);
     }
     selectizeKeysNav(e) {
         // modifier en function pour la navigation globale dans le site, avec raccourcis clavier (n= jump to navbar, t=jump to topbar, ...)

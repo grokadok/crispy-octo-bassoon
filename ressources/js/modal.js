@@ -712,7 +712,7 @@ function loadNewTicket(contact) {
                     name: "Description",
                     placeholder:
                         "C'est tout ce que ça te fait quand j'te dis qu'on va manger des chips ?",
-                    type: "input_text",
+                    type: "quill",
                 },
                 {
                     compact: true,

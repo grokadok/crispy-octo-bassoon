@@ -134,7 +134,7 @@ class WSConnection {
                             }
                         }
                     }
-                } else if ([7, 12].includes(data.f)) {
+                } else if ([7, 12, 21].includes(data.f)) {
                     data.s === 8
                         ? BopChat.chats[0].parseData(data)
                         : Field.parseData(data);
