@@ -953,12 +953,15 @@ class FWServer
         // echo PHP_EOL . 'Use ' . $s . 's for 100000 queries' . PHP_EOL . PHP_EOL;
 
         // change session management to stateless asap with jwt or use dedicated library.
-        $this->db->request([
-            "query" => "DELETE FROM session;",
-        ]);
-        $this->db->request([
-            "query" => "ALTER TABLE session AUTO_INCREMENT=1; ;",
-        ]);
+        if ($this->db->test() === true) {
+            $this->db->request([
+                "query" => "DELETE FROM session;",
+            ]);
+            $this->db->request([
+                "query" => "ALTER TABLE session AUTO_INCREMENT=1; ;",
+            ]);
+            print('#### Db connected. ####' . PHP_EOL);
+        } else print('!!!! No db connection. !!!!' . PHP_EOL);
     }
     public function onWorkStart($serv, $worker_id)
     {
@@ -971,11 +974,22 @@ class FWServer
         //         return;
         //     }
         // });
-        go(function () {
-            $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
-            print('#### CalDAV connected ####' . PHP_EOL);
-            $this->calendars = $this->caldav->findCalendars();
-            print('#### ' . count($this->calendars) . ' calendars loaded ####' . PHP_EOL);
+        go(function () use ($worker_id) {
+            $calConnected = false;
+            while ($calConnected === false) {
+                try {
+                    $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
+                    $calConnected = true;
+                } catch (\Exception) {
+                    print("!!!! CalDAV not reachable by Worker#$worker_id. !!!!" . PHP_EOL);
+                    sleep(2);
+                }
+            }
+            if ($calConnected === true) {
+                print("#### CalDAV connected on Worker#$worker_id ####" . PHP_EOL);
+                $this->calendars = $this->caldav->findCalendars();
+                print('#### ' . count($this->calendars) . " calendars loaded on Worker#$worker_id ####" . PHP_EOL);
+            } else print("!!!! CalDAV not connected on Worker#$worker_id. !!!!" . PHP_EOL);
             // var_dump($this->calendars);
             // sleep(20);
             // $this->caldav->setCalendar($this->calendars["personal-1"]);
@@ -2140,7 +2154,7 @@ class FWServer
                     foreach ($res as $cal) {
                         $this->caldav->setCalendar($this->calendars[$cal[0]]);
                         $response[] = [
-                            'data' => $this->caldav->getEvents($task['start'] ?? null, $task['end'] ?? null),
+                            'events' => $this->caldav->getEvents($task['start'] ?? null, $task['end'] ?? null),
                             'name' => $cal[0],
                             'role' => $cal[1],
                         ];

@@ -79,7 +79,7 @@ class Field {
             case "calendar": {
                 const index = this.index;
                 let fieldElement = document.createElement("div");
-                // fieldElement.classList.add("calendar");
+                this.data = {};
                 this.calendar = new FullCalendar.Calendar(fieldElement, {
                     events: function (info, successCallback, failureCallback) {
                         // console.warn(toCalDAVString(info.start.valueOf()));
@@ -87,7 +87,7 @@ class Field {
                             f: 21,
                             start: toCalDAVString(info.start.valueOf()),
                             end: toCalDAVString(info.end.valueOf()),
-                            i: index,
+                            x: index,
                         });
                     },
                     headerToolbar: {
@@ -867,6 +867,36 @@ class Field {
                 break;
             case 21:
                 // populate calendar
+                const field = Field.fields[data.x];
+                for (const calendar of data.response) {
+                    if (!field.data[calendar.name])
+                        field.data[calendar.name] = {
+                            role: calendar.role,
+                            events: {},
+                        };
+                    field.calendar.batchRendering(() => {
+                        for (const event of calendar.events) {
+                            // console.log(icalToObject(event.data));
+                            const eventObject = icalToObject(event.data);
+                            field.data[calendar.name].events[eventObject.uid] =
+                                {
+                                    etag: event.etag,
+                                    href: event.href,
+                                    data: eventObject,
+                                };
+                            delete field.data[calendar.name].events[
+                                eventObject.uid
+                            ].data.uid;
+                            field.calendar.addEvent({
+                                id: eventObject.uid,
+                                title: eventObject.VCALENDAR.VEVENT.TITLE,
+                                // allDay: create condition to check wether the event is allday or not
+                                // start:,
+                                // end:,
+                            });
+                        }
+                    });
+                }
                 break;
         }
 

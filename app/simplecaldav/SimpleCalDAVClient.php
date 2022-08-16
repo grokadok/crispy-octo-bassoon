@@ -76,24 +76,24 @@ class SimpleCalDAVClient
 
 			if ($client->GetHttpResultCode() == '401') // unauthorisized
 			{
-				throw new CalDAVException('Login failed', $client);
+				throw new CalDAVException('Login failed' . PHP_EOL, $client);
 			} elseif ($client->GetHttpResultCode() == '') // can't reach server
 			{
-				throw new CalDAVException('Can\'t reach server', $client);
-			} else throw new CalDAVException('Could\'n find a CalDAV-collection under the url', $client);
+				throw new CalDAVException('Can\'t reach server' . PHP_EOL, $client);
+			} else throw new CalDAVException('Could\'n find a CalDAV-collection under the url' . PHP_EOL, $client);
 		}
 
 		// Check for errors
 		if ($client->GetHttpResultCode() != '200') {
 			if ($client->GetHttpResultCode() == '401') // unauthorisized
 			{
-				throw new CalDAVException('Login failed', $client);
+				throw new CalDAVException('Login failed' . PHP_EOL, $client);
 			} elseif ($client->GetHttpResultCode() == '') // can't reach server
 			{
-				throw new CalDAVException('Can\'t reach server', $client);
+				throw new CalDAVException('Can\'t reach server' . PHP_EOL, $client);
 			} else // Unknown status
 			{
-				throw new CalDAVException('Recieved unknown HTTP status while checking the connection after establishing it', $client);
+				throw new CalDAVException('Received unknown HTTP status while checking the connection after establishing it' . PHP_EOL, $client);
 			}
 		}
 

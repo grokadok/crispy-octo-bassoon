@@ -326,6 +326,11 @@ function highlightSearch(el, needle) {
         for (let e of el) textReplace(e);
     } else textReplace(el);
 }
+/**
+ * Parses ical string into object, adding uid at first level (remove it before converting back to string).
+ * @param {String} ical
+ * @returns
+ */
 function icalToObject(ical) {
     // find separator
     const separator = ical.includes("\r\n") ? "\r\n" : "\n";
@@ -350,6 +355,7 @@ function icalToObject(ical) {
                 break;
             default:
                 // store property value
+                if (val[0] === "UID") icalObject.uid = val[1];
                 insertPoint = icalObject;
                 for (let i = cursor.length - 1; i >= 0; i--)
                     insertPoint = insertPoint[cursor[i]];
@@ -406,6 +412,23 @@ function normalizePlus(string) {
         .toLocaleLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
+}
+/**
+ * Parse calendar object to valid ical string (sortof).
+ * @param {Object} cal - ical object generated with icalToObject().
+ */
+function objectToIcal(cal) {
+    let ical = "";
+    const action = (key, value) => {
+        if (typeof value === "string") ical += `${key}:${value}\n`;
+        else {
+            ical += `BEGIN:${key}\n`;
+            for (const [k, v] of Object.entries(value)) action(k, v);
+            ical += `END:${key}\n`;
+        }
+    };
+    for (const [key, value] of Object.entries(cal)) action(key, value);
+    return ical;
 }
 /**
  * Refresh data from tabulators from element.
@@ -753,6 +776,17 @@ function toCalDAVString(date) {
         console.error(e);
         return false;
     }
+}
+/**
+ * Convert compact ISO8601 string to extended for fullcalendar.
+ * @param {String} date
+ */
+function toISO8601ExtString(date) {
+    date = date.slice(0, 4) + "-" + date.slice(4, 6) + "-" + date.slice(6);
+    if (date.length > 10)
+        date =
+            date.slice(0, 13) + ":" + date.slice(13, 15) + ":" + date.slice(15);
+    return date;
 }
 /**
  * Toggles between classes (useful when wanting to toggle between more than two classes)

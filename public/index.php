@@ -8,8 +8,10 @@ $jsfiles = getenv('ISLOCAL') ? [
     'js/fetch.js',
     'js/fields.js',
     'vendor/quill/quill.js',
+    'vendor/a_rrule/rrule.js',
     'vendor/fullCalendar/a_main.js',
     'vendor/fullCalendar/locales-all.js',
+    'vendor/fullCalendar/rrule/main.global.js',
     'vendor/intlTelInput/js/intlTelInput.js',
     'vendor/intlTelInput/js/utils.js',
     'js/login.js',
@@ -59,10 +61,10 @@ $main =
     '>
         </nav>
         <div id="chat" class="loading hidden"></div>
+        <div id="calendar" class="loading hidden"></div>
         <main class="hidden loading">
         </main>
-        <div class="modal-container">
-        </div>
+        <div class="modal-container"></div>
         <dialog class="msg fadeout">
             <div>
                 <span>Rogntudju !</span>

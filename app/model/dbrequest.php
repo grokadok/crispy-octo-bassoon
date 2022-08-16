@@ -36,32 +36,40 @@ class DBRequest
     }
     public function request($request)
     {
-
-        try {
-            $mysqli = $this->pool->get();
-            $stmt = $mysqli->prepare($request["query"]);
-            if (
-                isset($request["type"]) &&
-                isset($request["content"])
-            ) {
-                $stmt->bind_param(
-                    $request["type"],
-                    ...$request["content"]
-                );
-            }
-            $stmt->execute();
-            $result = $stmt->get_result();
-            // $stmt->close();
-            if (str_starts_with($request["query"], "SELECT")) {
-                $mode = isset($request["array"]) ? MYSQLI_NUM : MYSQLI_ASSOC;
-                $res = $result->fetch_all($mode);
-            }
-            $this->pool->put($mysqli);
-            // $this->result = $res ?? $result;
-            return $res ?? $result;
-            // $this->num_rows = count($this->result);
-        } catch (\Exception $e) {
-            throw $e;
+        $mysqli = $this->pool->get();
+        $stmt = $mysqli->prepare($request["query"]);
+        if (
+            isset($request["type"]) &&
+            isset($request["content"])
+        ) {
+            $stmt->bind_param(
+                $request["type"],
+                ...$request["content"]
+            );
         }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if (str_starts_with($request["query"], "SELECT")) {
+            $mode = isset($request["array"]) ? MYSQLI_NUM : MYSQLI_ASSOC;
+            $res = $result->fetch_all($mode);
+        }
+        $this->pool->put($mysqli);
+        return $res ?? $result;
+    }
+    public function test()
+    {
+        $response = false;
+        $tries = 0;
+        while ($response === false && $tries < 10) {
+            try {
+                $tries++;
+                $this->pool->get();
+                $response = true;
+            } catch (\Exception) {
+                print('prout' . PHP_EOL);
+                sleep(1);
+            }
+        }
+        return $response;
     }
 }
