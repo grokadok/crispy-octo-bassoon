@@ -976,8 +976,10 @@ class FWServer
         // });
         go(function () use ($worker_id) {
             $calConnected = false;
-            while ($calConnected === false) {
+            $tries = 0;
+            while ($calConnected === false && $tries < 5) {
                 try {
+                    $tries++;
                     $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
                     $calConnected = true;
                 } catch (\Exception) {

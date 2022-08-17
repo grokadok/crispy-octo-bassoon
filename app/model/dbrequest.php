@@ -66,7 +66,6 @@ class DBRequest
                 $this->pool->get();
                 $response = true;
             } catch (\Exception) {
-                print('prout' . PHP_EOL);
                 sleep(1);
             }
         }
