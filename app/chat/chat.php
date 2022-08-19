@@ -124,7 +124,7 @@ trait BopChat
         //     "content" => [$chat],
         // ]);
         return $this->db->request([
-            "query" => "SELECT name FROM chat WHERE idchat = ?;",
+            "query" => "SELECT name FROM chat WHERE idchat = ? LIMIT 1;",
             "type" => "i",
             "content" => [$chat],
         ])[0]["name"];
@@ -165,7 +165,7 @@ trait BopChat
     {
         $res = $this->db->request([
             "query" =>
-            "SELECT created,iduser FROM message WHERE idchat = ? AND created = (SELECT MAX(created) FROM message WHERE idchat = ?) GROUP BY idmessage;",
+            "SELECT created,iduser FROM message WHERE idchat = ? AND created = (SELECT MAX(created) FROM message WHERE idchat = ?) GROUP BY idmessage LIMIT 1;",
             "type" => "ii",
             "content" => [$chat, $chat],
         ]);

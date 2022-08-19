@@ -974,30 +974,34 @@ class FWServer
         //         return;
         //     }
         // });
-        go(function () use ($worker_id) {
-            $calConnected = false;
-            $tries = 0;
-            while ($calConnected === false && $tries < 5) {
-                try {
-                    $tries++;
-                    $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
-                    $calConnected = true;
-                } catch (\Exception) {
-                    print("!!!! CalDAV not reachable by Worker#$worker_id. !!!!" . PHP_EOL);
-                    sleep(2);
+
+        // former function to connect to o2switch's nextcould caldav
+        if (1 === 0) {
+            go(function () use ($worker_id) {
+                $calConnected = false;
+                $tries = 0;
+                while ($calConnected === false && $tries < 5) {
+                    try {
+                        $tries++;
+                        $this->caldav->connect(getenv('CALDAV_URL'), getenv('CALDAV_USER'), getenv('CALDAV_PASS'));
+                        $calConnected = true;
+                    } catch (\Exception) {
+                        print("!!!! CalDAV not reachable by Worker#$worker_id. !!!!" . PHP_EOL);
+                        sleep(2);
+                    }
                 }
-            }
-            if ($calConnected === true) {
-                print("#### CalDAV connected on Worker#$worker_id ####" . PHP_EOL);
-                $this->calendars = $this->caldav->findCalendars();
-                print('#### ' . count($this->calendars) . " calendars loaded on Worker#$worker_id ####" . PHP_EOL);
-            } else print("!!!! CalDAV not connected on Worker#$worker_id. !!!!" . PHP_EOL);
-            // var_dump($this->calendars);
-            // sleep(20);
-            // $this->caldav->setCalendar($this->calendars["personal-1"]);
-            // $events = $this->caldav->getEvents('20220701T000000Z');
-            // var_dump($events);
-        });
+                if ($calConnected === true) {
+                    print("#### CalDAV connected on Worker#$worker_id ####" . PHP_EOL);
+                    $this->calendars = $this->caldav->findCalendars();
+                    print('#### ' . count($this->calendars) . " calendars loaded on Worker#$worker_id ####" . PHP_EOL);
+                } else print("!!!! CalDAV not connected on Worker#$worker_id. !!!!" . PHP_EOL);
+                // var_dump($this->calendars);
+                // sleep(20);
+                // $this->caldav->setCalendar($this->calendars["personal-1"]);
+                // $events = $this->caldav->getEvents('20220701T000000Z');
+                // var_dump($events);
+            });
+        }
     }
     private function wsTask(array $task)
     {
@@ -2142,7 +2146,7 @@ class FWServer
             // FETCH CALDAV DATA (21)
             /////////////////////////////////////////////////////
 
-            if ($f === 21) {
+            if ($f === 21 && 0 === 1) {
                 // check if user has calendar, get calendars title & role
                 $res = $this->db->request([
                     'query' => 'SELECT name,role FROM user_has_caldav LEFT JOIN caldav USING (idcaldav) WHERE iduser = ?;',
