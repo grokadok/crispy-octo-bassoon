@@ -33,7 +33,7 @@ trait BopCal
     private function getEventsFromUid(int $uid)
     {
         $events = $this->db->request([
-            'query' => 'SELECT idcal_component, summary, idcal_description, organizer, idtimezone, start, end, duration, allday, idcal_class, idcal_location, idpriority, sequence, idcal_status, idcal_recurrence
+            'query' => 'SELECT idcal_component, summary, idcal_description, organizer, idtimezone, start, end, duration, allday, idcal_class, idcal_location, idpriority, idcal_status, transparency, percent_completion, sequence, recur_rule, recur_id_range, recur_id_date
             FROM cal_component
             WHERE type = 0 AND uid = ?;',
             'type' => 'i',
@@ -72,7 +72,9 @@ trait BopCal
             ])[0][0] : '';
 
             // get recurrence
-            if (isset($event['idcal_recurrence'])) $event['recurrence'] = $this->getRecurrence($event['idcal_recurrence']);
+            if (isset($event['recur_rule']))
+                $event['recurrence'] = $this->getRecurrence($event['recur_rule']);
+
 
             // get attendees
         }
@@ -86,26 +88,13 @@ trait BopCal
             'content' => [$id],
             'array' => false,
         ])[0];
-        $recurrence['exceptions'] = [];
         // get exceptions
-        $exceptions = $this->db->request([
-            'query' => 'SELECT idcal_exception, date, idtimezone, child_recurrence FROM cal_exception WHERE parent_recurrence = ?;',
+        $recurrence['exceptions'] = $this->db->request([
+            'query' => 'SELECT date,all_day FROM cal_has_rec_exc LEFT JOIN cal_exception USING (idcal_exception) WHERE ical_recurrence = ?;',
             'type' => 'i',
             'content' => [$id],
             'array' => false,
         ]);
-        // foreach exception
-        foreach ($exceptions as $exception) {
-            $recurrence['exceptions'][$exception['idcal_exception']] = isset($exception['child_recurrence']) ?
-                [
-                    'recurrence' => $this->getRecurrence($exception['child_recurrence'])
-                ] :
-                [
-                    'date' => $exception['date'],
-                    'timezone' => $exception['idtimezone'] ?? '',
-                ];
-        }
-        // if recurrence, exception['recurrence']=getRecurrence(id)
 
         return $recurrence;
     }
