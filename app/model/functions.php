@@ -32,7 +32,7 @@ if (!function_exists("str_starts_with")) {
  */
 function addIfNotNullNorExists($needle, $haystack)
 {
-    if (isset($needle) && !in_array($needle, $haystack)) {
+    if (isset($needle) && !in_array($needle, $haystack, true)) {
         $haystack[] = $needle;
         return $haystack;
     }
