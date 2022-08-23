@@ -50,7 +50,7 @@ class DBRequest
         $stmt->execute();
         $result = $stmt->get_result();
         if (str_starts_with($request["query"], "SELECT")) {
-            $mode = isset($request["array"]) ? MYSQLI_NUM : MYSQLI_ASSOC;
+            $mode = empty($request['array']) ? MYSQLI_ASSOC : MYSQLI_NUM;
             $res = $result->fetch_all($mode);
         }
         $this->pool->put($mysqli);
