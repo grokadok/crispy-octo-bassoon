@@ -141,18 +141,18 @@ trait BopCal
             $request['values'] .= ',?';
             $request['type'] .= 's';
             $request['value'][] = $event['end'];
-        } else {
+        } else if (isset($event['duration'])) {
             $request['into'] .= ',duration';
             $request['values'] .= ',?';
             $request['type'] .= 's';
             $request['value'][] = $event['duration'];
         }
-        // allday
-        if (isset($event['allday'])) {
+        // all_day
+        if (isset($event['all_day'])) {
             $request['into'] .= ',all_day';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['allday'];
+            $request['value'][] = $event['all_day'];
         }
         // class
         if (isset($event['class'])) {
@@ -163,20 +163,10 @@ trait BopCal
         }
         // location
         if (isset($event['location'])) {
-            $this->db->request([
-                'query' => 'INSERT INTO cal_location (name) VALUES (?);',
-                'type' => 's',
-                'content' => [$event['location']],
-            ]);
             $request['into'] .= ',location';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][]  = $this->db->request([
-                'query' => 'SELECT idcal_location FROM location WHERE name = ? LIMIT 1;',
-                'type' => 'i',
-                'content' => [$event['location']],
-                'array' => true,
-            ])[0][0];
+            $request['value'][]  = $this->addLocation($event['location']);
         }
         // priority
         if (isset($event['priority'])) {
@@ -197,14 +187,14 @@ trait BopCal
             $request['into'] .= ',transparency';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['transparency'] ? 1 : 0;
+            $request['value'][] = $event['transparency'];
         }
 
 
         $this->db->request([
             'query' => 'INSERT INTO cal_component (uid, type, created, summary, organizer, start) VALUES ((SELECT UUID_TO_BIN(?,1)), 0, ?, ?, ?, ?);',
             'type' => 'sssisssii',
-            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], $event['duration'], $event['allday'], $event['transparency']],
+            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], $event['duration'], $event['all_day'], $event['transparency']],
             'array' => true,
         ]);
         $idcomponent = $this->db->request([
@@ -223,7 +213,7 @@ trait BopCal
                 'content' => [$idcomponent],
             ]);
             // insert rrule
-            $this->addRecurrenceRule($idcomponent, $event['rrule']);
+            $this->componentSetRRUle($idcomponent, $event['rrule']);
         }
         if (isset($event['rdate'])) {
             $this->db->request([
@@ -667,11 +657,11 @@ trait BopCal
             'type' => '',
             'content' => [],
         ];
-        if (isset($exception['allday'])) {
+        if (isset($exception['all_day'])) {
             $request['into'] = ',all_day';
             $request['values'] = ',?';
             $request['type'] = 'i';
-            $request['content'][] = $exception['allday'] ? 1 : 0;
+            $request['content'][] = $exception['all_day'] ? 1 : 0;
         }
         $this->db->request([
             'query' => 'INSERT INTO cal_exception (idcal_component,date' . $request['into'] . ') VALUES (?,?' . $request['values'] . ');',
@@ -694,6 +684,11 @@ trait BopCal
             'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?,?);',
             'type' => 'is',
             'content' => [$idcomponent, $date],
+        ]);
+        $this->db->request([
+            'query' => 'UPDATE cal_component SET rdate = 1 WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
         ]);
     }
     private function componentAddTag(int $idcomponent, int $tag)
@@ -1083,6 +1078,15 @@ trait BopCal
             'type' => 'is',
             'content' => [$idcomponent, $date],
         ]);
+        if (empty($this->db->request([
+            'query' => 'SELECT NULL FROM cal_rdate WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]))) $this->db->request([
+            'query' => 'UPDATE cal_component SET rdate = 0 WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
     }
     private function componentRemoveRRUle(int $idcomponent)
     {
@@ -1122,7 +1126,7 @@ trait BopCal
     /**
      * Adds recurrence rule to component.
      * @param int $idcomponent
-     * @param array $recurrence
+     * @param array $rule
      */
     private function componentSetRRUle(int $idcomponent, array $rule)
     {
@@ -1248,21 +1252,95 @@ trait BopCal
     }
     private function removeComponent(int $idcomponent)
     {
+
         // tag
+        $this->db->request([
+            'query' => 'DELETE cal_comp_has_tag WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // attachment
+        $this->db->request([
+            'query' => 'DELETE cal_attachment WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // rrule
+        $this->db->request([
+            'query' => 'DELETE cal_rrule WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // rdate
+        $this->db->request([
+            'query' => 'DELETE cal_rdate WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // exception
+        $this->db->request([
+            'query' => 'DELETE cal_exception WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // alarm
+        $alarms = $this->db->request([
+            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]);
+        foreach ($alarms as $alarm) $this->componentRemoveAlarm($idcomponent, $alarm[0]);
+        // attendee
+        $this->db->request([
+            'query' => 'DELETE cal_attendee WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // component
+        $component = $this->db->request([
+            'query' => 'SELECT BIN_TO_UUID(uid,1) AS uuid,location,description FROM cal_component WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
+        $this->db->request([
+            'query' => 'DELETE cal_component WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ]);
         // remove location
+        if (!empty($component['location'])) $this->removeUnusedLocation($component['location']);
         // remove description
+        if (!empty($component['description'])) $this->removeUnusedDescription($component['description']);
         // file if empty
+        if (empty($this->db->request([
+            'query' => 'SELECT NULL FROM cal_component WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'type' => 's',
+            'content' => [$component['uuid']],
+            'array' => true,
+        ]))) $this->db->request([
+            'query' => 'DELETE cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'type' => 's',
+            'content' => [$component['uuid']],
+        ]);
     }
     private function removeFile(string $uid)
     {
-        // if component, removes components first
-        // then remove file
+        $components = $this->db->request([
+            'query' => 'SELECT idcal_component FROM cal_component WHERE uid = UUID_TO_BIN(?,1);',
+            'type' => 's',
+            'content' => [$uid],
+            'array' => true,
+        ]);
+        // if components, removes components (last one removes also file)
+        if (!empty($components))
+            foreach ($components as $component) $this->removeComponent($component[0]);
+        // else remove file
+        else $this->db->request([
+            'query' => 'DELETE cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'type' => 's',
+            'content' => [$uid],
+        ]);
     }
 
 
