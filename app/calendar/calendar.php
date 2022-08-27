@@ -1236,23 +1236,35 @@ trait BopCal
 
     private function changeComponent(int $idcomponent, array $changes)
     {
-
-        // set component sequence
+        // start
+        // end
 
         // if recurrence, set recur_id and range
         // OR if range = this, add exception to rule/remove rdate and create a new component
         // OR if range = thisandfuture, close event with until or count, and create a new one with new values.
-
-        // update etag from file
-
         // if change is about date or location, attendees needs to set their participation again
         // send attendees notification of change in event
 
+        // set component sequence
+
+        // update etag from file
+
         // send updated object to connected users
+
+    }
+    private function getCalendarUsers($idfolder)
+    {
+        $users = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT iduser FROM user_has_calendar WHERE idcal_folder = ?;',
+            'type' => 'i',
+            'content' => [$idfolder],
+            'array' => true,
+        ]) as $user) $users[] = $user[0];
+        return $users;
     }
     private function removeComponent(int $idcomponent)
     {
-
         // tag
         $this->db->request([
             'query' => 'DELETE cal_comp_has_tag WHERE idcal_component = ?;',
@@ -1292,6 +1304,14 @@ trait BopCal
         ]);
         foreach ($alarms as $alarm) $this->componentRemoveAlarm($idcomponent, $alarm[0]);
         // attendee
+        $attendees = $this->db->request([
+            'query' => 'SELECT cal_attendee WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]);
+        // if attendee with status confirmed, ask user if he wants to send them intel that event is aborted.
+        // There will be notification anyway.
         $this->db->request([
             'query' => 'DELETE cal_attendee WHERE idcal_component = ?;',
             'type' => 'i',
@@ -1323,6 +1343,8 @@ trait BopCal
             'type' => 's',
             'content' => [$component['uuid']],
         ]);
+
+        // send intel to users having access to calendar of this new turn of events.
     }
     private function removeFile(string $uid)
     {

@@ -2820,7 +2820,7 @@ class FWServer
                         $genres = implode(",", $genres);
                         $res = $this->db->request([
                             "query" => "SELECT idgenre,name FROM genre WHERE idgenre IN ($genres);",
-                            "array" => false,
+                            "array" => true,
                         ]);
                         foreach ($res as $value) {
                             $response["options"]["genres"][$value[0]]["name"] =

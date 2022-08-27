@@ -8,20 +8,27 @@ class BopCal {
     static events = [];
     constructor(element) {
         BopCal.bopcals.push(this);
+        this.now = new Date();
         this.id = BopCal.cals.indexOf(this);
         this.wrapper = element;
+        this.wrapper.classList.add("bopcal");
+        this.menu = document.createElement("div");
+        this.weekstart = 1; // 0 = sunday
+        this.minical = document.createElement("div");
+
+        this.calendar = document.createElement("div");
         BopCal.fullCalendars.push({
-            instance: new FullCalendar.Calendar(fieldElement, {
-                events: function (info, successCallback, failureCallback) {
-                    // set new range
-                    BopCal.fullCalendars[0].range = [
-                        info.start.valueOf(),
-                        info.end.valueOf(),
-                    ];
-                    // remove events from unused days
-                    // getEvents
-                    BopCal.getEvents(info.start.valueOf(), info.end.valueOf());
-                },
+            instance: new FullCalendar.Calendar(this.calendar, {
+                // events: function (info, successCallback, failureCallback) {
+                //     // set new range
+                //     BopCal.fullCalendars[0].range = [
+                //         info.start.valueOf(),
+                //         info.end.valueOf(),
+                //     ];
+                //     // remove events from unused days
+                //     // getEvents
+                //     BopCal.getEvents(info.start.valueOf(), info.end.valueOf());
+                // },
                 headerToolbar: {
                     left: "prev,next today",
                     center: "title",
@@ -38,7 +45,173 @@ class BopCal {
             range: [],
         });
     }
-    static calTimeToUnix(cal) {}
+    gridAddWeek(grid) {}
+    gridAddDay(grid) {
+        // if(weekrow.children[date.getDay])
+    }
+    gridFocusDate(grid, date) {}
+    gridAddMonth(grid, date) {
+        const loadMonthBefore = (month) =>
+                grid.insertBefore(generateMonth(month), grid.firstElementChild),
+            loadMonthAfter = (month) => grid.append(generateMonth(month)),
+            generateMonth = (month) => {
+                let monthWrapper = document.createElement("div"),
+                    day = getFirstDayOfWeek(month);
+                while (
+                    day <
+                    getLastDayOfWeek(
+                        new Date(month.getFullYear(), month.getMonth() + 1, 0)
+                    )
+                ) {
+                    this.gridAddDay(grid, day);
+                    day.setDate(day.getDate() + 1);
+                }
+
+                return monthWrapper;
+            };
+        // month = first week to last week, including other monthes days
+        // => this, but with the option to hide duplicate weeks to show a compact view.
+
+        // check first and last months in grid
+        const gridFirstMonth = new Date(
+                grid.firstElementChild.getAttribute("data-date")
+            ),
+            gridLastMonth = new Date(
+                grid.lastElementChild.getAttribute("data-date")
+            ),
+            targetMonth = new Date(date.getFullYear(), date.getMonth());
+        // else if not right after last or before first, first load months in between
+        if (
+            date >=
+            new Date(gridLastMonth.getFullYear(), gridLastMonth.getMonth() + 1)
+        ) {
+            let month = new Date(
+                gridLastMonth.getFullYear(),
+                gridLastMonth.getMonth() + 1
+            );
+            while (month <= targetMonth) {
+                loadMonthAfter(month);
+                month.setMonth(month.getMonth() + 1);
+            }
+        } else if (date < gridFirstMonth) {
+            let month = new Date(
+                gridFirstMonth.getFullYear(),
+                gridFirstMonth.getMonth() - 1
+            );
+            while (month >= targetMonth) {
+                loadMonthBefore(month);
+                month.setMonth(month.getMonth() - 1);
+            }
+        } else console.info("Month already loaded.");
+
+        // hover on month changes its colors to focus theme
+        // hover on week zooms a bit more on it
+        // grid for month, not the whole calendar.
+
+        // get last date of grid, else get start date of grid
+        let lastDate =
+                grid.lastElementChild?.lastElementChild?.getAttribute(
+                    "data-date"
+                ),
+            firstDate;
+        if (lastDate) {
+            prevDate = new Date(lastDate);
+            firstDate = new Date(
+                prevDate.getFullYear(),
+                prevDate.getMonth(),
+                prevDate.getDate() + 1
+            );
+        } else {
+            startDate = new Date(grid.getAttribute("data-start"));
+            if (startDate.getDay() !== this.weekstart) {
+                const day = startDate.getDay();
+                firstDate = new Date(
+                    startDate.getFullYear(),
+                    startDate.getMonth(),
+                    startDate.getDate() -
+                        (day < this.weekstart
+                            ? day + 7 - this.weekstart
+                            : day - this.weekstart)
+                );
+            } else firstDate = startDate;
+        }
+
+        const year = date.getFullYear(),
+            month = date.getMonth(),
+            firstOfMonth = new Date(year, month, 1).getDay(),
+            days = new Date(year, month, 0).getDate();
+        let firstOfWeek;
+
+        // get first day of the first week of month
+        if (first !== this.weekstart) {
+            firstOfWeek = new Date(
+                year,
+                month,
+                -(firstOfMonth < this.weekstart
+                    ? firstOfMonth + 7 - this.weekstart
+                    : firstOfMonth - this.weekstart)
+            );
+
+            let j = 0;
+            for (let i = difference; i > 0; i--) {
+                let span = document.createElement("span");
+                const date = new Date(year, month, -difference);
+                span.textContent = date.getDate();
+                weekrow.children[j].setAttribute(
+                    "data-date",
+                    date.toISOString()
+                );
+                weekrow.children[j++].append(span);
+            }
+        }
+
+        // if first of month !== weekstart and previous cells are empty or absent, generate them
+        if (first !== this.weekstart) {
+            if (weekrow.children[0].children.length === 0) {
+                const difference =
+                    first < this.weekstart
+                        ? first + 7 - this.weekstart
+                        : first - this.weekstart;
+                let j = 0;
+                for (let i = difference; i > 0; i--) {
+                    let span = document.createElement("span");
+                    const date = new Date(year, month, -difference);
+                    span.textContent = date.getDate();
+                    weekrow.children[j].setAttribute(
+                        "data-date",
+                        date.toISOString()
+                    );
+                    weekrow.children[j++].append(span);
+                }
+            }
+        }
+        for (let i = 0; i < days; i++) {}
+    }
+    generateCalendarGrid(date) {
+        // actualize date
+        this.now = new Date();
+        // set first date of calendar
+
+        // create grid
+        let grid = document.createElement("div");
+        grid.setAttribute("data-start", date.toISOString());
+
+        // get actual month : create rows/cells accordingly
+
+        // create first row with 7 cells
+        // for each day of month
+        // if weekday = weekstart, create new row, fill first cell
+        // else fill cell from corresponding weekday.
+
+        // new grid: 7 columns
+
+        // month name:
+        // position: absolute
+        // top = top from row containing 1st of month - 1 x row height
+        // left: 100 %
+        // width = (count(row from 1st of month until 1st of next month) - 1) x row height
+        // rotate 90, origin: bottom left
+    }
     static getEvents(start, end) {
         // check if asked range in stored range, else fetch.
         // foreach day of range, check if data in cache, else fetch.
@@ -48,75 +221,6 @@ class BopCal {
             start: start,
             end: end,
         });
-    }
-    /**
-     * Parses ical string into object, adding uid at first level (remove it before converting back to string).
-     * @param {String} ical
-     * @returns
-     */
-    static icalToObject(ical) {
-        // !!!!!!!!
-        // WONT WORK WITH MULTIPLE OF OBJECT TYPES (e.g. more than one VALARM)
-        // !!!!!!!!
-
-        // find separator
-        const separator = ical.includes("\r\n") ? "\r\n" : "\n";
-        // set cursor
-        let icalObject = {},
-            cursor = [],
-            insertPoint;
-        // for each line
-        for (const cal of ical.split(separator).filter((x) => x !== "")) {
-            const val = cal.split(":");
-            switch (val[0]) {
-                case "BEGIN":
-                    // store property object
-                    insertPoint = icalObject;
-                    for (let i = cursor.length - 1; i >= 0; i--)
-                        insertPoint = insertPoint[cursor[i]];
-                    insertPoint[val[1]] = {};
-                    cursor.unshift(val[1]);
-                    break;
-                case "END":
-                    cursor.shift();
-                    break;
-                default:
-                    // store property value
-                    if (val[0] === "UID") icalObject.uid = val[1];
-                    insertPoint = icalObject;
-                    for (let i = cursor.length - 1; i >= 0; i--)
-                        insertPoint = insertPoint[cursor[i]];
-                    insertPoint[val[0]] = val[1];
-            }
-        }
-        // convert to UTC
-        // if VTIMEZONE
-        // set TZID:Offset
-        // if DAYLIGHT
-        // if start in daylight, apply daylight offset, else tzid offset
-        return icalObject;
-    }
-    /**
-     * Parse calendar object to valid ical string (sortof).
-     * @param {Object} cal - ical object generated with icalToObject().
-     */
-    objectToIcal(cal) {
-        let ical = "";
-        const action = (key, value) => {
-            if (typeof value === "string") ical += `${key}:${value}\n`;
-            else {
-                ical += `BEGIN:${key}\n`;
-                for (const [k, v] of Object.entries(value)) action(k, v);
-                ical += `END:${key}\n`;
-            }
-        };
-        for (const [key, value] of Object.entries(cal)) action(key, value);
-        return ical;
-    }
-    rangeIncludesDate(range, date) {
-        // date to milliseconds
-        // if range[0]<=date<=range[1]
-        // return true, else false.
     }
     static parse(data) {
         // parse calendars
@@ -261,36 +365,5 @@ class BopCal {
         //      attach / attendee / categories / comment /
         //      contact / exdate / exrule / rstatus / related /
         //      resources / rdate / rrule / x-prop
-    }
-    /**
-     * Format a date string to a string accepted by SimpleCalDAVClient.
-     * @param {String} date
-     * @returns {String|false} String in the format yyyymmddThhmmssZ
-     */
-    toCalDAVString(date) {
-        try {
-            return (
-                new Date(date).toISOString().replace(/:|-/g, "").slice(0, -5) +
-                "Z"
-            );
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    }
-    /**
-     * Convert compact ISO8601 string to extended for fullcalendar.
-     * @param {String} date
-     */
-    toISO8601ExtString(date) {
-        date = date.slice(0, 4) + "-" + date.slice(4, 6) + "-" + date.slice(6);
-        if (date.length > 10)
-            date =
-                date.slice(0, 13) +
-                ":" +
-                date.slice(13, 15) +
-                ":" +
-                date.slice(15);
-        return date;
     }
 }

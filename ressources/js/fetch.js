@@ -79,9 +79,3 @@ async function fetchPostJSON(body, json = false) {
         });
     return res;
 }
-
-// async function sweetFetch() {
-//     const type = json
-//         ? "application/json"
-//         : 'application/x-www-form-urlencoded; charset="utf-8"';
-// }

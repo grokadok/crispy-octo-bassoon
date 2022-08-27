@@ -72,8 +72,8 @@ class BopChat {
                 this.minmaxButton,
                 this.searchButton
             );
+            this.wrapper.classList.add("user-min");
         }
-        this.wrapper.classList.add("user-min");
         this.chatTabs.setAttribute("tabindex", "-1");
         this.usersButton.textContent = "👤";
         this.usersButton.addEventListener("click", () => {

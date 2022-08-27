@@ -280,6 +280,52 @@ function focusNextElement() {
     }
 }
 /**
+ *
+ * @param {Date} date
+ * @param {Number} weekstart
+ * @returns
+ */
+function getFirstDayOfWeek(date, weekstart) {
+    let firstDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    );
+    if (firstDay.getDay() !== weekstart) {
+        firstDay.setDate(
+            firstDay.getDate() - Math.abs(firstDay.getDay() - weekstart)
+        );
+    }
+    return firstDay;
+}
+function getLastDayOfWeek(date, weekstart) {
+    let lastDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+        weekend = weekstart === 0 ? 6 : weekstart - 1;
+    if (lastDay.getDay() !== weekend) {
+        lastDay.setDate(
+            lastDay.getDate() +
+                Math.abs(7 - lastDay.getDay() + (weekend < 6 ? weekend : 0))
+        );
+    }
+    return lastDay;
+}
+/**
+ * Returns week number for a given date.
+ * @param {Date} date
+ * @returns {Number} week number
+ */
+function getWeekNumber(date) {
+    let tdt = new Date(date.valueOf()),
+        dayNumber = (date.getDay() + 6) % 7;
+    tdt.setDate(tdt.getDate() - dayNumber + 3);
+    const firstThursday = tdt.valueOf();
+    tdt.setMonth(0, 1);
+    if (tdt.getDay() !== 4) {
+        tdt.setMonth(0, 1 + ((4 - tdt.getDay() + 7) % 7));
+    }
+    return 1 + Math.ceil((firstThursday - tdt) / 604800000);
+}
+/**
  * Adds an eventlistener on document to fadeOut element on click outside of itself or it's ancestor.
  * @param {HTMLElement} el - Element to fadeOut on click.
  * @param {HTMLElement} [anc] - Optional ancestor, defaults to el itself.
@@ -332,6 +378,9 @@ function highlightSearch(el, needle) {
  * @returns
  */
 function icalToObject(ical) {
+    // !!!!!!!!
+    // WONT WORK WITH MULTIPLE OF OBJECT TYPES (e.g. more than one VALARM)
+    // !!!!!!!!
     // find separator
     const separator = ical.includes("\r\n") ? "\r\n" : "\n";
     // set cursor
