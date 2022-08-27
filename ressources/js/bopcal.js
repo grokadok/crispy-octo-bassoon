@@ -6,204 +6,146 @@ class BopCal {
     static fullCalendars = [];
     static calendars = {};
     static events = [];
+    /**
+     *
+     * @param {HTMLElement} element
+     */
     constructor(element) {
         BopCal.bopcals.push(this);
+        this.id = BopCal.bopcals.indexOf(this);
         this.now = new Date();
-        this.id = BopCal.cals.indexOf(this);
+        this.years = {};
+        this.months = {};
         this.wrapper = element;
         this.wrapper.classList.add("bopcal");
         this.menu = document.createElement("div");
-        this.weekstart = 1; // 0 = sunday
         this.minical = document.createElement("div");
-
-        this.calendar = document.createElement("div");
-        BopCal.fullCalendars.push({
-            instance: new FullCalendar.Calendar(this.calendar, {
-                // events: function (info, successCallback, failureCallback) {
-                //     // set new range
-                //     BopCal.fullCalendars[0].range = [
-                //         info.start.valueOf(),
-                //         info.end.valueOf(),
-                //     ];
-                //     // remove events from unused days
-                //     // getEvents
-                //     BopCal.getEvents(info.start.valueOf(), info.end.valueOf());
-                // },
-                headerToolbar: {
-                    left: "prev,next today",
-                    center: "title",
-                    right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
-                },
-                height: "100%",
-                initialView: "dayGridMonth",
-                locale: "fr",
-                navLinks: "true",
-                nowIndicator: "true",
-                weekNumbers: "true",
-                weekNumberFormat: { week: "numeric" },
-            }),
-            range: [],
+        this.minical.className = "mini";
+        this.bigcal = document.createElement("div");
+        this.toggle = document.createElement("button");
+        this.toggle.textContent = "calendar";
+        this.toggle.addEventListener("click", () => {
+            this.toggle.blur();
+            this.wrapper.classList.toggle("toggle");
         });
-    }
-    gridAddWeek(grid) {}
-    gridAddDay(grid) {
-        // if(weekrow.children[date.getDay])
-    }
-    gridFocusDate(grid, date) {}
-    gridAddMonth(grid, date) {
-        const loadMonthBefore = (month) =>
-                grid.insertBefore(generateMonth(month), grid.firstElementChild),
-            loadMonthAfter = (month) => grid.append(generateMonth(month)),
-            generateMonth = (month) => {
-                let monthWrapper = document.createElement("div"),
-                    day = getFirstDayOfWeek(month);
-                while (
-                    day <
-                    getLastDayOfWeek(
-                        new Date(month.getFullYear(), month.getMonth() + 1, 0)
-                    )
-                ) {
-                    this.gridAddDay(grid, day);
-                    day.setDate(day.getDate() + 1);
-                }
 
-                return monthWrapper;
-            };
+        this.weekstart = 1; // 0 = sunday
+        // later get week info (start, weekend, etc.) according to locale browser settings
+        // this.userLocale =
+        //     navigator.languages && navigator.languages.length
+        //         ? navigator.languages[0]
+        //         : navigator.language;
+        // get locale info from db for found userLocale.
+
+        this.generateCalendar();
+
+        this.wrapper.append(this.toggle, this.menu, this.minical, this.bigcal);
+
+        // BopCal.fullCalendars.push({
+        //     instance: new FullCalendar.Calendar(this.calendar, {
+        //         // events: function (info, successCallback, failureCallback) {
+        //         //     // set new range
+        //         //     BopCal.fullCalendars[0].range = [
+        //         //         info.start.valueOf(),
+        //         //         info.end.valueOf(),
+        //         //     ];
+        //         //     // remove events from unused days
+        //         //     // getEvents
+        //         //     BopCal.getEvents(info.start.valueOf(), info.end.valueOf());
+        //         // },
+        //         headerToolbar: {
+        //             left: "prev,next today",
+        //             center: "title",
+        //             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+        //         },
+        //         height: "100%",
+        //         initialView: "dayGridMonth",
+        //         locale: "fr",
+        //         navLinks: "true",
+        //         nowIndicator: "true",
+        //         weekNumbers: "true",
+        //         weekNumberFormat: { week: "numeric" },
+        //     }),
+        //     range: [],
+        // });
+    }
+    focusDate(date) {}
+    destroy() {
+        this.wrapper.innerHTML = "";
+        this.wrapper.className = "loading hidden";
+        BopCal.bopcals.splice(this.id, 1);
+    }
+    static destroyAll() {
+        for (let cal of BopCal.bopcals) cal.destroy();
+    }
+    /**
+     * Add month to calendars.
+     * @param {Date} date
+     */
+    addMonth(date) {
         // month = first week to last week, including other monthes days
         // => this, but with the option to hide duplicate weeks to show a compact view.
+        const year = date.getFullYear(),
+            month = date.getMonth();
 
-        // check first and last months in grid
-        const gridFirstMonth = new Date(
-                grid.firstElementChild.getAttribute("data-date")
-            ),
-            gridLastMonth = new Date(
-                grid.lastElementChild.getAttribute("data-date")
-            ),
-            targetMonth = new Date(date.getFullYear(), date.getMonth());
-        // else if not right after last or before first, first load months in between
-        if (
-            date >=
-            new Date(gridLastMonth.getFullYear(), gridLastMonth.getMonth() + 1)
-        ) {
-            let month = new Date(
-                gridLastMonth.getFullYear(),
-                gridLastMonth.getMonth() + 1
-            );
-            while (month <= targetMonth) {
-                loadMonthAfter(month);
-                month.setMonth(month.getMonth() + 1);
+        // if year not in calendar, create it with its months.
+        if (!this.years[year]) {
+            let yearWrapper = document.createElement("div");
+            yearWrapper.setAttribute("data-year", year);
+            this.years[year] = { months: {}, wrapper: yearWrapper };
+            for (let i = 0; i < 12; i++) {
+                let monthWrapper = document.createElement("div");
+                monthWrapper.setAttribute(
+                    "data-month",
+                    new Date(year, i).toLocaleString("default", {
+                        month: "long",
+                    })
+                );
+                monthWrapper.className = "hidden";
+                this.years[year].months[i] = monthWrapper;
+                yearWrapper.append(monthWrapper);
             }
-        } else if (date < gridFirstMonth) {
-            let month = new Date(
-                gridFirstMonth.getFullYear(),
-                gridFirstMonth.getMonth() - 1
-            );
-            while (month >= targetMonth) {
-                loadMonthBefore(month);
-                month.setMonth(month.getMonth() - 1);
+            this.minical.append(yearWrapper);
+        }
+
+        // fill month
+        let monthWrapper = this.years[year].months[month],
+            day = getFirstDayOfWeek(date),
+            weekWrapper;
+        if (!monthWrapper.innerHTML) {
+            monthWrapper.classList.remove("hidden");
+            while (day <= getLastDayOfWeek(new Date(year, month + 1, 0))) {
+                if (day.getDay() === this.weekstart) {
+                    const weekNumber = getWeekNumber(day);
+                    weekWrapper = document.createElement("div");
+                    weekWrapper.setAttribute("data-week", weekNumber);
+                    monthWrapper.append(weekWrapper);
+                }
+                let dayWrapper = document.createElement("div");
+                dayWrapper.setAttribute("data-date", day.getDate());
+                weekWrapper.append(dayWrapper);
+                day.setDate(day.getDate() + 1);
             }
-        } else console.info("Month already loaded.");
+        } else console.info(`Month ${month} already created.`);
 
         // hover on month changes its colors to focus theme
         // hover on week zooms a bit more on it
         // grid for month, not the whole calendar.
-
-        // get last date of grid, else get start date of grid
-        let lastDate =
-                grid.lastElementChild?.lastElementChild?.getAttribute(
-                    "data-date"
-                ),
-            firstDate;
-        if (lastDate) {
-            prevDate = new Date(lastDate);
-            firstDate = new Date(
-                prevDate.getFullYear(),
-                prevDate.getMonth(),
-                prevDate.getDate() + 1
-            );
-        } else {
-            startDate = new Date(grid.getAttribute("data-start"));
-            if (startDate.getDay() !== this.weekstart) {
-                const day = startDate.getDay();
-                firstDate = new Date(
-                    startDate.getFullYear(),
-                    startDate.getMonth(),
-                    startDate.getDate() -
-                        (day < this.weekstart
-                            ? day + 7 - this.weekstart
-                            : day - this.weekstart)
-                );
-            } else firstDate = startDate;
-        }
-
-        const year = date.getFullYear(),
-            month = date.getMonth(),
-            firstOfMonth = new Date(year, month, 1).getDay(),
-            days = new Date(year, month, 0).getDate();
-        let firstOfWeek;
-
-        // get first day of the first week of month
-        if (first !== this.weekstart) {
-            firstOfWeek = new Date(
-                year,
-                month,
-                -(firstOfMonth < this.weekstart
-                    ? firstOfMonth + 7 - this.weekstart
-                    : firstOfMonth - this.weekstart)
-            );
-
-            let j = 0;
-            for (let i = difference; i > 0; i--) {
-                let span = document.createElement("span");
-                const date = new Date(year, month, -difference);
-                span.textContent = date.getDate();
-                weekrow.children[j].setAttribute(
-                    "data-date",
-                    date.toISOString()
-                );
-                weekrow.children[j++].append(span);
-            }
-        }
-
-        // if first of month !== weekstart and previous cells are empty or absent, generate them
-        if (first !== this.weekstart) {
-            if (weekrow.children[0].children.length === 0) {
-                const difference =
-                    first < this.weekstart
-                        ? first + 7 - this.weekstart
-                        : first - this.weekstart;
-                let j = 0;
-                for (let i = difference; i > 0; i--) {
-                    let span = document.createElement("span");
-                    const date = new Date(year, month, -difference);
-                    span.textContent = date.getDate();
-                    weekrow.children[j].setAttribute(
-                        "data-date",
-                        date.toISOString()
-                    );
-                    weekrow.children[j++].append(span);
-                }
-            }
-        }
-        for (let i = 0; i < days; i++) {}
     }
-    generateCalendarGrid(date) {
-        // actualize date
-        this.now = new Date();
-        // set first date of calendar
+    /**
+     * First load of calendar.
+     * @param {Date} [date]
+     */
+    generateCalendar(date = this.now) {
+        // set base date of calendar
+        this.baseDate = date;
 
-        // create grid
-        let grid = document.createElement("div");
-        grid.setAttribute("data-start", date.toISOString());
-
-        // get actual month : create rows/cells accordingly
-
-        // create first row with 7 cells
-        // for each day of month
-        // if weekday = weekstart, create new row, fill first cell
-        // else fill cell from corresponding weekday.
-
-        // new grid: 7 columns
+        for (const month of [
+            new Date(this.baseDate.getFullYear(), this.baseDate.getMonth() - 1),
+            new Date(this.baseDate.getFullYear(), this.baseDate.getMonth()),
+            new Date(this.baseDate.getFullYear(), this.baseDate.getMonth() + 1),
+        ])
+            this.addMonth(month);
 
         // month name:
         // position: absolute
@@ -211,6 +153,8 @@ class BopCal {
         // left: 100 %
         // width = (count(row from 1st of month until 1st of next month) - 1) x row height
         // rotate 90, origin: bottom left
+        // same for week number
+        // same for year ?
     }
     static getEvents(start, end) {
         // check if asked range in stored range, else fetch.

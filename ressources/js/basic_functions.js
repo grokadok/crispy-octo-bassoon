@@ -280,33 +280,29 @@ function focusNextElement() {
     }
 }
 /**
- *
- * @param {Date} date
- * @param {Number} weekstart
- * @returns
+ * Returns first day of date's week according to start of week.
+ * @param {Date} date Date from which to return first day of week.
+ * @param {Number} [weekstart] Optional week start, default = 1 (monday).
+ * @returns Date object of first day of week.
  */
-function getFirstDayOfWeek(date, weekstart) {
+function getFirstDayOfWeek(date, weekstart = 1) {
     let firstDay = new Date(
         date.getFullYear(),
         date.getMonth(),
         date.getDate()
     );
-    if (firstDay.getDay() !== weekstart) {
-        firstDay.setDate(
-            firstDay.getDate() - Math.abs(firstDay.getDay() - weekstart)
-        );
-    }
+    firstDay.setDate(firstDay.getDate() - firstDay.getDay() + weekstart);
     return firstDay;
 }
-function getLastDayOfWeek(date, weekstart) {
-    let lastDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()),
-        weekend = weekstart === 0 ? 6 : weekstart - 1;
-    if (lastDay.getDay() !== weekend) {
-        lastDay.setDate(
-            lastDay.getDate() +
-                Math.abs(7 - lastDay.getDay() + (weekend < 6 ? weekend : 0))
-        );
-    }
+/**
+ * Returns last day of provided date week.
+ * @param {Date} date Date from which to return last day of week.
+ * @param {Number} [weekstart] Optional week start, default = 1 (monday).
+ * @returns {Date} Date object of last day of week.
+ */
+function getLastDayOfWeek(date, weekstart = 1) {
+    let lastDay = getFirstDayOfWeek(date, weekstart);
+    lastDay.setDate(lastDay.getDate() + 6);
     return lastDay;
 }
 /**

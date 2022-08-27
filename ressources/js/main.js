@@ -21,6 +21,7 @@ class ClassMain {
         };
         this.wrapper = document.getElementsByTagName("main")[0];
         this.chat = new BopChat(document.getElementById("chat"), data.chat);
+        this.calendar = new BopCal(document.getElementById("calendar"));
         this.tabs = {
             active: data.active_tab ?? 1,
             data: data.tabs,
@@ -76,6 +77,7 @@ class ClassMain {
             this.navbar.wrapper,
             this.topbar.wrapper,
             this.chat.wrapper,
+            this.calendar.wrapper,
         ]);
 
         // setTimeout(function () {
@@ -177,6 +179,7 @@ class ClassMain {
             this.navbar.wrapper,
             this.topbar.wrapper,
             this.chat.wrapper,
+            this.calendar.wrapper,
         ]);
         fadeIn(this.tabs.item[this.tabs.active].tab);
         // destroy login
@@ -195,6 +198,7 @@ class ClassMain {
     static destroy() {
         const main = ClassMain.el;
         main.chat.destroy();
+        main.calendar.destroy();
         main.wrapper.innerHTML = "";
         main.navbar.wrapper.innerHTML = "";
         main.navbar.wrapper.className = "navbar left hidden loading";

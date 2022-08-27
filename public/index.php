@@ -21,6 +21,7 @@ $jsfiles = getenv('ISLOCAL') ? [
     'js/btn.js',
     'js/boptable.js',
     'js/bopchat.js',
+    'js/bopcal.js',
     'js/bopalert.js',
     'js/modal.js',
     'js/pages.js',
