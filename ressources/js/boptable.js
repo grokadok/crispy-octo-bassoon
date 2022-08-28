@@ -707,7 +707,7 @@ class BopTable {
             let loading = true;
             const rowIntersect = (entries, observer) => {
                 const rows = this.search.rows ?? this.rows;
-                if (rows.length > 0) {
+                if (rows.length) {
                     entries.forEach((entry) => {
                         // observe first and last rows.
                         // IF top row && !isintersecting

@@ -19,12 +19,19 @@ class BopCal {
         this.wrapper = element;
         this.wrapper.classList.add("bopcal");
         this.menu = document.createElement("div");
-        this.minical = document.createElement("div");
-        this.minical.className = "mini";
-        this.bigcal = document.createElement("div");
+        this.minical = { cal: document.createElement("div"), years: {} };
+        this.minical.cal.className = "mini";
+        this.bigcal = {
+            wrapper: document.createElement("div"),
+            cal: document.createElement("div"),
+            years: {},
+        };
+        this.bigcal.wrapper.append(this.bigcal.cal);
         this.toggle = document.createElement("button");
         this.toggle.textContent = "calendar";
         this.toggle.addEventListener("click", () => {
+            this.bigcal.lock = false;
+            this.bigcal.wrapper.classList.remove("locked");
             this.toggle.blur();
             this.wrapper.classList.toggle("toggle");
         });
@@ -39,7 +46,12 @@ class BopCal {
 
         this.generateCalendar();
 
-        this.wrapper.append(this.toggle, this.menu, this.minical, this.bigcal);
+        this.wrapper.append(
+            this.toggle,
+            this.menu,
+            this.minical.cal,
+            this.bigcal.wrapper
+        );
 
         // BopCal.fullCalendars.push({
         //     instance: new FullCalendar.Calendar(this.calendar, {
@@ -69,8 +81,78 @@ class BopCal {
         //     range: [],
         // });
     }
-    focusDate(date) {}
+    /**
+     * Applies/removes lock property and class to bigcal.
+     * @param {Boolean} [lock] Default: false.
+     */
+    bigcalLock(lock = false) {
+        this.bigcal.lock = lock;
+        lock
+            ? this.bigcal.wrapper.classList.add("locked")
+            : this.bigcal.wrapper.classList.remove("locked");
+    }
+    /**
+     * Focus bigcal on date and show it.
+     * @param {Date} date
+     * @param {String} type Values: "year","month","week","day".
+     * @param {Boolean} lock
+     */
+    bigcalFocus(date, type, lock = false) {
+        // set type by applying class to bigcal
+        for (const t of ["year", "month", "week", "day"])
+            type === t
+                ? this.bigcal.wrapper.classList.add(t)
+                : this.bigcal.wrapper.classList.remove(t);
+        // if bigcal locked && same date, remove lock.
+        if (this.bigcal.focus?.date === date && this.bigcal.lock)
+            this.bigcalLock();
+        else {
+            this.bigcal.focus = { date: date, type: type };
+            this.bigcalLock(lock);
+        }
+        // focus to date
+        let target, x, y;
+        switch (type) {
+            case "year":
+                target = this.bigcal.years[date.getFullYear()].wrapper;
+                break;
+            case "month":
+                target =
+                    this.bigcal.years[date.getFullYear()].months[
+                        date.getMonth()
+                    ];
+                break;
+            case "week":
+                target = this.bigcal.years[date.getFullYear()].months[
+                    date.getMonth()
+                ].querySelector(`[data-week="${getWeekNumber(date)}"]`);
+                break;
+            case "day":
+                // issue when days from previous or next month...
+                target = this.bigcal.years[date.getFullYear()].months[
+                    date.getMonth()
+                ].querySelector(
+                    `[data-week="${getWeekNumber(
+                        date
+                    )}"] [data-date="${date.getDate()}"]`
+                );
+                x =
+                    target.offsetLeft +
+                    target.offsetParent.offsetLeft +
+                    target.offsetParent.offsetParent.offsetLeft;
+                y =
+                    target.offsetTop +
+                    target.offsetParent.offsetTop +
+                    target.offsetParent.offsetParent.offsetTop;
+                break;
+        }
+        this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "auto" });
+    }
+    minicalFocus(date) {
+        // scroll to date
+    }
     destroy() {
+        this.observer?.disconnect();
         this.wrapper.innerHTML = "";
         this.wrapper.className = "loading hidden";
         BopCal.bopcals.splice(this.id, 1);
@@ -86,48 +168,96 @@ class BopCal {
         // month = first week to last week, including other monthes days
         // => this, but with the option to hide duplicate weeks to show a compact view.
         const year = date.getFullYear(),
-            month = date.getMonth();
+            month = date.getMonth(),
+            now = new Date();
+        let monthWrapper;
 
-        // if year not in calendar, create it with its months.
-        if (!this.years[year]) {
-            let yearWrapper = document.createElement("div");
-            yearWrapper.setAttribute("data-year", year);
-            this.years[year] = { months: {}, wrapper: yearWrapper };
-            for (let i = 0; i < 12; i++) {
-                let monthWrapper = document.createElement("div");
-                monthWrapper.setAttribute(
-                    "data-month",
-                    new Date(year, i).toLocaleString("default", {
-                        month: "long",
-                    })
-                );
-                monthWrapper.className = "hidden";
-                this.years[year].months[i] = monthWrapper;
-                yearWrapper.append(monthWrapper);
-            }
-            this.minical.append(yearWrapper);
-        }
-
-        // fill month
-        let monthWrapper = this.years[year].months[month],
-            day = getFirstDayOfWeek(date),
-            weekWrapper;
-        if (!monthWrapper.innerHTML) {
-            monthWrapper.classList.remove("hidden");
-            while (day <= getLastDayOfWeek(new Date(year, month + 1, 0))) {
-                if (day.getDay() === this.weekstart) {
-                    const weekNumber = getWeekNumber(day);
-                    weekWrapper = document.createElement("div");
-                    weekWrapper.setAttribute("data-week", weekNumber);
-                    monthWrapper.append(weekWrapper);
+        for (let cal of [this.minical, this.bigcal]) {
+            // if year not in calendar, create it with its months.
+            if (!cal.years[year]) {
+                let yearWrapper = document.createElement("div");
+                yearWrapper.setAttribute("data-year", year);
+                cal.years[year] = { months: {}, wrapper: yearWrapper };
+                for (let i = 0; i < 12; i++) {
+                    const monthDate = new Date(year, i);
+                    let monthWrapper = document.createElement("div");
+                    setElementAttributes(monthWrapper, [
+                        [
+                            "data-month",
+                            monthDate.toLocaleString("default", {
+                                month: "long",
+                            }),
+                        ],
+                        ["data-iso", monthDate.toISOString()],
+                    ]);
+                    monthWrapper.className = "hidden";
+                    cal.years[year].months[i] = monthWrapper;
+                    if (cal === this.minical) {
+                        monthWrapper.addEventListener("click", () => {
+                            this.bigcalFocus(monthDate, "month", true);
+                        });
+                    }
+                    yearWrapper.append(monthWrapper);
                 }
-                let dayWrapper = document.createElement("div");
-                dayWrapper.setAttribute("data-date", day.getDate());
-                weekWrapper.append(dayWrapper);
-                day.setDate(day.getDate() + 1);
+                // set a way to insert year in right place.
+                cal.cal.append(yearWrapper);
             }
-        } else console.info(`Month ${month} already created.`);
-
+            // fill month
+            monthWrapper = cal.years[year].months[month];
+            let day = getFirstDayOfWeek(date),
+                weekWrapper;
+            if (!monthWrapper.innerHTML) {
+                monthWrapper.classList.remove("hidden");
+                while (day <= getLastDayOfWeek(new Date(year, month + 1, 0))) {
+                    const dayDate = new Date(
+                        day.getFullYear(),
+                        day.getMonth(),
+                        day.getDate()
+                    );
+                    // if first day of week, create week
+                    if (day.getDay() === this.weekstart) {
+                        const weekNumber = getWeekNumber(day);
+                        weekWrapper = document.createElement("div");
+                        weekWrapper.setAttribute("data-week", weekNumber);
+                        if (cal === this.minical) {
+                            weekWrapper.addEventListener("mouseover", (e) => {
+                                if (
+                                    e.target.getAttribute("data-week") &&
+                                    !this.bigcal.lock
+                                )
+                                    this.bigcalFocus(dayDate, "week");
+                            });
+                            weekWrapper.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                this.bigcalFocus(dayDate, "week", true);
+                            });
+                        }
+                        monthWrapper.append(weekWrapper);
+                    }
+                    let dayWrapper = document.createElement("div");
+                    dayWrapper.setAttribute("data-date", day.getDate());
+                    if (dayDate.getMonth() !== date.getMonth())
+                        dayWrapper.classList.add("fade");
+                    if (dayDate.toDateString() === now.toDateString())
+                        dayWrapper.classList.add("today");
+                    if (cal === this.minical) {
+                        dayWrapper.addEventListener("mouseover", (e) => {
+                            e.stopPropagation();
+                            if (!this.bigcal.lock) {
+                                this.bigcalFocus(dayDate, "day");
+                            }
+                        });
+                        dayWrapper.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            this.bigcalFocus(dayDate, "day", true);
+                        });
+                    }
+                    weekWrapper.append(dayWrapper);
+                    day.setDate(day.getDate() + 1);
+                }
+            } else console.info(`Month ${month} already created.`);
+        }
+        return monthWrapper;
         // hover on month changes its colors to focus theme
         // hover on week zooms a bit more on it
         // grid for month, not the whole calendar.
@@ -146,6 +276,70 @@ class BopCal {
             new Date(this.baseDate.getFullYear(), this.baseDate.getMonth() + 1),
         ])
             this.addMonth(month);
+
+        // set up intersectionObservers on mini and big cal to load months with scroll.
+        // note for self: intersectionObserver works whatever way an element enters its root, vertical or horizontal scroll, or anything else.
+        const observerOptions = {
+            root: this.wrapper,
+            rootMargin: "50px 0px",
+            threshold: 0,
+        };
+        const calIntersect = (entries, observer) => {
+            entries.forEach((entry) => {
+                if (entry.target === this.minical.bottomMonth) {
+                    if (entry.isIntersecting) {
+                        console.log("load 2 months at bottom");
+                        // get date of month
+                        const date = new Date(
+                            this.minical.bottomMonth.getAttribute("data-iso")
+                        );
+                        // load next two months
+                        date.setMonth(date.getMonth() + 1);
+                        this.addMonth(date);
+                        date.setMonth(date.getMonth() + 1);
+                        // set bottomMonth to last
+                        this.minical.observer.unobserve(
+                            this.minical.bottomMonth
+                        );
+                        this.minical.bottomMonth = this.addMonth(date);
+                        this.minical.observer.observe(this.minical.bottomMonth);
+                        // check firstMonth, for each month too far up from top, unload month from dom
+                    }
+                    // add month at end, set it to be lastMonth
+                    // check if first month out of range of intersection observer, then empty it and observe next month
+                } else if (entry.target === this.minical.topMonth) {
+                    if (entry.isIntersecting) {
+                        console.log("load 2 months at top");
+                        // get date of month
+                        const date = new Date(
+                            this.minical.topMonth.getAttribute("data-iso")
+                        );
+                        // load two previous months
+                        date.setMonth(date.getMonth() - 1);
+                        this.addMonth(date);
+                        date.setMonth(date.getMonth() - 1);
+                        // set topMonth to first
+                        this.minical.observer.unobserve(this.minical.topMonth);
+                        this.minical.topMonth = this.addMonth(date);
+                        this.minical.observer.observe(this.minical.topMonth);
+                        // check lastMonth, for each month too far down from bottom, unload month from dom
+                    }
+                    // add month at begining, set it to be firstMonth
+                    // check if last month out of range of intersection observer, then empty it and observe previous month
+                }
+            });
+        };
+        let months = this.minical.cal.querySelectorAll(
+            "[data-month]:not(.hidden)"
+        );
+        this.minical.bottomMonth = months[months.length - 1];
+        this.minical.topMonth = months[0];
+        this.minical.observer = new IntersectionObserver(
+            calIntersect,
+            observerOptions
+        );
+        this.minical.observer.observe(this.minical.topMonth);
+        this.minical.observer.observe(this.minical.bottomMonth);
 
         // month name:
         // position: absolute

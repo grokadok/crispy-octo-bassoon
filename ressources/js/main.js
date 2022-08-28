@@ -198,7 +198,7 @@ class ClassMain {
     static destroy() {
         const main = ClassMain.el;
         main.chat.destroy();
-        main.calendar.destroy();
+        main.calendar?.destroy();
         main.wrapper.innerHTML = "";
         main.navbar.wrapper.innerHTML = "";
         main.navbar.wrapper.className = "navbar left hidden loading";

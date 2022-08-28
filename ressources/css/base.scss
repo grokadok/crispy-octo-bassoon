@@ -53,6 +53,7 @@
 .setlight {
     --text: var(--coolor3);
     --text-secondary: var(--gray3);
+    --text-fade: var(--gray2);
     --text-highlight: var(--accent-secondary);
     --text-placeholder: var(--gray3);
     --bg: var(--gray1);
@@ -100,6 +101,7 @@
 .setdark {
     --text: var(--gray1);
     --text-secondary: var(--gray2);
+    --text-fade: var(--gray3);
     --text-highlight: var(--accent);
     --text-placeholder: var(--gray4);
     --bg: var(--coolor4);
