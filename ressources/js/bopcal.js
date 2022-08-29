@@ -168,7 +168,7 @@ class BopCal {
         this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "auto" });
     }
     destroy() {
-        this.observer?.disconnect();
+        this.minical.observer?.disconnect();
         this.wrapper.innerHTML = "";
         this.wrapper.className = "loading hidden";
         BopCal.bopcals.splice(this.id, 1);
