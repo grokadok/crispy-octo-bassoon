@@ -32,10 +32,10 @@ class BopCal {
         this.toggle.addEventListener("click", () => {
             this.bigcal.lock = false;
             this.bigcal.wrapper.classList.remove("locked");
+            this.minicalFocus(new Date());
             this.toggle.blur();
             this.wrapper.classList.toggle("toggle");
         });
-
         this.weekstart = 1; // 0 = sunday
         // later get week info (start, weekend, etc.) according to locale browser settings
         // this.userLocale =
@@ -43,6 +43,14 @@ class BopCal {
         //         ? navigator.languages[0]
         //         : navigator.language;
         // get locale info from db for found userLocale.
+
+        // calendar buttons
+        let todayButton = document.createElement("button");
+        todayButton.textContent = "🩴";
+        todayButton.addEventListener("click", () =>
+            this.minicalFocus(new Date())
+        );
+        this.menu.append(todayButton);
 
         this.generateCalendar();
 
@@ -80,6 +88,17 @@ class BopCal {
         //     }),
         //     range: [],
         // });
+    }
+    /**
+     *
+     * @param {Date} month
+     */
+    minicalFocus(date) {
+        const month =
+                this.minical.years[date.getFullYear()].months[date.getMonth()],
+            x = month.offsetLeft,
+            y = month.offsetTop;
+        this.minical.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
     }
     /**
      * Applies/removes lock property and class to bigcal.
@@ -148,9 +167,6 @@ class BopCal {
         }
         this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "auto" });
     }
-    minicalFocus(date) {
-        // scroll to date
-    }
     destroy() {
         this.observer?.disconnect();
         this.wrapper.innerHTML = "";
@@ -163,6 +179,7 @@ class BopCal {
     /**
      * Add month to calendars.
      * @param {Date} date
+     * @return {HTMLElement} minical month
      */
     addMonth(date) {
         // month = first week to last week, including other monthes days
@@ -170,7 +187,6 @@ class BopCal {
         const year = date.getFullYear(),
             month = date.getMonth(),
             now = new Date();
-        let monthWrapper;
 
         for (let cal of [this.minical, this.bigcal]) {
             // if year not in calendar, create it with its months.
@@ -186,7 +202,7 @@ class BopCal {
                             "data-month",
                             monthDate.toLocaleString("default", {
                                 month: "long",
-                            }),
+                            }) + ` ${year}`,
                         ],
                         ["data-iso", monthDate.toISOString()],
                     ]);
@@ -200,11 +216,14 @@ class BopCal {
                     yearWrapper.append(monthWrapper);
                 }
                 // set a way to insert year in right place.
-                cal.cal.append(yearWrapper);
+                cal.cal.children.length &&
+                year < cal.cal.firstElementChild.getAttribute("data-year")
+                    ? cal.cal.prepend(yearWrapper)
+                    : cal.cal.append(yearWrapper);
             }
             // fill month
-            monthWrapper = cal.years[year].months[month];
-            let day = getFirstDayOfWeek(date),
+            let monthWrapper = cal.years[year].months[month],
+                day = getFirstDayOfWeek(date),
                 weekWrapper;
             if (!monthWrapper.innerHTML) {
                 monthWrapper.classList.remove("hidden");
@@ -255,9 +274,9 @@ class BopCal {
                     weekWrapper.append(dayWrapper);
                     day.setDate(day.getDate() + 1);
                 }
-            } else console.info(`Month ${month} already created.`);
+            } else console.info(`Month ${month}-${year} already created.`);
         }
-        return monthWrapper;
+        return this.minical.years[year].months[month];
         // hover on month changes its colors to focus theme
         // hover on week zooms a bit more on it
         // grid for month, not the whole calendar.
@@ -280,55 +299,71 @@ class BopCal {
         // set up intersectionObservers on mini and big cal to load months with scroll.
         // note for self: intersectionObserver works whatever way an element enters its root, vertical or horizontal scroll, or anything else.
         const observerOptions = {
-            root: this.wrapper,
-            rootMargin: "50px 0px",
-            threshold: 0,
-        };
-        const calIntersect = (entries, observer) => {
-            entries.forEach((entry) => {
-                if (entry.target === this.minical.bottomMonth) {
-                    if (entry.isIntersecting) {
-                        console.log("load 2 months at bottom");
-                        // get date of month
-                        const date = new Date(
-                            this.minical.bottomMonth.getAttribute("data-iso")
-                        );
-                        // load next two months
-                        date.setMonth(date.getMonth() + 1);
-                        this.addMonth(date);
-                        date.setMonth(date.getMonth() + 1);
-                        // set bottomMonth to last
-                        this.minical.observer.unobserve(
-                            this.minical.bottomMonth
-                        );
-                        this.minical.bottomMonth = this.addMonth(date);
-                        this.minical.observer.observe(this.minical.bottomMonth);
-                        // check firstMonth, for each month too far up from top, unload month from dom
+                root: this.wrapper,
+                rootMargin: "0px 0px",
+                threshold: 1,
+            },
+            quantity = 5, // how many months to load at once
+            loadloop = (date, up = false) => {
+                let last;
+                const monthHeight = convertRemToPixels(14);
+                for (let i = 1; i <= quantity; i++) {
+                    const scroll = this.minical.cal.scrollTop;
+                    date.setMonth(
+                        up ? date.getMonth() - 1 : date.getMonth() + 1
+                    );
+                    if (up) {
+                        this.minical.cal.scrollTop = scroll + monthHeight;
+                        console.warn(`scrollTop = ${scroll + monthHeight}`);
                     }
-                    // add month at end, set it to be lastMonth
-                    // check if first month out of range of intersection observer, then empty it and observe next month
-                } else if (entry.target === this.minical.topMonth) {
-                    if (entry.isIntersecting) {
-                        console.log("load 2 months at top");
-                        // get date of month
-                        const date = new Date(
-                            this.minical.topMonth.getAttribute("data-iso")
-                        );
-                        // load two previous months
-                        date.setMonth(date.getMonth() - 1);
-                        this.addMonth(date);
-                        date.setMonth(date.getMonth() - 1);
-                        // set topMonth to first
-                        this.minical.observer.unobserve(this.minical.topMonth);
-                        this.minical.topMonth = this.addMonth(date);
-                        this.minical.observer.observe(this.minical.topMonth);
-                        // check lastMonth, for each month too far down from bottom, unload month from dom
-                    }
-                    // add month at begining, set it to be firstMonth
-                    // check if last month out of range of intersection observer, then empty it and observe previous month
+                    last = this.addMonth(date);
                 }
-            });
-        };
+                return last;
+            },
+            calIntersect = (entries, observer) => {
+                entries.forEach((entry) => {
+                    if (entry.target === this.minical.bottomMonth) {
+                        if (entry.isIntersecting) {
+                            console.log(`load ${quantity} months at bottom`);
+                            // get date of month
+                            const date = new Date(
+                                this.minical.bottomMonth.getAttribute(
+                                    "data-iso"
+                                )
+                            );
+                            this.minical.observer.unobserve(
+                                this.minical.bottomMonth
+                            );
+                            this.minical.bottomMonth = loadloop(date);
+                            this.minical.observer.observe(
+                                this.minical.bottomMonth
+                            );
+                            // check firstMonth, for each month too far up from top, unload month from dom
+                        }
+                        // add month at end, set it to be lastMonth
+                        // check if first month out of range of intersection observer, then empty it and observe next month
+                    } else if (entry.target === this.minical.topMonth) {
+                        if (entry.isIntersecting) {
+                            console.log(`load ${quantity} months at top`);
+                            // get date of month
+                            const date = new Date(
+                                this.minical.topMonth.getAttribute("data-iso")
+                            );
+                            this.minical.observer.unobserve(
+                                this.minical.topMonth
+                            );
+                            delete this.minical.topMonth;
+                            this.minical.topMonth = loadloop(date, true);
+                            this.minical.observer.observe(
+                                this.minical.topMonth
+                            );
+                            // check lastMonth, for each month too far down from bottom, unload month from dom
+                        }
+                        // add month at begining, set it to be firstMonth
+                        // check if last month out of range of intersection observer, then empty it and observe previous month
+                    }
+                });
+            };
         let months = this.minical.cal.querySelectorAll(
             "[data-month]:not(.hidden)"
         );
@@ -341,6 +376,7 @@ class BopCal {
         this.minical.observer.observe(this.minical.topMonth);
         this.minical.observer.observe(this.minical.bottomMonth);
 
+        // this.minicalFocus(new Date());
         // month name:
         // position: absolute
         // top = top from row containing 1st of month - 1 x row height

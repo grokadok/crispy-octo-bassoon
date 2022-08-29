@@ -291,7 +291,11 @@ function getFirstDayOfWeek(date, weekstart = 1) {
         date.getMonth(),
         date.getDate()
     );
-    firstDay.setDate(firstDay.getDate() - firstDay.getDay() + weekstart);
+    daysMap = [0, 1, 2, 3, 4, 5, 6];
+    daysMap
+        .filter((x) => x < weekstart)
+        .map(() => daysMap.push(daysMap.shift()));
+    firstDay.setDate(firstDay.getDate() - daysMap.indexOf(firstDay.getDay()));
     return firstDay;
 }
 /**
