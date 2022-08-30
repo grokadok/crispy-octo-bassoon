@@ -1,12 +1,15 @@
 .bopcal {
+    --bigcal-height: 54rem;
+    --day-height: 96rem;
+    --cal-width: 20rem;
     position: fixed;
     inset: auto auto 0 0;
     /* height: 20rem; */
-    width: 20rem;
+    width: var(--cal-width);
     display: flex;
     flex-direction: column;
     background-color: var(--bg-chat);
-    transform: translateX(-20rem);
+    transform: translateX(calc(-1 * var(--cal-width)));
     transition: transform var(--transition-global);
     z-index: 1;
     & > button {
@@ -37,7 +40,7 @@
         /* mini cal */
         &:nth-of-type(2),
         /* big cal */
-        &:last-of-type > div {
+        &:last-of-type > div:last-of-type {
             height: 14rem;
             overflow-y: scroll;
             scrollbar-width: none;
@@ -138,26 +141,90 @@
             left: 100%;
             bottom: 0;
             width: 100%;
-            max-height: 100vh;
             background-color: var(--bg-chat);
             opacity: 0;
-            transition: opacity var(--transition-global);
+            overflow: hidden;
+            transition: opacity var(--transition-global),
+                width var(--transition-global), height var(--transition-global);
             pointer-events: none;
+            /* Layout */
+            & > div:first-of-type {
+                position: absolute;
+                inset: 0 0 auto 0;
+                height: var(--day-height);
+                display: flex;
+                flex-direction: column;
+                /* hour */
+                & > div {
+                    flex: 1;
+                    background-image: repeating-linear-gradient(
+                            var(--text-secondary) 0 1px,
+                            transparent 1px 100%
+                        ),
+                        repeating-linear-gradient(
+                            var(--text-fade) 0 0.1px,
+                            transparent 1px 50%
+                        );
+                    padding: 0.4rem;
+                    &::after {
+                        content: attr(data-hour);
+                    }
+                }
+            }
             &.year {
             }
             &.month {
+                width: calc(100vw - var(--cal-width));
+                height: calc(100vh - 5rem);
+                /* layout */
+                & > div:first-of-type {
+                    display: none;
+                }
+                /* calendar */
+                & > div:last-of-type {
+                    height: 100%;
+                    /* month */
+                    & > div > div {
+                        height: calc(100vh - 5rem);
+                        &::after {
+                            padding: 1rem;
+                            transform: rotate(0deg);
+                            writing-mode: unset;
+                        }
+                        /* week */
+                        & > div {
+                            width: 100%;
+                            flex: 1;
+                            justify-content: space-around;
+                            &::after {
+                                display: none;
+                            }
+                            /* day */
+                            & > div {
+                                flex: 1;
+                                height: 100%;
+                                aspect-ratio: auto;
+                                border: inset var(--text-placeholder) 1px;
+                            }
+                        }
+                    }
+                }
             }
-            &.week {
-            }
+            &.week,
             &.day {
-                & > div {
+                /* calendar */
+                & > div:last-of-type {
+                    height: var(--bigcal-height);
                     display: flex;
                     flex-direction: row;
+                    scroll-snap-type: x mandatory;
                     /* year */
                     & > div {
                         flex-direction: row;
+                        height: var(--day-height);
                         /* month */
                         & > div {
+                            height: 100%;
                             flex-direction: row;
                             scroll-snap-align: none;
                             &::after {
@@ -165,6 +232,7 @@
                             }
                             /* week */
                             & > div {
+                                height: 100%;
                                 width: 140rem;
                                 &::after {
                                     opacity: 0;
@@ -172,8 +240,20 @@
                                 /* day */
                                 & > div {
                                     width: 100%;
-                                    height: 14rem;
+                                    height: var(--day-height);
+                                    border-left: 1px var(--text-placeholder)
+                                        inset;
+                                    aspect-ratio: auto;
                                     scroll-snap-align: start;
+                                    /* background-image: repeating-linear-gradient(
+                                            var(--text-secondary) 0 1px,
+                                            transparent 1px 100%
+                                        ),
+                                        repeating-linear-gradient(
+                                            var(--text-fade) 0 0.5px,
+                                            transparent 1px 50%
+                                        );
+                                    background-size: 100% 3.2%; */
                                     &.today {
                                         background-color: transparent;
                                     }
@@ -185,6 +265,9 @@
                         }
                     }
                 }
+            }
+            &.week {
+                width: calc(100vw - var(--cal-width));
             }
             &.locked {
                 opacity: 1;

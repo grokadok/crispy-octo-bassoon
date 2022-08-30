@@ -103,6 +103,20 @@ function convertRemToPixels(rem) {
     );
 }
 /**
+ * Convert a simple int into a hour string.
+ * @param {Number} int
+ */
+function convertIntToHour(int) {
+    if (int < 24) {
+        let hour = `${int}:00`;
+        if (int < 10) hour = `0${hour}`;
+        return hour;
+    } else {
+        console.warn("Integer must be < 24");
+        return false;
+    }
+}
+/**
  * Sets disabled=true to element(s).
  * @param {HTMLElement|HTMLElement[]} el - Element or array of elements to be disabled.
  */

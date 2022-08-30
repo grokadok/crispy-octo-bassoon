@@ -25,8 +25,9 @@ class BopCal {
             wrapper: document.createElement("div"),
             cal: document.createElement("div"),
             years: {},
+            layout: document.createElement("div"),
         };
-        this.bigcal.wrapper.append(this.bigcal.cal);
+        this.bigcal.wrapper.append(this.bigcal.layout, this.bigcal.cal);
         this.toggle = document.createElement("button");
         this.toggle.textContent = "calendar";
         this.toggle.addEventListener("click", () => {
@@ -43,6 +44,19 @@ class BopCal {
         //         ? navigator.languages[0]
         //         : navigator.language;
         // get locale info from db for found userLocale.
+
+        // layout
+        // create 24 divs
+        for (let i = 0; i < 24; i++) {
+            let hour = document.createElement("div");
+            // hour in each one, ::after absolute inset:0 auto 0 0;
+            hour.setAttribute("data-hour", convertIntToHour(i));
+            this.bigcal.layout.append(hour);
+        }
+        this.bigcal.cal.addEventListener("scroll", (e) => {
+            // this.bigcal.layout.topScroll=e.scroll
+            this.bigcal.layout.style.top = `-${this.bigcal.cal.scrollTop}px`;
+        });
 
         // calendar buttons
         let todayButton = document.createElement("button");
@@ -140,12 +154,16 @@ class BopCal {
                     this.bigcal.years[date.getFullYear()].months[
                         date.getMonth()
                     ];
+                x =
+                    target.offsetLeft +
+                    target.offsetParent.offsetLeft +
+                    target.offsetParent.offsetParent.offsetLeft;
+                y =
+                    target.offsetTop +
+                    target.offsetParent.offsetTop +
+                    target.offsetParent.offsetParent.offsetTop;
                 break;
             case "week":
-                target = this.bigcal.years[date.getFullYear()].months[
-                    date.getMonth()
-                ].querySelector(`[data-week="${getWeekNumber(date)}"]`);
-                break;
             case "day":
                 // issue when days from previous or next month...
                 target = this.bigcal.years[date.getFullYear()].months[
@@ -159,13 +177,9 @@ class BopCal {
                     target.offsetLeft +
                     target.offsetParent.offsetLeft +
                     target.offsetParent.offsetParent.offsetLeft;
-                y =
-                    target.offsetTop +
-                    target.offsetParent.offsetTop +
-                    target.offsetParent.offsetParent.offsetTop;
                 break;
         }
-        this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "auto" });
+        this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
     }
     destroy() {
         this.minical.observer?.disconnect();
