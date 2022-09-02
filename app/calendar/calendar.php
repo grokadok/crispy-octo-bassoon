@@ -4,16 +4,19 @@ namespace bopdev;
 
 trait BopCal
 {
-    use \SimpleCalDavClient;
+    // use \SimpleCalDavClient;
 
     private $calendarTypes = ['caldav'];
+
+    // !!!!!! BEFORE EACH CHANGE, CHECK MODIFIED !!!!!
+    // !!!!!! AFTER EACH CHANGE, SEND NOTIFICATIONS/MODIFICATIONS TO OTHER USERS !!!!!
 
     /**
      * Adds alarm linked to provided component.
      * @param int $idcomponent
      * @param array $alarm
      */
-    private function addAlarm(int $idcomponent, array $alarm)
+    private function calAddAlarm(int $idcomponent, array $alarm)
     {
         $request = [
             'into' => '',
@@ -82,12 +85,13 @@ trait BopCal
             'type' => 'ii',
             'content' => [$idcomponent, $idalarm],
         ]);
+        return $idalarm;
     }
     /**
      * Adds cal_description if not exists, returns its id.
      * @param string $content Description text.
      */
-    private function addDescription(string $content)
+    private function calAddDescription(string $content)
     {
         if (!isset($this->db->request([
             'query' => 'SELECT idcal_description FROM cal_description WHERE content = ? LIMIT 1;',
@@ -107,8 +111,12 @@ trait BopCal
             'array' => true,
         ])[0][0];
     }
-    private function addEvent(int $iduser, string $uid, array $event)
+    private function calAddEvent(int $iduser, int $cal_folder, array $event)
     {
+        if ($this->calCheckUserWriteAccess($iduser, $cal_folder)) return print("Write failure: user $iduser had no write access to cal_folder $cal_folder." . PHP_EOL);
+
+        $uid = $event['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
+
         $request = [
             'into' => '',
             'values' => '',
@@ -200,7 +208,7 @@ trait BopCal
         $idcomponent = $this->db->request([
             'query' => 'SELECT MAX(idcal_component) FROM cal_component WHERE uid = (SELECT UUID_TO_BIN(?, 1)) AND created = ? LIMIT 1;',
             'type' => 'ss',
-            'content' => [$uid,],
+            'content' => [$uid, $event['created']],
             'array' => true,
         ])[0][0];
 
@@ -239,6 +247,9 @@ trait BopCal
                 ]);
             }
         }
+        // return light info about new event.
+
+        return ['event' => $event, 'users' => $this->calGetConnectUsers($cal_folder)];
 
         // doc for calendar components
         if (1 === 0) {
@@ -281,7 +292,7 @@ trait BopCal
             // attendees: status ?
         }
     }
-    private function addLocation(string $location)
+    private function calAddLocation(string $location)
     {
         $idlocation = $this->db->request([
             'query' => 'SELECT idcal_location FROM cal_location WHERE name = ? LIMIT 1;',
@@ -304,150 +315,365 @@ trait BopCal
         }
         return $idlocation;
     }
-    private function getCalFilesFromFolder(int $cal_folder)
+    private function calCheckUserReadAccess(int $iduser, int $cal_folder)
     {
-        $cal_files = $this->db->request([
-            'query' => 'SELECT uid,etag FROM cal_file WHERE idcal_folder = ?;',
+        return !empty($this->db->request([
+            'query' => 'SELECT NULL FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'ii',
+            'content' => [$iduser, $cal_folder],
+            'array' => true,
+        ]));
+    }
+    private function calCheckUserWriteAccess(int $iduser, int $cal_folder)
+    {
+        return !empty($this->db->request([
+            'query' => 'SELECT read_write FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'ii',
+            'content' => [$iduser, $cal_folder],
+            'array' => true,
+        ])[0][0]);
+    }
+    private function calGetConnectUsers(int $cal_folder, string $start = null, string $end = null)
+    {
+        $users = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT idsession,iduser,fd FROM session;',
+        ]) as $user) $users[] = [...$user, 'inrange' => isset($start) && isset($end) ? !empty($this->db->request([
+            'query' => 'SELECT NULL FROM session_has_calendar WHERE idsession = ? AND idcal_folder = ? AND start < ? AND end > ?;',
+            'type' => 'iiss',
+            'content' => [$user['idsession'], $cal_folder, $end, $start],
+        ])) : null];
+        return $users;
+    }
+    private function calGetFilesFromFolder(int $cal_folder)
+    {
+        return $this->db->request([
+            'query' => 'SELECT uid,modified FROM cal_file WHERE idcal_folder = ?;',
             'type' => 'i',
             'content' => [$cal_folder],
             'array' => false,
         ]);
-        return $cal_files;
     }
     /**
      * Gets event(s) for given uid.
      * @param int $uid Duh.
      */
-    private function getEventsFromUid(int $uid)
+    private function calGetDataFromEvent(int $idcomponent)
     {
-        $events = $this->db->request([
-            'query' => 'SELECT idcal_component, created, modified, summary, description, organizer, timezone, start, end, duration, all_day, class, location, priority, status, transparency, sequence, rrule, rdate, recur_id, thisandfuture
+        $event = $this->db->request([
+            'query' => 'SELECT created, modified, summary, description, organizer, timezone, start, end, all_day, class, location, priority, status, transparency, sequence, rrule, rdate, recur_id, thisandfuture
             FROM cal_component
-            WHERE type = 0 AND uid = ?;',
-            'type' => 's',
-            'content' => [$uid],
+            WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
             'array' => false,
-        ]);
+        ])[0];
         $response = [
-            'attendees' => [],
             'descriptions' => [],
-            'events' => [],
+            'event' => [],
             'languages' => [],
             'tags' => [],
             'timezones' => [],
             'users' => [],
         ];
 
-        foreach ($events as $event) {
-            // get description
-            addIfNotNullNorExists($event['description'], $response['descriptions']);
+        // get description
+        addIfNotNullNorExists($event['description'], $response['descriptions']);
 
-            // get organizer
-            addIfNotNullNorExists($event['organizer'], $response['users']);
+        // get organizer
+        addIfNotNullNorExists($event['organizer'], $response['users']);
 
-            // get timezone
-            addIfNotNullNorExists($event['timezone'], $response['timezones']);
+        // get timezone
+        addIfNotNullNorExists($event['timezone'], $response['timezones']);
 
-            // get location
-            $event['location'] = isset($event['location']) ? $this->db->request([
-                'query' => 'SELECT name FROM cal_location WHERE idcal_location = ? LIMIT 1;',
-                'type' => 'i',
-                'content' => [$event['location']],
-                'array' => true,
-            ])[0][0] : '';
+        // get location
+        addIfNotNullNorExists($event['location'], $response['locations']);
 
-            // get recurrence
-            if ($event['rrule']) {
-                $event['recurrence']['rule'] = $this->db->request([
-                    'query' => 'SELECT frequency, set_interval, until, count, week_start, by_day, by_monthday, by_month, by_setpos FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
-                    'type' => 'i',
-                    'content' => [$event['idcal_component']],
-                    'array' => false,
-                ])[0];
-            }
-            if ($event['rdate']) {
-                $res = $this->db->request([
-                    'query' => 'SELECT date FROM cal_rdate WHERE idcal_component = ?;',
-                    'type' => 'i',
-                    'content' => [$event['idcal_component']],
-                    'array' => true,
-                ]);
-                foreach ($res as $date) $event['recurrence']['date'][] = $date[0];
-            }
-            // get exceptions
-            if (isset($event['recurrence'])) {
-                $event['recurrence']['exceptions'] = $this->db->request([
-                    'query' => 'SELECT date,all_day FROM cal_comp_has_exc LEFT JOIN cal_exception USING (idcal_exception) WHERE idcal_component = ?;',
-                    'type' => 'i',
-                    'content' => [$event['idcal_component']],
-                    'array' => false,
-                ]);
-            }
+        // get recurrence
+        if ($event['rrule'])
+            $event['recurrence']['rule'] = $this->calGetEventsRRule($idcomponent);
+        if ($event['rdate'])
+            $event['recurrence']['date'] = $this->calGetEventsRDate($idcomponent);
+        // get exceptions
+        if (isset($event['recurrence']))
+            $event['recurrence']['exceptions'] = $this->calGetEventsException($idcomponent);
 
-            // get attendees
-            $event['attendees'] = $this->db->request([
-                'query' => 'SELECT attendee, delegated_from, delegated_to, language, sent_by, cutype, role, status, rsvp FROM cal_attendee WHERE idcal_component = ?;',
-                'type' => 'i',
-                'content' => [$event['ical_component']],
-                'array' => false,
-            ]);
-            foreach ($event['attendees'] as $attendee) {
-                foreach ([$attendee['attendee'], $attendee['delegated_from'], $attendee['delegated_to'], $attendee['sent_by']] as $value)
-                    addIfNotNullNorExists($response['users'], $value);
-                addIfNotNullNorExists($attendee['idlanguage'], $response['languages']);
-            }
-
-            // get alarms
-            $event['alarms'] = $this->db->request([
-                'query' => 'SELECT idcal_alarm, action, trigger_absolute, trigger_relative, trigger_related, summary, description, repeat_times, duration FROM cal_alarm WHERE idcal_component = ?;',
-                'type' => 'i',
-                'content' => [$event['idcal_component']],
-                'array' => false,
-            ]);
-            foreach ($event['alarms'] as $alarm) addIfNotNullNorExists($alarm['description'], $response['descriptions']);
-
-            // get tags
-            $event['tags'] = $this->db->request([
-                'query' => 'SELECT idtag FROM cal_comp_has_tag WHERE idcal_component = ?;',
-                'type' => 'i',
-                'content' => [$event['idcal_component']],
-                'array' => true,
-            ]);
-            foreach ($event['tags'] as $tag) addIfNotNullNorExists($tag[0], $response['tags']);
-
-            $response['events'][$event['idcal_component']] = $event;
+        // get attendees
+        $event['attendees'] = $this->calGetEventsAttendees($idcomponent);
+        foreach ($event['attendees'] as $attendee) {
+            foreach ([$attendee['attendee'], $attendee['delegated_from'], $attendee['delegated_to'], $attendee['sent_by']] as $value)
+                addIfNotNullNorExists($response['users'], $value);
+            addIfNotNullNorExists($attendee['idlanguage'], $response['languages']);
         }
+
+        // get alarms
+        $event['alarms'] = $this->calGetEventsAlarms($idcomponent);
+        foreach ($event['alarms'] as $alarm) addIfNotNullNorExists($alarm['description'], $response['descriptions']);
+
+        // get tags
+        $event['tags'] = $this->calGetEventsTagId($idcomponent);
+        foreach ($event['tags'] as $tag) addIfNotNullNorExists($tag[0], $response['tags']);
+
+        $response['event'][$event['idcal_component']] = $event;
+
+        // get content
+        // descriptions
+        if (!empty($response['descriptions']))
+            $response['descriptions'] = $this->calGetDescriptions($response['descriptions']);
+        // users
+        if (!empty($response['users'])) $response['users'] = $this->calGetUsers($response['users']);
+        // timezones
+        if (!empty($response['timezones'])) $response['timezones'] = $this->calGetTimeZones($response['timezones']);
+        // tags
+        if (!empty($response['tags'])) $response['tags'] = $this->calGetTags($response['tags']);
+        // locations
+        if (!empty($response['locations'])) $response['locations'] = $this->calGetLocations($response['locations']);
+
         return $response;
     }
-    private function getLocalCalendars(int $iduser)
+    private function calGetDescriptions(array $iddecriptions)
     {
-        $cal_folders = $this->db->request([
-            'query' => 'SELECT idcal_folder,name,description FROM user_has_calendar WHERE iduser = ?;',
+        $result = [];
+        $in = implode(',', $iddecriptions);
+        $res = $this->db->request([
+            'query' => "SELECT idcal_description,content FROM cal_description WHERE idcal_description IN $in;",
+            'array' => true,
+        ]);
+        foreach ($res as $description) $result[$description[0]] = $description[1];
+        return $result;
+    }
+    private function calGetEventsAlarms(int $idcomponent)
+    {
+        $alarmIds = $this->db->request([
+            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]);
+        $alarms = [];
+        if (!empty($alarmIds)) foreach ($alarmIds as $alarmId) {
+            $alarms[] = $this->db->request([
+                'query' => 'SELECT action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$alarmId[0]],
+            ]);
+        }
+        return $alarms;
+    }
+    private function calGetEventsAttendees(int $idcomponent)
+    {
+        return
+            $this->db->request([
+                'query' => 'SELECT attendee, delegated_from, delegated_to, language, sent_by, cutype, role, status, rsvp FROM cal_attendee WHERE idcal_component = ?;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+                'array' => false,
+            ]);
+    }
+    private function calGetEventsException(int $idcomponent)
+    {
+        $exceptions = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT date FROM cal_exception WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]) as $exception) $exceptions[] = $exception[0];
+        return $exceptions;
+    }
+    private function calGetEventsInRange(int $cal_folder, string $start, string $end)
+    {
+        // get all uids from folder
+        $uids = [];
+        $res = $this->calGetFilesFromFolder($cal_folder);
+        foreach ($res as $val) $uids[] = $val['uid'];
+        $uids = implode(',', $uids);
+        $events = $this->db->request([
+            'query' => "SELECT idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN $uids AND start < ? AND end > ?;",
+            'type' => 'ss',
+            'content' => [$end, $start],
+        ]);
+        // if rrule, get rrule
+        foreach ($events as $key => $value) {
+            if ($value['rrule']) $events[$key]['rrule'] = $this->calGetEventsRRule($value['idcal_component']);
+            // if rdate, get rdate
+            if ($value['rdate']) $events[$key]['rdates'] = $this->calGetEventsRDate($value['idcal_component']);
+            // if exceptions, get'em
+            if ($value['rrule'] || $value['rdate'])
+                $events[$key]['exceptions'] = $this->calGetEventsException($value['idcal_component']);
+            // alarms
+            // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
+            $events[$key]['alarms'] = $this->catGetEventsAlarms($value['idcal_component']);
+        }
+        return $events;
+    }
+    private function calGetEventsRDate(int $idcomponent)
+    {
+        $rdates = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT date FROM cal_rdate WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]) as $date) $rdates[] = $date[0];
+        return $rdates;
+    }
+    private function calGetEventsRRule(int $idcomponent)
+    {
+        return $this->db->request([
+            'query' =>
+            'SELECT frequency,set_interval,until,count,week_start,by_day,by_monthday,by_month,by_setpos FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+        ])[0];
+    }
+    private function calGetEventsTagId(int $idcomponent)
+    {
+        $tagIds = [];
+        $tags = $this->db->request([
+            'query' => 'SELECT idtag FROM cal_comp_has_tag WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]);
+        foreach ($tags as $tag) $tagIds[] = $tag[0];
+        return $tagIds;
+    }
+    private function calGetLocations(array $locationids)
+    {
+        $response = [];
+        $in = implode(',', $locationids);
+        $res = $this->db->request([
+            'query' => "SELECT idcal_location,name FROM cal_locations WHERE idcal_location IN $in;",
+            'array' => true,
+        ]);
+        foreach ($res as $location) $response[$location[0]] = $location[1];
+        return $response;
+    }
+    private function calGetStaticValues()
+    {
+        $response = [
+            'status' => [],
+            'cutype' => [],
+            'role' => [],
+            'frequency' => [],
+            'action' => [],
+            'class' => [],
+        ];
+        // get statuses
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_status,name FROM cal_status;',
+        ]) as $status) $response['status'][$status['idcal_status']] = $status['name'];
+        // get cutypes
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_cutype,name FROM cal_cutype;',
+        ]) as $cutype) $response['cutype'][$cutype['idcal_cutype']] = $cutype['name'];
+        // get roles
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_role, name FROM cal_role;',
+        ]) as $role) $response['role'][$role['idcal_role']] = $role['name'];
+        // get frequencies
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_frequency,name FROM cal_frequency;',
+        ]) as $frequency) $response['frequency'][$frequency['idcal_frequency']] = $frequency['name'];
+        // get actions
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_action,name FROM cal_action;',
+        ]) as $action) $response['action'][$action['idcal_action']] = $action['name'];
+        // get classes
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_class,name FROM cal_class;',
+        ]) as $class) $response['class'][$class['idcal_class']] = $class['name'];
+        return $response;
+    }
+    private function calGetTags(array $tagids)
+    {
+        $response = [];
+        $in = implode(',', $tagids);
+        $res = $this->db->request([
+            'query' => "SELECT idtag,name FROM tag WHERE idtag IN $in;",
+            'array' => true,
+        ]);
+        foreach ($res as $tag) $response[$tag[0]] = $tag[1];
+        return $response;
+    }
+    private function calGetTimeZones(array $timezones)
+    {
+        $response = [];
+        $in = implode(',', $timezones);
+        $res = $this->db->request([
+            'query' => "SELECT idtimezone,name,offset FROM timezone WHERE idtimezone IN $in;",
+            'array' => true,
+        ]);
+        foreach ($res as $tz) $response[$tz[0]] = ['name' => $tz[1], 'offset' => $tz[2]];
+        return $response;
+    }
+    private function calGetUserCalendars(int $iduser)
+    {
+        $folders = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_folder,read_only FROM user_has_calendar WHERE iduser = ?;',
             'type' => 'i',
             'content' => [$iduser],
-            'array' => false,
-        ]);
-        foreach ($cal_folders as $key => $value) $cal_folders[$key]['description'] = $this->db->request([
-            'query' => 'SELECT content FROM cal_description WHERE idcal_description = ? LIMIT 1;',
-            'type' => 'i',
-            'content' => [$value['description']],
             'array' => true,
-        ])[0][0];
-        return $cal_folders;
+        ]) as $folder)
+            $folders[$folder[0]] = [
+                'name' => $this->db->request([
+                    'query' => 'SELECT name FROM cal_folder WHERE idcal_folder = ? LIMIT 1;',
+                    'type' => 'i',
+                    'content' => [$folder[0]],
+                    'array' => true,
+                ])[0][0],
+                'read_only' => $folder[1],
+            ];
+        return $folders;
+
+        // foreach ($cal_folders as $key => $value) $cal_folders[$key]['description'] = $this->db->request([
+        //     'query' => 'SELECT content FROM cal_description WHERE idcal_description = ? LIMIT 1;',
+        //     'type' => 'i',
+        //     'content' => [$value['description']],
+        //     'array' => true,
+        // ])[0][0];
+        // return $cal_folders;
+    }
+    private function calGetUsers(array $userids)
+    {
+        $response = ['users' => [], 'roles' => []];
+        $in = implode(',', $userids);
+        foreach ($this->db->request([
+            'query' => "SELECT iduser,first_name,last_name FROM user WHERE iduser IN $in;",
+            'array' => true,
+        ]) as $user) $response['users'][$user[0]] = ['first_name' => $user[1], 'last_name' => $user[2]];
+        foreach ($this->db->request([
+            'query' => "SELECT iduser,idrole FROM user_has_role WHERE iduser IN $in;",
+            'array' => true,
+        ]) as $role) {
+            $response['users'][$role[0]]['role'] = $role[1];
+            addIfNotNullNorExists($role[1], $response['roles']);
+        }
+        $in = implode(',', $response['roles']);
+        $response['roles'] = [];
+        foreach ($this->db->request([
+            'query' => "SELECT idrole,name,short FROM role WHERE idrole IN $in;",
+            'array' => true,
+        ]) as $role) $response['roles'][$role[0]] = ['name' => $role[1], 'short' => $role[2]];
+        return $response;
     }
     /**
      * Creates a new calendar file.
      * @param array $folder
      */
-    private function newCalFile(array $folder)
+    private function calNewCalFile(int $iduser, int $cal_folder)
     {
+        if (!$this->calCheckUserWriteAccess($iduser, $cal_folder))
+            return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
         $uuid = $this->db->request([
             'query' => 'SELECT uuid();',
         ])[0][0];
         $this->db->request([
             'query' => 'INSERT INTO cal_file (uid, idcal_folder) VALUES ((SELECT UUID_TO_BIN(?,1), ?);',
             'type' => 'si',
-            'content' => [$uuid, $folder],
+            'content' => [$uuid, $cal_folder],
         ]);
         return $uuid;
     }
@@ -458,7 +684,7 @@ trait BopCal
      * @param string $folder['name'] Calendar's name.
      * @param string $folder['description] Optionnal folder description.
      */
-    private function newCalFolder(int $iduser, array $folder)
+    private function calNewCalFolder(int $iduser, array $folder)
     {
         $request = [];
         if (isset($folder['description'])) {
@@ -489,7 +715,7 @@ trait BopCal
             'array' => true,
         ])[0][0];
     }
-    private function componentAddAlarm(int $idcomponent, array $alarm)
+    private function calComponentAddAlarm(int $idcomponent, array $alarm)
     {
         $request = [
             'into' => '',
@@ -569,7 +795,7 @@ trait BopCal
      * @param int $idcomponent
      * @param array $attendee
      */
-    private function componentAddAttendee(int $idcomponent, array $attendee)
+    private function calComponentAddAttendee(int $idcomponent, array $attendee)
     {
         $request = [
             'into' => '',
@@ -641,15 +867,15 @@ trait BopCal
             'content' => [$idcomponent, ...$request['content']],
         ]);
     }
-    private function componentAddDescription(int $idcomponent, string $description)
+    private function calComponentAddDescription(int $idcomponent, string $description)
     {
-        $this->db->request([
-            'query' => 'UPDATE cal_component SET description = ? WHERE idcal_component = ? LIMIT 1;',
-            'type' => 'ii',
-            'content' => [$this->addDescription($description), $idcomponent],
-        ]);
+        // $this->db->request([
+        //     'query' => 'UPDATE cal_component SET description = ? WHERE idcal_component = ? LIMIT 1;',
+        //     'type' => 'ii',
+        //     'content' => [$this->addDescription($description), $idcomponent],
+        // ]);
     }
-    private function componentAddException(int $idcomponent, array $exception)
+    private function calComponentAddException(int $idcomponent, array $exception)
     {
         $request = [
             'into' => '',
@@ -670,7 +896,7 @@ trait BopCal
             'array' => true,
         ]);
     }
-    private function componentAddLocation(int $idcomponent, string $location)
+    private function calComponentAddLocation(int $idcomponent, string $location)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET location = ? WHERE idcal_location = ? LIMIT 1;',
@@ -678,7 +904,7 @@ trait BopCal
             'content' => [$this->addLocation($location), $idcomponent],
         ]);
     }
-    private function componentAddRDate(int $idcomponent, string $date)
+    private function calComponentAddRDate(int $idcomponent, string $date)
     {
         $this->db->request([
             'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?,?);',
@@ -691,7 +917,7 @@ trait BopCal
             'content' => [$idcomponent],
         ]);
     }
-    private function componentAddTag(int $idcomponent, int $tag)
+    private function calComponentAddTag(int $idcomponent, int $tag)
     {
         $this->db->request([
             'query' => 'INSERT INTO cal_comp_has_tag (idcal_component,idtag) VALUES (?,?);',
@@ -699,7 +925,7 @@ trait BopCal
             'content' => [$idcomponent, $tag],
         ]);
     }
-    private function componentChangeAlarm(int $idalarm, array $alarm)
+    private function calComponentChangeAlarm(int $idalarm, array $alarm)
     {
         $oldalarm = $this->db->request([
             'query' => 'SELECT action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
@@ -777,7 +1003,7 @@ trait BopCal
                 'content' => [...$request['content'], $idalarm],
             ]);
     }
-    private function componentChangeAttendee(int $idcomponent, array $attendee)
+    private function calComponentChangeAttendee(int $idcomponent, array $attendee)
     {
         $request = [
             'set' => [],
@@ -839,7 +1065,7 @@ trait BopCal
             'content' => [...$request['content'], $idcomponent, $attendee['attendee']],
         ]);
     }
-    private function componentChangeClass(int $idcomponent, int $class)
+    private function calComponentChangeClass(int $idcomponent, int $class)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET class = ? WHERE idcal_component = ? LIMIT 1;',
@@ -847,7 +1073,7 @@ trait BopCal
             'content' => [$class, $idcomponent],
         ]);
     }
-    private function componentChangeDescription(int $idcomponent, string $description)
+    private function calComponentChangeDescription(int $idcomponent, string $description)
     {
         $iddescription = $this->db->request([
             'query' => 'SELECT description FROM cal_component WHERE idcal_component = ? LIMIT 1;',
@@ -862,7 +1088,7 @@ trait BopCal
         ]);
         if (!empty($iddescription)) $this->removeUnusedDescription($iddescription);
     }
-    private function componentChangeEnd(int $idcomponent, string $end)
+    private function calComponentChangeEnd(int $idcomponent, string $end)
     {
         // set new end
         $this->db->request([
@@ -871,7 +1097,7 @@ trait BopCal
             'content' => [$end, $idcomponent],
         ]);
     }
-    private function componentChangeLocation(int $idcomponent, string $location)
+    private function calComponentChangeLocation(int $idcomponent, string $location)
     {
         $idlocation = $this->db->request([
             'query' => 'SELECT location FROM cal_component WHERE idcal_component = ? LIMIT 1;',
@@ -897,7 +1123,7 @@ trait BopCal
         ]);
         if (!empty($idlocation)) $this->removeUnusedLocation($idlocation);
     }
-    private function componentChangePriority(int $idcomponent, int $priority)
+    private function calComponentChangePriority(int $idcomponent, int $priority)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET priority = ? WHERE idcal_component = ? LIMIT 1;',
@@ -905,7 +1131,7 @@ trait BopCal
             'content' => [$priority, $idcomponent],
         ]);
     }
-    private function componentChangeRRUle(int $idcomponent, array $rule)
+    private function calComponentChangeRRUle(int $idcomponent, array $rule)
     {
         $request = [
             'set' => [],
@@ -972,7 +1198,7 @@ trait BopCal
             'content' => [...$request['content'], $idcomponent],
         ]);
     }
-    private function componentChangeStart(int $idcomponent, string $start)
+    private function calComponentChangeStart(int $idcomponent, string $start)
     {
         // set new start
         $this->db->request([
@@ -981,7 +1207,7 @@ trait BopCal
             'content' => [$start, $idcomponent],
         ]);
     }
-    private function componentChangeStatus(int $idcomponent, int $status)
+    private function calComponentChangeStatus(int $idcomponent, int $status)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET status = ? WHERE idcal_component = ? LIMIT 1;',
@@ -989,7 +1215,7 @@ trait BopCal
             'content' => [$status, $idcomponent],
         ]);
     }
-    private function componentChangeSummary(int $idcomponent, string $summary)
+    private function calComponentChangeSummary(int $idcomponent, string $summary)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET summary = ? WHERE idcal_component = ? LIMIT 1;',
@@ -997,7 +1223,7 @@ trait BopCal
             'content' => [$summary, $idcomponent],
         ]);
     }
-    private function componentChangeTransparency(int $idcomponent, bool $transparency)
+    private function calComponentChangeTransparency(int $idcomponent, bool $transparency)
     {
         $this->db->request([
             'query' => 'UPDATE cal_component SET transparency = ? WHERE idcal_component = ? LIMIT 1;',
@@ -1005,7 +1231,7 @@ trait BopCal
             'content' => [$transparency, $idcomponent],
         ]);
     }
-    private function componentRemoveAlarm(int $idcomponent, int $idalarm)
+    private function calComponentRemoveAlarm(int $idcomponent, int $idalarm)
     {
         $iddescription = $this->db->request([
             'query' => 'SELECT description FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
@@ -1025,7 +1251,7 @@ trait BopCal
         ]);
         if (!empty($iddescription)) $this->removeUnusedDescription($iddescription);
     }
-    private function componentRemoveAttendee(int $idcomponent, int $attendee)
+    private function calComponentRemoveAttendee(int $idcomponent, int $attendee)
     {
         $this->db->request([
             'query' => 'DELETE cal_attendee WHERE idcal_component = ? AND attendee = ? LIMIT 1;',
@@ -1033,7 +1259,7 @@ trait BopCal
             'content' => [$idcomponent, $attendee],
         ]);
     }
-    private function componentRemoveDescription(int $idcomponent)
+    private function calComponentRemoveDescription(int $idcomponent)
     {
         $iddescription = $this->db->request([
             'query' => 'SELECT description FROM cal_component WHERE idcal_component = ? LIMIT 1;',
@@ -1048,7 +1274,7 @@ trait BopCal
         ]);
         $this->removeUnusedDescription($iddescription);
     }
-    private function componentRemoveException(int $idcomponent, string $exception)
+    private function calComponentRemoveException(int $idcomponent, string $exception)
     {
         $this->db->request([
             'query' => 'DELETE cal_exception WHERE idcal_component = ? AND date = ?;',
@@ -1056,7 +1282,7 @@ trait BopCal
             'content' => [$idcomponent, $exception],
         ]);
     }
-    private function componentRemoveLocation(int $idcomponent)
+    private function calComponentRemoveLocation(int $idcomponent)
     {
         $idlocation = $this->db->request([
             'query' => 'SELECT location FROM cal_component WHERE idcal_component = ? LIMIT 1;',
@@ -1071,7 +1297,7 @@ trait BopCal
         ]);
         $this->removeUnusedLocation($idlocation);
     }
-    private function componentRemoveRDate(int $idcomponent, string $date)
+    private function calComponentRemoveRDate(int $idcomponent, string $date)
     {
         $this->db->request([
             'query' => 'DELETE cal_rdate WHERE idcal_component = ? AND date = ? LIMIT 1;',
@@ -1088,7 +1314,7 @@ trait BopCal
             'content' => [$idcomponent],
         ]);
     }
-    private function componentRemoveRRUle(int $idcomponent)
+    private function calComponentRemoveRRUle(int $idcomponent)
     {
         // remove rrule
         $this->db->request([
@@ -1115,7 +1341,7 @@ trait BopCal
             'content' => [++$sequence, $idcomponent],
         ]);
     }
-    private function componentRemoveTag(int $idcomponent, int $tag)
+    private function calComponentRemoveTag(int $idcomponent, int $tag)
     {
         $this->db->request([
             'query' => 'DELETE cal_comp_has_tag WHERE idcal_component = ? AND idtag = ? LIMIT 1;',
@@ -1128,7 +1354,7 @@ trait BopCal
      * @param int $idcomponent
      * @param array $rule
      */
-    private function componentSetRRUle(int $idcomponent, array $rule)
+    private function calComponentSetRRUle(int $idcomponent, array $rule)
     {
         $request = [
             'into' => '',
@@ -1206,7 +1432,7 @@ trait BopCal
             'content' => [$idcomponent, ...$request['content']],
         ]);
     }
-    private function removeUnusedDescription(int $iddescription)
+    private function calRemoveUnusedDescription(int $iddescription)
     {
         if (empty($this->db->request([
             'query' => 'SELECT NULL FROM cal_folder WHERE description = ? UNION SELECT NULL FROM cal_component WHERE description = ? UNION SELECT NULL FROM cal_alarm WHERE description = ? LIMIT 1;',
@@ -1219,7 +1445,7 @@ trait BopCal
             'content' => [$iddescription],
         ]);
     }
-    private function removeUnusedLocation(int $idlocation)
+    private function calRemoveUnusedLocation(int $idlocation)
     {
         if (empty($this->db->request([
             'query' => 'SELECT NULL FROM cal_component WHERE idcal_location = ? LIMIT 1;',
@@ -1233,26 +1459,28 @@ trait BopCal
                 'content' => [$idlocation],
             ]);
     }
-
-    private function changeComponent(int $idcomponent, array $changes)
+    private function calSetSession(int $idsession, int $cal_folder, string $start, string $end)
     {
-        // start
-        // end
-
-        // if recurrence, set recur_id and range
-        // OR if range = this, add exception to rule/remove rdate and create a new component
-        // OR if range = thisandfuture, close event with until or count, and create a new one with new values.
-        // if change is about date or location, attendees needs to set their participation again
-        // send attendees notification of change in event
-
-        // set component sequence
-
-        // update etag from file
-
-        // send updated object to connected users
-
+        if (empty($this->db->request([
+            'query' => 'SELECT NULL FROM session_has_calendar WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'ii',
+            'content' => [$idsession, $cal_folder],
+            'array' => true,
+        ])))
+            return $this->db->request([
+                'query' => 'INSERT INTO session_has_calendar (idsession,idcal_folder,start,end) VALUES (?,?,?,?);',
+                'type' => 'iiss',
+                'content' => [$idsession, $cal_folder, $start, $end],
+            ]);
+        return $this->db->request([
+            'query' => 'UPDATE session_has_calendar SET start = ? AND end = ? WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'ssii',
+            'content' => [$start, $end, $idsession, $cal_folder],
+        ]);
     }
-    private function getCalendarUsers($idfolder)
+
+
+    private function calGetCalendarUsers($idfolder)
     {
         $users = [];
         foreach ($this->db->request([
@@ -1263,7 +1491,7 @@ trait BopCal
         ]) as $user) $users[] = $user[0];
         return $users;
     }
-    private function removeComponent(int $idcomponent)
+    private function calRemoveComponent(int $idcomponent)
     {
         // tag
         $this->db->request([
@@ -1346,7 +1574,7 @@ trait BopCal
 
         // send intel to users having access to calendar of this new turn of events.
     }
-    private function removeFile(string $uid)
+    private function calRemoveFile(string $uid)
     {
         $components = $this->db->request([
             'query' => 'SELECT idcal_component FROM cal_component WHERE uid = UUID_TO_BIN(?,1);',
@@ -1374,7 +1602,7 @@ trait BopCal
      * 
      * @return false|array
      */
-    private function getExternalCals(int $iduser, ?array $types)
+    private function calGetExternalCals(int $iduser, ?array $types)
     {
         $response = [];
         // for each type of calendar, check if user has some.
@@ -1402,7 +1630,7 @@ trait BopCal
     /**
      * Get events from specific caldav on selected period of time;
      */
-    private function getEventsFromCaldav(int $id, array $period)
+    private function calGetEventsFromCaldav(int $id, array $period)
     {
         $res = $this->db->request([
             'query' => 'SELECT url,user,pass FROM caldav WHERE idcaldav = ?;',

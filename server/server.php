@@ -5,9 +5,10 @@ namespace bopdev;
 $functions = __DIR__ . "/app/model/functions.php";
 $dbrequest = __DIR__ . "/app/model/dbrequest.php";
 $chat = __DIR__ . "/app/chat/chat.php";
+$calendar = __DIR__ . "/app/calendar/calendar.php";
 $caldav = __DIR__ . "/app/simplecaldav/SimpleCalDAVClient.php";
 $localenv = __DIR__ . "/config/env.php";
-foreach ([$dbrequest, $functions, $chat, $caldav] as $value) {
+foreach ([$dbrequest, $functions, $chat, $calendar, $caldav] as $value) {
     require_once $value;
     unset($value);
 };
@@ -33,7 +34,7 @@ use SimpleCalDAVClient;
 class FWServer
 {
     use BopChat;
-    // use BopCal;
+    use BopCal;
     private $tabs = [
         // 0=>[
         //     "icon" => '',
@@ -961,6 +962,12 @@ class FWServer
                 "query" => "ALTER TABLE session AUTO_INCREMENT=1; ;",
             ]);
             print('#### Db connected. ####' . PHP_EOL);
+            // $test = $this->db->request([
+            //     'query' => 'SELECT NULL FROM user WHERE first_name = ? LIMIT 1;',
+            //     'type' => 's',
+            //     'content' => ['Dugenou'],
+            // ]);
+            // var_dump(empty($test));
         } else print('!!!! No db connection. !!!!' . PHP_EOL);
     }
     public function onWorkStart($serv, $worker_id)
@@ -2143,55 +2150,145 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH CALDAV DATA (21)
+            // FETCH USER CALENDARS AND STATIC VALUES (21)
             /////////////////////////////////////////////////////
 
-            if ($f === 21 && 0 === 1) {
-                // check if user has calendar, get calendars title & role
-                $res = $this->db->request([
-                    'query' => 'SELECT name,role FROM user_has_caldav LEFT JOIN caldav USING (idcaldav) WHERE iduser = ?;',
-                    'type' => 'i',
-                    'content' => [$iduser],
-                    'array' => true,
-                ]);
-                // fetch events/tasks from period
-                if (isset($res[0])) {
-                    $response = [];
-                    foreach ($res as $cal) {
-                        $this->caldav->setCalendar($this->calendars[$cal[0]]);
-                        $response[] = [
-                            'events' => $this->caldav->getEvents($task['start'] ?? null, $task['end'] ?? null),
-                            'name' => $cal[0],
-                            'role' => $cal[1],
-                        ];
-                    }
-                }
-                // send data
+            if ($f === 21) {
+                return [
+                    'calendars' => $this->calGetUserCalendars($iduser),
+                    ...$this->calGetStaticValues(),
+                ];
+            }
+
+            /////////////////////////////////////////////////////
+            // FETCH CALENDAR'S EVENTS IN RANGE (22)
+            /////////////////////////////////////////////////////
+
+            if ($f === 22 && isset($task['c']) && isset($task['s']) && isset($task['e'])) {
+                // with e & s as strings like '2022-08-29'
+                // store in session user is connected with calendar, so that server can send updates.
+                $response = [];
+                foreach ($task['c'] as $cal_folder)
+                    $response[$cal_folder] = $this->calGetEventsInRange($cal_folder, $task['s'], $task['e']);
                 return $response;
             }
 
             /////////////////////////////////////////////////////
-            // ADD CALDAV EVENT (22)
+            // GET CALENDAR EVENT'S FULL DATA (23)
+            /////////////////////////////////////////////////////
+
+            if ($f === 23 && isset($task['c'])) {
+                return $this->calGetDataFromEvent($task['c']);
+            }
+
+            /////////////////////////////////////////////////////
+            // GET CALENDAR DESCRIPTION (24)
+            /////////////////////////////////////////////////////
+
+            if ($f === 24 && isset($task['d'])) {
+                return $this->calGetDescriptions([$task['d']]);
+            }
+
+            /////////////////////////////////////////////////////
+            // CREATE CALENDAR EVENT (25)
+            /////////////////////////////////////////////////////
+
+            if ($f === 25 && isset($task['c']) && isset($task['e'])) {
+                $newEvent = $this->calAddEvent($iduser, $task['c'], $task['e']);
+                foreach ($newEvent['users'] as $user) $this->serv->push($fd, json_encode(['event' => $newEvent['event']]));
+
+                return;
+
+
+                $e = $task['e'];
+                // if user not read_only
+                if ($this->db->request([
+                    'query' => 'SELECT read_only FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+                    'type' => 'ii',
+                    'content' => [$iduser, $task['c']],
+                    'array' => true,
+                ])[0][0] === 0) {
+                    // create cal_file into folder
+                    $uuid = $this->db->request([
+                        'query' => 'SELECT UUID_TO_BIN(UUID());',
+                        'array' => true,
+                    ])[0][0];
+                    $this->db->request([
+                        'query' => 'INSERT INTO cal_file (uid,idcal_folder) VALUES (?,?);',
+                        'type' => 'si',
+                        'content' => [$uuid, $task['c']],
+                    ]);
+                    // create cal_component
+                    $this->db->request([
+                        'query' => 'INSERT INTO cal_component (uid,type,created,summary,organizer,start,end,all_day,class,priority,status,transparency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?);',
+                        'type' => 'sississiiiii',
+                        'content' => [$uuid, $e['type'], $e['created'], $e['summary'], $iduser, $e['start'], $e['end'], $e['all_day'], $e['class'], $e['priority'], $e['status'], $e['transparency']],
+                    ]);
+                    $componentID = $this->db->request([
+                        'query' => 'SELECT idcal_component FROM cal_component WHERE uid = ? LIMIT 1;',
+                        'type' => 's',
+                        'content' => [$uuid],
+                        'array' => true,
+                    ])[0][0];
+                    // create attendee??
+                    if (isset($e['attendees'])) {
+                        foreach ($e['attendees'] as $attendee) {
+                            $this->db->request([
+                                'query' => 'INSERT INTO cal_attendee (idcal_component,attendee,cutype,role,status,rsvp) VALUES (?,?,?,?,?,?);',
+                                'type' => 'iiiiii',
+                                'content' => [$componentID, $attendee['attendee'], $attendee['cutype'] ?? 1, $attendee['role'] ?? 1, $attendee['status'] ?? 4, $attendee['rsvp'] ?? 0],
+                            ]);
+                        }
+                    }
+                    // create alarms??
+                    if (isset($e['alarms'])) {
+                        foreach ($e['alarms'] as $alarm) {
+                            $this->db->request([
+                                'query' => 'INSERT INTO cal_alarm (action,trigger_absolute,summary,repeat_times,duration) VALUES (?,?,?,?,?);',
+                                'type' => 'issis',
+                                'content' => [$alarm['action'], $alarm['trigger'], $alarm['summary'], $alarm['repeat_times'], $alarm['duration']],
+                            ]);
+                            $this->db->request([
+                                'query' => 'INSERT INTO cal_comp_has_alarm (idcal_component,idcal_alarm) VALUES (?,(SELECT LAST_INSERT_ID()));',
+                                'type' => 'i',
+                                'content' => [$componentID],
+                            ]);
+                        }
+                    }
+                    // create description??
+                    if (isset($e['description'])) {
+                    }
+                    // create location??
+                    // create rrule??
+                    // create rdates??
+                }
+            }
+
+            /////////////////////////////////////////////////////
+            // ADD ALARM TO EVENT (xx)
+            /////////////////////////////////////////////////////
+
+            if ($f === 26 && isset($task['a']) && isset($task['c']))
+                return $this->calAddAlarm($task['c'], $task['a']);
+
+            /////////////////////////////////////////////////////
+            // ADD ATTENDEE TO EVENT (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
-            // UPDATE CALDAV EVENT (23)
+            // UPDATE DESCRIPTION OF EVENT (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
-            // REMOVE CALDAV EVENT (24)
+            // DELETE CALENDAR EVENT (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
-            // CREATE CALDAV CALENDAR (25)
+            // CREATE CALENDAR (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////
-            // ADD EXISTING CALDAV (26)
-            /////////////////////////////////////////////////////
-
-            /////////////////////////////////////////////////////
-            // SHARE CALDAV (27)
+            // DELETE CALENDAR (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////

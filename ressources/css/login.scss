@@ -84,6 +84,7 @@
         }
     }
     & > span:not(:first-of-type) {
+        color: var(--gray0);
         text-align: center;
         padding-inline: 2rem;
     }

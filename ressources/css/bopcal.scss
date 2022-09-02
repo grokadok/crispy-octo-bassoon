@@ -190,6 +190,7 @@
                             padding: 1rem;
                             transform: rotate(0deg);
                             writing-mode: unset;
+                            z-index: 1;
                         }
                         /* week */
                         & > div {
@@ -245,15 +246,6 @@
                                         inset;
                                     aspect-ratio: auto;
                                     scroll-snap-align: start;
-                                    /* background-image: repeating-linear-gradient(
-                                            var(--text-secondary) 0 1px,
-                                            transparent 1px 100%
-                                        ),
-                                        repeating-linear-gradient(
-                                            var(--text-fade) 0 0.5px,
-                                            transparent 1px 50%
-                                        );
-                                    background-size: 100% 3.2%; */
                                     &.today {
                                         background-color: transparent;
                                     }

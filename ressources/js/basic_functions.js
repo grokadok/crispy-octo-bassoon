@@ -294,6 +294,34 @@ function focusNextElement() {
     }
 }
 /**
+ * Returns array of days' dates from start to end.
+ * @param {Date} start
+ * @param {Date} end
+ * @return {Date[]} days
+ */
+function getDaysBetweenDates(start, end) {
+    let current = new Date(
+            start.getFullYear(),
+            start.getMonth(),
+            start.getDate()
+        ),
+        days = [];
+    const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    while (current <= endDate) {
+        days.push(new Date(current.valueOf()));
+        current.setDate(current.getDate() + 1);
+    }
+    return days;
+}
+/**
+ * Returns duration between start & end in minutes
+ * @param {Date} start
+ * @param {Date} end
+ */
+function getMinutesBetweenDates(start, end) {
+    return (end.valueOf() - start.valueOf()) / 60000;
+}
+/**
  * Returns first day of date's week according to start of week.
  * @param {Date} date Date from which to return first day of week.
  * @param {Number} [weekstart] Optional week start, default = 1 (monday).

@@ -191,6 +191,114 @@ class BopCal {
         for (let cal of BopCal.bopcals) cal.destroy();
     }
     /**
+     * Adds event to calendar from object data.
+     */
+    addEvent(event) {
+        // start
+        const start = new Date(event.start),
+            // end
+            end = new Date(event.end),
+            // get day(s) element(s)
+            days = getDaysFromDates(start, end),
+            hourHeight = this.bigcal.layout.children[1].offsetHeight,
+            hourOffsetTop = this.bigcal.layout.firstElementChild.offsetTop;
+        let summary = document.createElement(""),
+            description = document.createElement("");
+
+        if (days.length > 1) {
+            // for each element
+            for (const day of days) {
+                const dayElement = this.bigcal.years[day.getFullYear()].months[
+                    day.getMonth()
+                ].querySelector(
+                    `[data-week="${getWeekNumber(
+                        day
+                    )}"][data-date="${day.getDate()}"]`
+                );
+                // create event
+                let event = document.createElement("div");
+                // if allday
+                if (event.allday) {
+                    dayElement.firstElementChild.append(event);
+                } else {
+                    dayElement.lastElementChild.append(event);
+                    if (day === days[0]) {
+                        // if start day
+                        const duration = getMinutesBetweenDates(
+                            day,
+                            new Date(
+                                day.getFullYear(),
+                                day.getMonth(),
+                                day.getDate() + 1
+                            )
+                        );
+                        // set height according to minutes * hourDiv.offsetHeight/60
+                        event.style.height = `${
+                            (duration * hourHeight) / 60
+                        }px`;
+                        // set bottom to 0
+                        event.style.bottom = "0";
+                    } else if (day === days[days.length - 1]) {
+                        // if last day
+                        const duration = getMinutesBetweenDates(
+                            new Date(
+                                day.getFullYear(),
+                                day.getMonth(),
+                                day.getDate()
+                            ),
+                            day
+                        );
+                        // set top to first hour's top
+                        event.style.top = `${hourOffsetTop}px`;
+                        // set height accoding to minutes * hourDiv.offsetHeight/60
+                        event.style.height = `${
+                            (duration * hourHeight) / 60
+                        }px`;
+                    } else {
+                        // else fill entire day
+                        event.style.top = `${hourOffsetTop}px`;
+                        event.style.bottom = "0";
+                    }
+                }
+            }
+        } else {
+            let event = document.createElement("div");
+            const dayElement = this.bigcal.years[start.getFullYear()].months[
+                start.getMonth()
+            ].querySelector(
+                `[data-week="${getWeekNumber(
+                    start
+                )}"][data-date="${start.getDate()}"]`
+            );
+            // if allday, set to allday div of day.
+            if (event.allday) dayElement.firstElementChild.append(event);
+            // set top to hour's div offsetTop + minutes * hour.offsetHeight / 60
+            else {
+                const duration = getMinutesBetweenDates(start, end);
+
+                event.style.top = `${
+                    hourOffsetTop +
+                    (getMinutesBetweenDates(
+                        new Date(
+                            start.getFullYear(),
+                            start.getMonth(),
+                            start.getDate()
+                        ),
+                        start
+                    ) *
+                        hourHeight) /
+                        60
+                }px`;
+                // set event height to diff between start and end
+                event.style.height = `${(duration * hourHeight) / 60}px`;
+            }
+        }
+    }
+    /**
+     * Creates event in calendar
+     */
+    createEvent() {}
+    /**
      * Add month to calendars.
      * @param {Date} date
      * @return {HTMLElement} minical month
@@ -218,7 +326,7 @@ class BopCal {
                                 month: "long",
                             }) + ` ${year}`,
                         ],
-                        ["data-iso", monthDate.toISOString()],
+                        ["data-value", monthDate.valueOf()],
                     ]);
                     monthWrapper.className = "hidden";
                     cal.years[year].months[i] = monthWrapper;
@@ -290,10 +398,10 @@ class BopCal {
                 }
             } else console.info(`Month ${month}-${year} already created.`);
         }
+
+        // request month events if not in object.
+
         return this.minical.years[year].months[month];
-        // hover on month changes its colors to focus theme
-        // hover on week zooms a bit more on it
-        // grid for month, not the whole calendar.
     }
     /**
      * First load of calendar.
@@ -341,8 +449,10 @@ class BopCal {
                             console.log(`load ${quantity} months at bottom`);
                             // get date of month
                             const date = new Date(
-                                this.minical.bottomMonth.getAttribute(
-                                    "data-iso"
+                                parseInt(
+                                    this.minical.bottomMonth.getAttribute(
+                                        "data-value"
+                                    )
                                 )
                             );
                             this.minical.observer.unobserve(
@@ -361,7 +471,11 @@ class BopCal {
                             console.log(`load ${quantity} months at top`);
                             // get date of month
                             const date = new Date(
-                                this.minical.topMonth.getAttribute("data-iso")
+                                parseInt(
+                                    this.minical.topMonth.getAttribute(
+                                        "data-value"
+                                    )
+                                )
                             );
                             this.minical.observer.unobserve(
                                 this.minical.topMonth
