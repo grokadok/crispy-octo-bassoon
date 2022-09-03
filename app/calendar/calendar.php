@@ -198,7 +198,6 @@ trait BopCal
             $request['value'][] = $event['transparency'];
         }
 
-
         $this->db->request([
             'query' => 'INSERT INTO cal_component (uid, type, created, summary, organizer, start) VALUES ((SELECT UUID_TO_BIN(?,1)), 0, ?, ?, ?, ?);',
             'type' => 'sssisssii',
@@ -247,9 +246,8 @@ trait BopCal
                 ]);
             }
         }
-        // return light info about new event.
-
-        return ['event' => $event, 'users' => $this->calGetConnectUsers($cal_folder)];
+        // retrieve & return light info about new event (refactor later to get info directly while creating event)
+        return ['event' => $this->calGetEventLightData($idcomponent), 'users' => $this->calGetConnectUsers($cal_folder)];
 
         // doc for calendar components
         if (1 === 0) {
@@ -354,11 +352,50 @@ trait BopCal
             'array' => false,
         ]);
     }
+    private function calGetDescriptions(array $iddecriptions)
+    {
+        $result = [];
+        $in = implode(',', $iddecriptions);
+        $res = $this->db->request([
+            'query' => "SELECT idcal_description,content FROM cal_description WHERE idcal_description IN $in;",
+            'array' => true,
+        ]);
+        foreach ($res as $description) $result[$description[0]] = $description[1];
+        return $result;
+    }
+    private function calGetEventAlarms(int $idcomponent)
+    {
+        $alarmIds = $this->db->request([
+            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$idcomponent],
+            'array' => true,
+        ]);
+        $alarms = [];
+        if (!empty($alarmIds)) foreach ($alarmIds as $alarmId) {
+            $alarms[] = $this->db->request([
+                'query' => 'SELECT action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$alarmId[0]],
+            ]);
+        }
+        return $alarms;
+    }
+    private function calGetEventAttendees(int $idcomponent)
+    {
+        return
+            $this->db->request([
+                'query' => 'SELECT attendee, delegated_from, delegated_to, language, sent_by, cutype, role, status, rsvp FROM cal_attendee WHERE idcal_component = ?;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+                'array' => false,
+            ]);
+    }
     /**
      * Gets event(s) for given uid.
      * @param int $uid Duh.
      */
-    private function calGetDataFromEvent(int $idcomponent)
+    private function calGetEventData(int $idcomponent)
     {
         $event = $this->db->request([
             'query' => 'SELECT created, modified, summary, description, organizer, timezone, start, end, all_day, class, location, priority, status, transparency, sequence, rrule, rdate, recur_id, thisandfuture
@@ -391,15 +428,15 @@ trait BopCal
 
         // get recurrence
         if ($event['rrule'])
-            $event['recurrence']['rule'] = $this->calGetEventsRRule($idcomponent);
+            $event['recurrence']['rule'] = $this->calGetEventRRule($idcomponent);
         if ($event['rdate'])
-            $event['recurrence']['date'] = $this->calGetEventsRDate($idcomponent);
+            $event['recurrence']['date'] = $this->calGetEventRDate($idcomponent);
         // get exceptions
         if (isset($event['recurrence']))
-            $event['recurrence']['exceptions'] = $this->calGetEventsException($idcomponent);
+            $event['recurrence']['exceptions'] = $this->calGetEventException($idcomponent);
 
         // get attendees
-        $event['attendees'] = $this->calGetEventsAttendees($idcomponent);
+        $event['attendees'] = $this->calGetEventAttendees($idcomponent);
         foreach ($event['attendees'] as $attendee) {
             foreach ([$attendee['attendee'], $attendee['delegated_from'], $attendee['delegated_to'], $attendee['sent_by']] as $value)
                 addIfNotNullNorExists($response['users'], $value);
@@ -407,11 +444,11 @@ trait BopCal
         }
 
         // get alarms
-        $event['alarms'] = $this->calGetEventsAlarms($idcomponent);
+        $event['alarms'] = $this->calGetEventAlarms($idcomponent);
         foreach ($event['alarms'] as $alarm) addIfNotNullNorExists($alarm['description'], $response['descriptions']);
 
         // get tags
-        $event['tags'] = $this->calGetEventsTagId($idcomponent);
+        $event['tags'] = $this->calGetEventTagId($idcomponent);
         foreach ($event['tags'] as $tag) addIfNotNullNorExists($tag[0], $response['tags']);
 
         $response['event'][$event['idcal_component']] = $event;
@@ -431,46 +468,27 @@ trait BopCal
 
         return $response;
     }
-    private function calGetDescriptions(array $iddecriptions)
+    private function calGetEventLightData(int $idcomponent)
     {
-        $result = [];
-        $in = implode(',', $iddecriptions);
-        $res = $this->db->request([
-            'query' => "SELECT idcal_description,content FROM cal_description WHERE idcal_description IN $in;",
-            'array' => true,
-        ]);
-        foreach ($res as $description) $result[$description[0]] = $description[1];
-        return $result;
-    }
-    private function calGetEventsAlarms(int $idcomponent)
-    {
-        $alarmIds = $this->db->request([
-            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+        $event = $this->db->request([
+            'query' => "SELECT idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
             'type' => 'i',
             'content' => [$idcomponent],
-            'array' => true,
         ]);
-        $alarms = [];
-        if (!empty($alarmIds)) foreach ($alarmIds as $alarmId) {
-            $alarms[] = $this->db->request([
-                'query' => 'SELECT action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
-                'type' => 'i',
-                'content' => [$alarmId[0]],
-            ]);
-        }
-        return $alarms;
+        // if rrule, get rrule
+        if ($event['rrule']) $event['rrule'] = $this->calGetEventRRule($event['idcal_component']);
+        // if rdate, get rdate
+        if ($event['rdate']) $event['rdates'] = $this->calGetEventRDate($event['idcal_component']);
+        // if exceptions, get'em
+        if ($event['rrule'] || $event['rdate'])
+            $event['exceptions'] = $this->calGetEventException($event['idcal_component']);
+        // alarms
+        // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
+        $event['alarms'] = $this->catGetEventsAlarms($event['idcal_component']);
+
+        return $event;
     }
-    private function calGetEventsAttendees(int $idcomponent)
-    {
-        return
-            $this->db->request([
-                'query' => 'SELECT attendee, delegated_from, delegated_to, language, sent_by, cutype, role, status, rsvp FROM cal_attendee WHERE idcal_component = ?;',
-                'type' => 'i',
-                'content' => [$idcomponent],
-                'array' => false,
-            ]);
-    }
-    private function calGetEventsException(int $idcomponent)
+    private function calGetEventException(int $idcomponent)
     {
         $exceptions = [];
         foreach ($this->db->request([
@@ -481,7 +499,7 @@ trait BopCal
         ]) as $exception) $exceptions[] = $exception[0];
         return $exceptions;
     }
-    private function calGetEventsInRange(int $cal_folder, string $start, string $end)
+    private function calGetEventInRange(int $cal_folder, string $start, string $end)
     {
         // get all uids from folder
         $uids = [];
@@ -495,19 +513,19 @@ trait BopCal
         ]);
         // if rrule, get rrule
         foreach ($events as $key => $value) {
-            if ($value['rrule']) $events[$key]['rrule'] = $this->calGetEventsRRule($value['idcal_component']);
+            if ($value['rrule']) $events[$key]['rrule'] = $this->calGetEventRRule($value['idcal_component']);
             // if rdate, get rdate
-            if ($value['rdate']) $events[$key]['rdates'] = $this->calGetEventsRDate($value['idcal_component']);
+            if ($value['rdate']) $events[$key]['rdates'] = $this->calGetEventRDate($value['idcal_component']);
             // if exceptions, get'em
             if ($value['rrule'] || $value['rdate'])
-                $events[$key]['exceptions'] = $this->calGetEventsException($value['idcal_component']);
+                $events[$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);
             // alarms
             // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
             $events[$key]['alarms'] = $this->catGetEventsAlarms($value['idcal_component']);
         }
         return $events;
     }
-    private function calGetEventsRDate(int $idcomponent)
+    private function calGetEventRDate(int $idcomponent)
     {
         $rdates = [];
         foreach ($this->db->request([
@@ -518,7 +536,7 @@ trait BopCal
         ]) as $date) $rdates[] = $date[0];
         return $rdates;
     }
-    private function calGetEventsRRule(int $idcomponent)
+    private function calGetEventRRule(int $idcomponent)
     {
         return $this->db->request([
             'query' =>
@@ -527,7 +545,7 @@ trait BopCal
             'content' => [$idcomponent],
         ])[0];
     }
-    private function calGetEventsTagId(int $idcomponent)
+    private function calGetEventTagId(int $idcomponent)
     {
         $tagIds = [];
         $tags = $this->db->request([
@@ -1461,22 +1479,24 @@ trait BopCal
     }
     private function calSetSession(int $idsession, int $cal_folder, string $start, string $end)
     {
-        if (empty($this->db->request([
-            'query' => 'SELECT NULL FROM session_has_calendar WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
+        $cal = $this->db->request([
+            'query' => 'SELECT start,end FROM session_has_calendar WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
             'type' => 'ii',
             'content' => [$idsession, $cal_folder],
-            'array' => true,
-        ])))
+        ]);
+        if (empty($cal))
             return $this->db->request([
                 'query' => 'INSERT INTO session_has_calendar (idsession,idcal_folder,start,end) VALUES (?,?,?,?);',
                 'type' => 'iiss',
                 'content' => [$idsession, $cal_folder, $start, $end],
             ]);
-        return $this->db->request([
-            'query' => 'UPDATE session_has_calendar SET start = ? AND end = ? WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
-            'type' => 'ssii',
-            'content' => [$start, $end, $idsession, $cal_folder],
-        ]);
+        else if ($cal['start'] !== $start || $cal['end'] !== $end)
+            return $this->db->request([
+                'query' => 'UPDATE session_has_calendar SET start = ? AND end = ? WHERE idsession = ? AND idcal_folder = ? LIMIT 1;',
+                'type' => 'ssii',
+                'content' => [$start, $end, $idsession, $cal_folder],
+            ]);
+        return;
     }
 
 
@@ -1630,7 +1650,7 @@ trait BopCal
     /**
      * Get events from specific caldav on selected period of time;
      */
-    private function calGetEventsFromCaldav(int $id, array $period)
+    private function calGetEventFromCaldav(int $id, array $period)
     {
         $res = $this->db->request([
             'query' => 'SELECT url,user,pass FROM caldav WHERE idcaldav = ?;',

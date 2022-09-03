@@ -131,18 +131,22 @@ class BopCal {
      * @param {Boolean} lock
      */
     bigcalFocus(date, type, lock = false) {
-        // set type by applying class to bigcal
-        for (const t of ["year", "month", "week", "day"])
-            type === t
-                ? this.bigcal.wrapper.classList.add(t)
-                : this.bigcal.wrapper.classList.remove(t);
         // if bigcal locked && same date, remove lock.
-        if (this.bigcal.focus?.date === date && this.bigcal.lock)
+        if (
+            this.bigcal.lock &&
+            this.bigcal.wrapper.classList.contains(type) &&
+            this.bigcal.focus?.date === date
+        )
             this.bigcalLock();
         else {
             this.bigcal.focus = { date: date, type: type };
             this.bigcalLock(lock);
         }
+        // set type by applying class to bigcal
+        for (const t of ["year", "month", "week", "day"])
+            type === t
+                ? this.bigcal.wrapper.classList.add(t)
+                : this.bigcal.wrapper.classList.remove(t);
         // focus to date
         let target, x, y;
         switch (type) {
@@ -177,6 +181,7 @@ class BopCal {
                     target.offsetLeft +
                     target.offsetParent.offsetLeft +
                     target.offsetParent.offsetParent.offsetLeft;
+                console.warn(x);
                 break;
         }
         this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
@@ -297,7 +302,17 @@ class BopCal {
     /**
      * Creates event in calendar
      */
-    createEvent() {}
+    newEvent(event) {
+        let newEvent = document.createElement("div"),
+            summary = document.createElement("span"),
+            hour = document.createElement("span");
+        const hourHeight = this.bigcal.layout.firstChild.offsetHeight;
+
+        summary.textContent = event.summary ?? "New event";
+        hour.textContent = new Date(event.date).toTimeString();
+        // origin height : 1hour;
+        // origin top from date
+    }
     /**
      * Add month to calendars.
      * @param {Date} date
@@ -332,6 +347,7 @@ class BopCal {
                     cal.years[year].months[i] = monthWrapper;
                     if (cal === this.minical) {
                         monthWrapper.addEventListener("click", () => {
+                            console.log(monthDate.toString());
                             this.bigcalFocus(monthDate, "month", true);
                         });
                     }
@@ -361,15 +377,16 @@ class BopCal {
                         weekWrapper = document.createElement("div");
                         weekWrapper.setAttribute("data-week", weekNumber);
                         if (cal === this.minical) {
-                            weekWrapper.addEventListener("mouseover", (e) => {
-                                if (
-                                    e.target.getAttribute("data-week") &&
-                                    !this.bigcal.lock
-                                )
-                                    this.bigcalFocus(dayDate, "week");
-                            });
+                            // weekWrapper.addEventListener("mouseover", (e) => {
+                            //     if (
+                            //         e.target.getAttribute("data-week") &&
+                            //         !this.bigcal.lock
+                            //         )
+                            //         this.bigcalFocus(dayDate, "week");
+                            //     });
                             weekWrapper.addEventListener("click", (e) => {
                                 e.stopPropagation();
+                                console.log(dayDate.toString());
                                 this.bigcalFocus(dayDate, "week", true);
                             });
                         }
@@ -382,14 +399,15 @@ class BopCal {
                     if (dayDate.toDateString() === now.toDateString())
                         dayWrapper.classList.add("today");
                     if (cal === this.minical) {
-                        dayWrapper.addEventListener("mouseover", (e) => {
-                            e.stopPropagation();
-                            if (!this.bigcal.lock) {
-                                this.bigcalFocus(dayDate, "day");
-                            }
-                        });
+                        // dayWrapper.addEventListener("mouseover", (e) => {
+                        //     e.stopPropagation();
+                        //     if (!this.bigcal.lock) {
+                        //         this.bigcalFocus(dayDate, "day");
+                        //     }
+                        // });
                         dayWrapper.addEventListener("click", (e) => {
                             e.stopPropagation();
+                            console.log(dayDate.toString());
                             this.bigcalFocus(dayDate, "day", true);
                         });
                     }
@@ -669,3 +687,16 @@ class BopCal {
         //      resources / rdate / rrule / x-prop
     }
 }
+
+// big-cal on click:
+// - create untitled/pretitled new event with loading class (not editable, color faded)
+// - send event data to server
+// - server returns new event
+// - remove loading class (shouldn't be visible to user unless problem with server).
+// on button down:
+// - drag event, snapping on time divisions while dragging
+// on release:
+// - loading class
+// - send server new data
+// - server returns event
+// - remove loading class

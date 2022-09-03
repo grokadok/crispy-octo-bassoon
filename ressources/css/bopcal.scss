@@ -22,6 +22,7 @@
         transform-origin: left bottom;
         transition: transform var(--transition-global),
             width var(--transition-global);
+        z-index: 10;
     }
     & > div {
         /* menu */
@@ -140,7 +141,11 @@
             position: absolute;
             left: 100%;
             bottom: 0;
-            width: 100%;
+            height: var(--bigcal-height);
+            width: calc(100vw - var(--cal-width));
+            border-radius: 9px 9px 9px 0;
+            box-shadow: 2px 2px 0 1px var(--text);
+            padding-top: 3rem;
             background-color: var(--bg-chat);
             opacity: 0;
             overflow: hidden;
@@ -152,6 +157,7 @@
                 position: absolute;
                 inset: 0 0 auto 0;
                 height: var(--day-height);
+                padding-top: 3rem;
                 display: flex;
                 flex-direction: column;
                 /* hour */
@@ -171,10 +177,19 @@
                     }
                 }
             }
+            /* calendar */
+            & > div:last-of-type {
+                height: 100%;
+                width: calc(100vw - var(--cal-width));
+                display: flex;
+                /* month */
+                & > div > div {
+                    height: 100%;
+                }
+            }
             &.year {
             }
             &.month {
-                width: calc(100vw - var(--cal-width));
                 height: calc(100vh - 5rem);
                 /* layout */
                 & > div:first-of-type {
@@ -183,6 +198,7 @@
                 /* calendar */
                 & > div:last-of-type {
                     height: 100%;
+                    flex-direction: column;
                     /* month */
                     & > div > div {
                         height: calc(100vh - 5rem);
@@ -211,11 +227,59 @@
                     }
                 }
             }
-            &.week,
+            &.week {
+                /* calendar */
+                & > div:last-of-type {
+                    scroll-snap-type: x mandatory;
+                    /* year */
+                    & > div {
+                        flex-direction: row;
+                        height: var(--day-height);
+                        /* month */
+                        & > div {
+                            flex-direction: row;
+                            scroll-snap-align: none;
+                            &::after {
+                                display: none;
+                            }
+                            /* week */
+                            & > div {
+                                height: 100%;
+                                width: auto;
+                                &::after {
+                                    opacity: 0;
+                                }
+                                /* day */
+                                & > div {
+                                    width: clamp(
+                                        100px,
+                                        calc((100vw - var(--cal-width)) / 7),
+                                        20rem
+                                    );
+                                    height: var(--day-height);
+                                    border-left: 1px var(--text-placeholder)
+                                        inset;
+                                    aspect-ratio: auto;
+                                    scroll-snap-align: start;
+                                    &.today {
+                                        background-color: transparent;
+                                    }
+                                    &:hover {
+                                        outline: none;
+                                    }
+                                    &.fade {
+                                        display: none;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             &.day {
                 /* calendar */
                 & > div:last-of-type {
-                    height: var(--bigcal-height);
+                    height: 100%;
                     display: flex;
                     flex-direction: row;
                     scroll-snap-type: x mandatory;
@@ -234,13 +298,13 @@
                             /* week */
                             & > div {
                                 height: 100%;
-                                width: 140rem;
+                                width: auto;
                                 &::after {
                                     opacity: 0;
                                 }
                                 /* day */
                                 & > div {
-                                    width: 100%;
+                                    width: calc(100vw - var(--cal-width));
                                     height: var(--day-height);
                                     border-left: 1px var(--text-placeholder)
                                         inset;
@@ -252,14 +316,14 @@
                                     &:hover {
                                         outline: none;
                                     }
+                                    &.fade {
+                                        display: none;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            &.week {
-                width: calc(100vw - var(--cal-width));
             }
             &.locked {
                 opacity: 1;

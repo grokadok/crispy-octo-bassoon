@@ -849,6 +849,7 @@ class FWServer
             try {
                 $task = [
                     "fd" => $frame->fd,
+                    "session" => $session,
                     "user" => $user,
                     ...json_decode($frame->data, true),
                 ];
@@ -2166,10 +2167,19 @@ class FWServer
 
             if ($f === 22 && isset($task['c']) && isset($task['s']) && isset($task['e'])) {
                 // with e & s as strings like '2022-08-29'
-                // store in session user is connected with calendar, so that server can send updates.
+                // $session = $this->db->request([
+                //     'query' => 'SELECT idsession FROM session WHERE iduser = ? AND fd = ?;',
+                //     'type' => 'ii',
+                //     'content' => [$iduser, $fd],
+                //     'array' => true,
+                // ])[0][0];
+                // store in session that client is connected with calendar, so that server can send updates.
+                // client side, send data only on update, to avoid useless db updates.
+                foreach ($task['u'] as $cal)
+                    $this->calSetSession($task['session'], $cal['cal'], $cal['start'], $cal['end']);
                 $response = [];
                 foreach ($task['c'] as $cal_folder)
-                    $response[$cal_folder] = $this->calGetEventsInRange($cal_folder, $task['s'], $task['e']);
+                    $response[$cal_folder] = $this->calGetEventInRange($cal_folder, $task['s'], $task['e']);
                 return $response;
             }
 
@@ -2178,7 +2188,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             if ($f === 23 && isset($task['c'])) {
-                return $this->calGetDataFromEvent($task['c']);
+                return $this->calGetEventData($task['c']);
             }
 
             /////////////////////////////////////////////////////
@@ -2195,73 +2205,12 @@ class FWServer
 
             if ($f === 25 && isset($task['c']) && isset($task['e'])) {
                 $newEvent = $this->calAddEvent($iduser, $task['c'], $task['e']);
+                // for each connected client linked to calendar
+                // if in range, send light event
+                // send notification anyway
                 foreach ($newEvent['users'] as $user) $this->serv->push($fd, json_encode(['event' => $newEvent['event']]));
-
+                // !!! to complete
                 return;
-
-
-                $e = $task['e'];
-                // if user not read_only
-                if ($this->db->request([
-                    'query' => 'SELECT read_only FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
-                    'type' => 'ii',
-                    'content' => [$iduser, $task['c']],
-                    'array' => true,
-                ])[0][0] === 0) {
-                    // create cal_file into folder
-                    $uuid = $this->db->request([
-                        'query' => 'SELECT UUID_TO_BIN(UUID());',
-                        'array' => true,
-                    ])[0][0];
-                    $this->db->request([
-                        'query' => 'INSERT INTO cal_file (uid,idcal_folder) VALUES (?,?);',
-                        'type' => 'si',
-                        'content' => [$uuid, $task['c']],
-                    ]);
-                    // create cal_component
-                    $this->db->request([
-                        'query' => 'INSERT INTO cal_component (uid,type,created,summary,organizer,start,end,all_day,class,priority,status,transparency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?);',
-                        'type' => 'sississiiiii',
-                        'content' => [$uuid, $e['type'], $e['created'], $e['summary'], $iduser, $e['start'], $e['end'], $e['all_day'], $e['class'], $e['priority'], $e['status'], $e['transparency']],
-                    ]);
-                    $componentID = $this->db->request([
-                        'query' => 'SELECT idcal_component FROM cal_component WHERE uid = ? LIMIT 1;',
-                        'type' => 's',
-                        'content' => [$uuid],
-                        'array' => true,
-                    ])[0][0];
-                    // create attendee??
-                    if (isset($e['attendees'])) {
-                        foreach ($e['attendees'] as $attendee) {
-                            $this->db->request([
-                                'query' => 'INSERT INTO cal_attendee (idcal_component,attendee,cutype,role,status,rsvp) VALUES (?,?,?,?,?,?);',
-                                'type' => 'iiiiii',
-                                'content' => [$componentID, $attendee['attendee'], $attendee['cutype'] ?? 1, $attendee['role'] ?? 1, $attendee['status'] ?? 4, $attendee['rsvp'] ?? 0],
-                            ]);
-                        }
-                    }
-                    // create alarms??
-                    if (isset($e['alarms'])) {
-                        foreach ($e['alarms'] as $alarm) {
-                            $this->db->request([
-                                'query' => 'INSERT INTO cal_alarm (action,trigger_absolute,summary,repeat_times,duration) VALUES (?,?,?,?,?);',
-                                'type' => 'issis',
-                                'content' => [$alarm['action'], $alarm['trigger'], $alarm['summary'], $alarm['repeat_times'], $alarm['duration']],
-                            ]);
-                            $this->db->request([
-                                'query' => 'INSERT INTO cal_comp_has_alarm (idcal_component,idcal_alarm) VALUES (?,(SELECT LAST_INSERT_ID()));',
-                                'type' => 'i',
-                                'content' => [$componentID],
-                            ]);
-                        }
-                    }
-                    // create description??
-                    if (isset($e['description'])) {
-                    }
-                    // create location??
-                    // create rrule??
-                    // create rdates??
-                }
             }
 
             /////////////////////////////////////////////////////
