@@ -210,6 +210,10 @@ class Modal {
                 case "phone":
                     content[field.name] = field.phone ?? null;
                     break;
+                case "quill":
+                    // content[field.name] = field.quill.getContents();
+                    content[field.name] = field.quill.getText().trim();
+                    break;
                 case "selectize":
                     content[field.name] =
                         field.selected.items.map((item) => item.id) ??
@@ -221,8 +225,10 @@ class Modal {
                 default:
                     for (const input of field.input) {
                         if (input.value)
-                            content[input.getAttribute("aria-label")] =
-                                input.value;
+                            content[
+                                input.getAttribute("aria-label") ??
+                                    input.parentNode.getAttribute("aria-label")
+                            ] = input.value;
                     }
                     break;
             }

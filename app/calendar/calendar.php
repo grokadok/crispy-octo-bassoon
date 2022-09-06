@@ -129,14 +129,14 @@ trait BopCal
             $request['into'] .= ',description';
             $request['values'] .= ',?';
             $request['type'] .= 's';
-            $request['value'][] = $this->addDescription($event['description']);
+            $request['content'][] = $this->addDescription($event['description']);
         }
         // timezone
         if (isset($event['timezone'])) {
             $request['into'] .= ',timezone';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $this->db->request([
+            $request['content'][] = $this->db->request([
                 'query' => 'SELECT idtimezone FROM timezone WHERE name = ? LIMIT 1;',
                 'type' => 's',
                 'content' => [$event['timezone']],
@@ -144,64 +144,64 @@ trait BopCal
             ])[0][0];
         }
         // end or duration
-        if (isset($event['end'])) {
-            $request['into'] .= ',end';
-            $request['values'] .= ',?';
-            $request['type'] .= 's';
-            $request['value'][] = $event['end'];
-        } else if (isset($event['duration'])) {
-            $request['into'] .= ',duration';
-            $request['values'] .= ',?';
-            $request['type'] .= 's';
-            $request['value'][] = $event['duration'];
-        }
+        // if (isset($event['end'])) {
+        //     $request['into'] .= ',end';
+        //     $request['values'] .= ',?';
+        //     $request['type'] .= 's';
+        //     $request['content'][] = $event['end'];
+        // } else if (isset($event['duration'])) {
+        //     $request['into'] .= ',duration';
+        //     $request['values'] .= ',?';
+        //     $request['type'] .= 's';
+        //     $request['content'][] = $event['duration'];
+        // }
         // all_day
         if (isset($event['all_day'])) {
             $request['into'] .= ',all_day';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['all_day'];
+            $request['content'][] = $event['all_day'];
         }
         // class
         if (isset($event['class'])) {
             $request['into'] .= ',class';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['class'];
+            $request['content'][] = $event['class'];
         }
         // location
         if (isset($event['location'])) {
             $request['into'] .= ',location';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][]  = $this->addLocation($event['location']);
+            $request['content'][]  = $this->addLocation($event['location']);
         }
         // priority
         if (isset($event['priority'])) {
             $request['into'] .= ',priority';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['priority'];
+            $request['content'][] = $event['priority'];
         }
         // status
         if (isset($event['status'])) {
             $request['into'] .= ',status';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['status'];
+            $request['content'][] = $event['status'];
         }
         // transparency
         if (isset($event['transparency'])) {
             $request['into'] .= ',transparency';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['value'][] = $event['transparency'];
+            $request['content'][] = $event['transparency'];
         }
 
         $this->db->request([
-            'query' => 'INSERT INTO cal_component (uid, type, created, summary, organizer, start) VALUES ((SELECT UUID_TO_BIN(?,1)), 0, ?, ?, ?, ?);',
-            'type' => 'sssisssii',
-            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], $event['duration'], $event['all_day'], $event['transparency']],
+            'query' => 'INSERT INTO cal_component (uid, type, created, summary, organizer, start, end' . $request['into'] . ') VALUES ((SELECT UUID_TO_BIN(?,1)), 0, ?, ?, ?, ?, ?' . $request['values'] . ');',
+            'type' => 'sississ' . $request['type'],
+            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], $event['duration'], $event['all_day'], $event['transparency'], ...$request['content']],
             'array' => true,
         ]);
         $idcomponent = $this->db->request([
@@ -471,7 +471,7 @@ trait BopCal
     private function calGetEventLightData(int $idcomponent)
     {
         $event = $this->db->request([
-            'query' => "SELECT idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
+            'query' => "SELECT uid,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
@@ -630,7 +630,7 @@ trait BopCal
     {
         $folders = [];
         foreach ($this->db->request([
-            'query' => 'SELECT idcal_folder,read_only FROM user_has_calendar WHERE iduser = ?;',
+            'query' => 'SELECT idcal_folder,read_only,color FROM user_has_calendar WHERE iduser = ?;',
             'type' => 'i',
             'content' => [$iduser],
             'array' => true,
@@ -642,7 +642,13 @@ trait BopCal
                     'content' => [$folder[0]],
                     'array' => true,
                 ])[0][0],
-                'read_only' => $folder[1],
+                'read_only' => !empty($folder[1]),
+                'owner' => !empty($this->db->request([
+                    'query' => 'SELECT NULL FROM cal_folder WHERE idcal_folder = ? AND owner = ? LIMIT 1;',
+                    'type' => 'ii',
+                    'content' => [$folder[0], $iduser],
+                ])),
+                'color' => $folder[2],
             ];
         return $folders;
 
@@ -704,34 +710,46 @@ trait BopCal
      */
     private function calNewCalFolder(int $iduser, array $folder)
     {
-        $request = [];
-        if (isset($folder['description'])) {
-            $this->db->request([
-                'query' => 'INSERT INTO cal_description (content) VALUES (?);',
-                'type' => 's',
-                'content' => [$folder['description']],
-            ]);
+        if (!empty($this->db->request([
+            'query' => 'SELECT NULL FROM user_has_calendar LEFT JOIN cal_folder USING (idcal_folder) WHERE iduser = ? AND name = ? LIMIT 1;',
+            'type' => 'is',
+            'content' => [$iduser, $folder['name']],
+        ]))) return ['fail' => 'Calendar already exists',];
+        $request = [
+            'into' => '',
+            'values' => '',
+            'type' => '',
+            'content' => [],
+        ];
+        if (!empty($folder['description'])) {
             $request['into'] = ',description';
             $request['values'] = ',?';
             $request['type'] = 'i';
-            $request['content'] = $this->db->request([
-                'query' => 'SELECT MAX(idcal_description) FROM cal_description WHERE content = ? LIMIT 1;',
-                'type' => 's',
-                'content' => [$folder['description']],
-                'array' => true,
-            ])[0][0];
+            $request['content'][] = [$this->calAddDescription($folder['description'])];
         }
         $this->db->request([
-            'query' => 'INSERT INTO cal_folder (name' . $request['into'] . ') VALUES (?' . $request['values'] . ';',
-            'type' => 's' . $request['type'],
-            'content' => [$folder['name'], $request['content']],
+            'query' => 'INSERT INTO cal_folder (name, owner' . $request['into'] . ') VALUES (?,?' . $request['values'] . ');',
+            'type' => 'si' . $request['type'],
+            'content' => [$folder['name'], $iduser, ...$request['content']],
         ]);
-        return $this->db->request([
-            'query' => 'SELECT MAX(idcal_folder) FROM cal_folder LEFT JOIN user_has_calendar USING(idcal_folder) WHERE name = ? AND iduser = ?;',
+        $idcal = $this->db->request([
+            'query' => 'SELECT MAX(idcal_folder) FROM cal_folder WHERE name = ? AND owner = ? LIMIT 1;',
             'type' => 'si',
             'content' => [$folder['name'], $iduser],
             'array' => true,
         ])[0][0];
+        $this->db->request([
+            'query' => 'INSERT INTO user_has_calendar (iduser,idcal_folder,color) VALUES (?,?,?);',
+            'type' => 'iis',
+            'content' => [$iduser, $idcal, $folder['color'] ?? ''],
+        ]);
+        return [
+            'id' => $idcal,
+            'name' => $folder['name'],
+            'description' => $folder['description'] ?? '',
+            'owner' => true,
+            'read_only' => false,
+        ];
     }
     private function calComponentAddAlarm(int $idcomponent, array $alarm)
     {
@@ -1476,6 +1494,14 @@ trait BopCal
                 'type' => 'i',
                 'content' => [$idlocation],
             ]);
+    }
+    private function calSetFolderColor(int $iduser, int $cal_folder, string $color)
+    {
+        $this->db->request([
+            'query' => 'UPDATE user_has_calendar SET color = ? WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'sii',
+            'content' => [$color, $iduser, $cal_folder],
+        ]);
     }
     private function calSetSession(int $idsession, int $cal_folder, string $start, string $end)
     {

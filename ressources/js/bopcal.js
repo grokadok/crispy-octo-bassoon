@@ -58,14 +58,19 @@ class BopCal {
             this.bigcal.layout.style.top = `-${this.bigcal.cal.scrollTop}px`;
         });
 
-        // calendar buttons
-        let todayButton = document.createElement("button");
+        // minicalendar menu
+        let todayButton = document.createElement("button"),
+            calAdd = document.createElement("button");
+        this.minical.selector = document.createElement("ul"); // menu with toggle to show cal, color selector, and remove/suppr if owner button.
+        this.minical.selector.textContent = "🗓";
         todayButton.textContent = "🩴";
         todayButton.addEventListener("click", () =>
             this.minicalFocus(new Date())
         );
-        this.menu.append(todayButton);
-
+        calAdd.textContent = "🧉";
+        calAdd.addEventListener("click", () => this.newCalendarModal());
+        this.menu.append(todayButton, this.minical.selector, calAdd);
+        this.getCalendars();
         this.generateCalendar();
 
         this.wrapper.append(
@@ -74,34 +79,11 @@ class BopCal {
             this.minical.cal,
             this.bigcal.wrapper
         );
-
-        // BopCal.fullCalendars.push({
-        //     instance: new FullCalendar.Calendar(this.calendar, {
-        //         // events: function (info, successCallback, failureCallback) {
-        //         //     // set new range
-        //         //     BopCal.fullCalendars[0].range = [
-        //         //         info.start.valueOf(),
-        //         //         info.end.valueOf(),
-        //         //     ];
-        //         //     // remove events from unused days
-        //         //     // getEvents
-        //         //     BopCal.getEvents(info.start.valueOf(), info.end.valueOf());
-        //         // },
-        //         headerToolbar: {
-        //             left: "prev,next today",
-        //             center: "title",
-        //             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
-        //         },
-        //         height: "100%",
-        //         initialView: "dayGridMonth",
-        //         locale: "fr",
-        //         navLinks: "true",
-        //         nowIndicator: "true",
-        //         weekNumbers: "true",
-        //         weekNumberFormat: { week: "numeric" },
-        //     }),
-        //     range: [],
-        // });
+    }
+    getCalendars() {
+        socket.send({
+            f: 21,
+        });
     }
     /**
      *
@@ -181,7 +163,6 @@ class BopCal {
                     target.offsetLeft +
                     target.offsetParent.offsetLeft +
                     target.offsetParent.offsetParent.offsetLeft;
-                console.warn(x);
                 break;
         }
         this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
@@ -198,120 +179,343 @@ class BopCal {
     /**
      * Adds event to calendar from object data.
      */
-    addEvent(event) {
-        // start
-        const start = new Date(event.start),
-            // end
-            end = new Date(event.end),
-            // get day(s) element(s)
-            days = getDaysFromDates(start, end),
-            hourHeight = this.bigcal.layout.children[1].offsetHeight,
-            hourOffsetTop = this.bigcal.layout.firstElementChild.offsetTop;
-        let summary = document.createElement(""),
-            description = document.createElement("");
+    addEvent(event, calendar) {
+        // event = {
+        //     uid: String,
+        //     type: Number,
+        //     summary: String,
+        //     start: String, // datetime
+        //     end: String, // datetime
+        //     all_day: Number, // boolean
+        //     transparency: Number, // boolean
+        //     sequence: Number,
+        //     rrule: Array, // boolean
+        //     rdate: Number, // boolean
+        //     rdates: Array,
+        //     exceptions: Array,
+        //     recur_id: String, // datetime
+        //     thisandfuture: Number, // boolean
+        // };
 
-        if (days.length > 1) {
-            // for each element
-            for (const day of days) {
-                const dayElement = this.bigcal.years[day.getFullYear()].months[
-                    day.getMonth()
-                ].querySelector(
-                    `[data-week="${getWeekNumber(
-                        day
-                    )}"][data-date="${day.getDate()}"]`
-                );
-                // create event
-                let event = document.createElement("div");
-                // if allday
-                if (event.allday) {
-                    dayElement.firstElementChild.append(event);
-                } else {
-                    dayElement.lastElementChild.append(event);
-                    if (day === days[0]) {
-                        // if start day
-                        const duration = getMinutesBetweenDates(
-                            day,
-                            new Date(
-                                day.getFullYear(),
-                                day.getMonth(),
-                                day.getDate() + 1
-                            )
-                        );
-                        // set height according to minutes * hourDiv.offsetHeight/60
-                        event.style.height = `${
-                            (duration * hourHeight) / 60
-                        }px`;
-                        // set bottom to 0
-                        event.style.bottom = "0";
-                    } else if (day === days[days.length - 1]) {
-                        // if last day
-                        const duration = getMinutesBetweenDates(
-                            new Date(
-                                day.getFullYear(),
-                                day.getMonth(),
-                                day.getDate()
-                            ),
+        this.events[event.uid] = {
+            cal: calendar,
+            start: new Date(`${event.start}Z`),
+            end: new Date(`${event.end}Z`),
+            allday: event.allday,
+            elements: {},
+        };
+        this.placeEvent(this.events[event.uid]);
+        if (1 === 0) {
+            // start
+            const start = new Date(event.start),
+                // end
+                end = new Date(event.end),
+                // get day(s) element(s)
+                days = getDaysFromDates(start, end),
+                hourHeight = this.bigcal.layout.children[1].offsetHeight,
+                hourOffsetTop = this.bigcal.layout.firstElementChild.offsetTop;
+            let summary = document.createElement(""),
+                description = document.createElement("");
+
+            if (days.length > 1) {
+                // for each element
+                for (const day of days) {
+                    const dayElement = this.bigcal.years[
+                        day.getFullYear()
+                    ].months[day.getMonth()].querySelector(
+                        `[data-week="${getWeekNumber(
                             day
-                        );
-                        // set top to first hour's top
-                        event.style.top = `${hourOffsetTop}px`;
-                        // set height accoding to minutes * hourDiv.offsetHeight/60
-                        event.style.height = `${
-                            (duration * hourHeight) / 60
-                        }px`;
+                        )}"][data-date="${day.getDate()}"]`
+                    );
+                    // create event
+                    let event = document.createElement("div");
+                    // if allday
+                    if (event.allday) {
+                        dayElement.firstElementChild.append(event);
                     } else {
-                        // else fill entire day
-                        event.style.top = `${hourOffsetTop}px`;
-                        event.style.bottom = "0";
+                        dayElement.lastElementChild.append(event);
+                        if (day === days[0]) {
+                            // if start day
+                            const duration = getMinutesBetweenDates(
+                                day,
+                                new Date(
+                                    day.getFullYear(),
+                                    day.getMonth(),
+                                    day.getDate() + 1
+                                )
+                            );
+                            // set height according to minutes * hourDiv.offsetHeight/60
+                            event.style.height = `${
+                                (duration * hourHeight) / 60
+                            }px`;
+                            // set bottom to 0
+                            event.style.bottom = "0";
+                        } else if (day === days[days.length - 1]) {
+                            // if last day
+                            const duration = getMinutesBetweenDates(
+                                new Date(
+                                    day.getFullYear(),
+                                    day.getMonth(),
+                                    day.getDate()
+                                ),
+                                day
+                            );
+                            // set top to first hour's top
+                            event.style.top = `${hourOffsetTop}px`;
+                            // set height accoding to minutes * hourDiv.offsetHeight/60
+                            event.style.height = `${
+                                (duration * hourHeight) / 60
+                            }px`;
+                        } else {
+                            // else fill entire day
+                            event.style.top = `${hourOffsetTop}px`;
+                            event.style.bottom = "0";
+                        }
                     }
                 }
-            }
-        } else {
-            let event = document.createElement("div");
-            const dayElement = this.bigcal.years[start.getFullYear()].months[
-                start.getMonth()
-            ].querySelector(
-                `[data-week="${getWeekNumber(
-                    start
-                )}"][data-date="${start.getDate()}"]`
-            );
-            // if allday, set to allday div of day.
-            if (event.allday) dayElement.firstElementChild.append(event);
-            // set top to hour's div offsetTop + minutes * hour.offsetHeight / 60
-            else {
-                const duration = getMinutesBetweenDates(start, end);
-
-                event.style.top = `${
-                    hourOffsetTop +
-                    (getMinutesBetweenDates(
-                        new Date(
-                            start.getFullYear(),
-                            start.getMonth(),
-                            start.getDate()
-                        ),
+            } else {
+                let event = document.createElement("div");
+                const dayElement = this.bigcal.years[
+                    start.getFullYear()
+                ].months[start.getMonth()].querySelector(
+                    `[data-week="${getWeekNumber(
                         start
-                    ) *
-                        hourHeight) /
-                        60
-                }px`;
-                // set event height to diff between start and end
-                event.style.height = `${(duration * hourHeight) / 60}px`;
+                    )}"][data-date="${start.getDate()}"]`
+                );
+                // if allday, set to allday div of day.
+                if (event.allday) dayElement.firstElementChild.append(event);
+                // set top to hour's div offsetTop + minutes * hour.offsetHeight / 60
+                else {
+                    const duration = getMinutesBetweenDates(start, end);
+
+                    event.style.top = `${
+                        hourOffsetTop +
+                        (getMinutesBetweenDates(
+                            new Date(
+                                start.getFullYear(),
+                                start.getMonth(),
+                                start.getDate()
+                            ),
+                            start
+                        ) *
+                            hourHeight) /
+                            60
+                    }px`;
+                    // set event height to diff between start and end
+                    event.style.height = `${(duration * hourHeight) / 60}px`;
+                }
             }
         }
     }
+    dragEvent() {
+        // updates object in bopcal.events
+    }
+    /**
+     * Places/updates event in bigcal according to event's data in bopcal.events.
+     * @param {Object} event - event object stored in bigcal.
+     */
+    placeEvent(event) {
+        // event = {
+        //     uid: {
+        //         start: Date,
+        //         end: Date,
+        //         allday: Boolean,
+        //         elements: {
+        //             date: HTMLElement,
+        //         },
+        //     },
+        // };
+
+        // for each day, set start/end according to event start/end
+        for (const day of getDaysBetweenDates(event.start, event.end)) {
+            let classes = [],
+                top,
+                height,
+                el = event.elements[dateString] ?? undefined;
+            const dayWrapper = el
+                    ? el.parentNode.parentNode
+                    : this.bigcal.years[day.getFullYear()].months[
+                          day.getMonth()
+                      ].querySelector(
+                          `[data-date="${day.getDate()}"]:not(.fade)`
+                      ),
+                nextDay = new Date(
+                    day.getFullYear(),
+                    day.getMonth(),
+                    day.getDate() + 1
+                ),
+                dateString = toYYYYMMDDString(day);
+            if (event.allday) {
+                if (event.start.valueOf() >= day.valueOf())
+                    classes.push("start");
+                if (event.end.valueOf() < nextDay.valueOf())
+                    classes.push("end");
+            } else {
+                top =
+                    event.start.valueOf() < day.valueOf()
+                        ? "0px"
+                        : this.calcEventTop(event.start);
+                height =
+                    event.end.valueOf() < nextDay
+                        ? this.calcEventHeight(event.start, event.end)
+                        : this.calcEventHeight(event.start, nextDay);
+            }
+            // if el of event exists
+            if (el) {
+                // if parent = allday
+                if (el.parentNode === dayWrapper.firstElementChild) {
+                    // if !event.allday, move element to dayWrapper, set top / height
+                    if (!event.allday) {
+                        dayWrapper.lastElementChild.append(el);
+                        el.className = "";
+                        el.style.top = top;
+                        el.style.height = height;
+                    }
+                    // else if start/end, set classes accordingly
+                    else el.className = classes.join(" ");
+                }
+                // if parent = dayWrapper
+                else {
+                    // if event.allday, move element to allday, set start/end classes
+                    if (event.allday) {
+                        dayWrapper.firstElementChild.append(el);
+                        el.className = classes.join(" ");
+                    }
+                    // else update top/height if necessary
+                    else {
+                        el.style.top = top;
+                        el.style.height = height;
+                    }
+                }
+            }
+            // else create it
+            else {
+                el = document.createElement("div");
+                let summary = document.createElement("span"),
+                    hour = document.createElement("span");
+                summary.textContent = event.summary ?? "New event";
+                hour.textContent = new Date(event.start).toTimeString();
+                el.style.backgroundColor =
+                    this.calendars[event.cal].color ?? "purple";
+                el.append(summary, hour);
+                event.elements[dateString] = el;
+                if (event.allday) {
+                    dayWrapper.firstElementChild.append(el);
+                    el.className = classes;
+                } else {
+                    dayWrapper.lastElementChild.append(el);
+                    el.style.top = top;
+                    el.style.height = height;
+                }
+            }
+        }
+    }
+    newCalendarModal() {
+        if (Modal.modals.filter((x) => x.task === 27).length)
+            return msg.new({
+                type: "warning",
+                content:
+                    "Une fenêtre de création de calendrier est déjà ouverte.",
+            });
+        new Modal({
+            title: "Nouveau calendrier",
+            fields: [
+                {
+                    compact: true,
+                    name: "name",
+                    placeholder: "Nom",
+                    required: true,
+                    type: "input_string",
+                },
+                {
+                    compact: true,
+                    type: "quill",
+                    placeholder: "Description",
+                    name: "description",
+                },
+            ],
+            task: 27,
+            btn0listener: (e) => Modal.find(e.target).close(),
+            btn1text: "créer",
+            btn1style: "success",
+        });
+    }
     /**
      * Creates event in calendar
+     * @param {Date} date
+     * @param {Number} cal - Calendar id
      */
-    newEvent(event) {
-        let newEvent = document.createElement("div"),
-            summary = document.createElement("span"),
-            hour = document.createElement("span");
-        const hourHeight = this.bigcal.layout.firstChild.offsetHeight;
-
-        summary.textContent = event.summary ?? "New event";
-        hour.textContent = new Date(event.date).toTimeString();
-        // origin height : 1hour;
-        // origin top from date
+    newEvent(date) {
+        const start = toMYSQLDTString(date);
+        date.setHours(date.getHours() + 1);
+        const end = toMYSQLDTString(date);
+        // send server new event data: start,end
+        socket.send({
+            f: 25,
+            c: this.active,
+            e: {
+                start: start,
+                end: end,
+                created: toMYSQLDTString(new Date()),
+                summary: "New event",
+            },
+        });
+    }
+    /**
+     * @param {Date} date
+     */
+    calcEventTop(date) {
+        return `${
+            (this.bigcal.layout.firstChild.offsetHeight * date.valueOf()) /
+            1000 /
+            60 /
+            60
+        }px`;
+    }
+    /**
+     * @param {Date} start
+     * @param {Date} end
+     */
+    calcEventHeight(start, end) {
+        return `${
+            ((end.valueOf() - start.valueOf()) / 1000 / 60 / 60) *
+            this.bigcal.layout.firstChild.offsetHeight
+        }px`;
+    }
+    minicalAddCalendar(idcal) {
+        const calendar = this.calendars[idcal];
+        let wrapper = document.createElement("li"),
+            check = document.createElement("input"),
+            name = document.createElement("span"),
+            colorSelect = document.createElement("input"),
+            removeButton = document.createElement("button");
+        name.textContent = calendar.name;
+        check.setAttribute("type", "checkbox");
+        colorSelect.setAttribute("type", "color");
+        colorSelect.value = calendar.color ? calendar.color : "#759ece";
+        colorSelect.addEventListener("input", (e) => {
+            // update calendar color in db with e.target.value
+        });
+        removeButton.addEventListener("click", () => {
+            // alert to confirm:
+            console.log(`remove cal #${idcal}`);
+            // if calendar owner, delete calendar
+            // else remove
+        });
+        wrapper.append(check, name, colorSelect, removeButton);
+        this.calendars[idcal].li = wrapper;
+        this.minical.selector.append(wrapper);
+    }
+    addCalendar(calendar) {
+        // add calendar to this.calendars
+        this.calendars[calendar.id] = {
+            name: calendar.name,
+            description: calendar.description,
+            color: calendar.color ?? undefined,
+            owner: calendar.owner,
+            read_only: calendar.read_only,
+        };
+        this.minicalAddCalendar(calendar.id);
     }
     /**
      * Add month to calendars.
@@ -347,7 +551,6 @@ class BopCal {
                     cal.years[year].months[i] = monthWrapper;
                     if (cal === this.minical) {
                         monthWrapper.addEventListener("click", () => {
-                            console.log(monthDate.toString());
                             this.bigcalFocus(monthDate, "month", true);
                         });
                     }
@@ -386,7 +589,6 @@ class BopCal {
                             //     });
                             weekWrapper.addEventListener("click", (e) => {
                                 e.stopPropagation();
-                                console.log(dayDate.toString());
                                 this.bigcalFocus(dayDate, "week", true);
                             });
                         }
@@ -407,7 +609,6 @@ class BopCal {
                         // });
                         dayWrapper.addEventListener("click", (e) => {
                             e.stopPropagation();
-                            console.log(dayDate.toString());
                             this.bigcalFocus(dayDate, "day", true);
                         });
                     }
@@ -454,7 +655,6 @@ class BopCal {
                     );
                     if (up) {
                         this.minical.cal.scrollTop = scroll + monthHeight;
-                        console.warn(`scrollTop = ${scroll + monthHeight}`);
                     }
                     last = this.addMonth(date);
                 }
@@ -543,59 +743,90 @@ class BopCal {
         });
     }
     static parse(data) {
-        // parse calendars
-        for (const cal of data.response) {
-            let uids = [];
-            const start = "",
-                end = "";
-            if (!BopCal.calendars[cal.name]) BopCal.calendars[cal.name] = {};
-            // parse events
-            for (const ical of cal.data) {
-                const event = BopCal.icalToObject(ical.data);
-                if (
-                    !BopCal.calendars[cal.name][event.uid] ||
-                    BopCal.calendars[cal.name][event.uid].etag !== ical.etag
-                ) {
-                    BopCal.calendars[cal.name][event.uid] = {
-                        etag: ical.etag,
-                        href: ical.href,
-                        ical: event,
-                    };
-                    uids.push(event.uid);
-                    for (const fullCal of BopCal.fullCalendars) {
-                        // manage case where user opened/is editing event that is to be removed/updated
-                        // alert 'this event has been updated, would you like to apply these modifications, create a new event or refresh this window ?'
-
-                        // queue remove event (wip)
-                        fullCal.getEventById(event.uid)?.remove();
-                        // queue add event (wip)
-                        addFullCalEvent(fullCal, event);
-                    }
-                }
-            }
-            // remove BopCal events that are in range of data but absent from it
-            for (const [key, value] of Object.entries(
-                BopCal.calendars[cal.name]
-            ))
-                if (
-                    !uids.includes(key) &&
-                    value.start < end &&
-                    value.end > start
-                )
-                    delete BopCal.calendars[cal.name][key];
+        const cal = BopCal.bopcals[0];
+        if (data.response.fail)
+            // replace alert with auto check on input and valid button disable if name unavailable.
+            return msg.new({
+                content: "Un calendrier avec ce nom existe déjà.",
+                type: "warning",
+            });
+        switch (data.f) {
+            case 21:
+                // calendars and static values
+                for (const [key, value] of Object.entries(data.response))
+                    cal[key] = value;
+                cal.active = Object.keys(cal.calendars)[0];
+                for (const key of Object.keys(cal.calendars))
+                    cal.minicalAddCalendar(key);
+                break;
+            case 25:
+                // new event
+                cal.addEvent(data.response.event, data.c);
+                break;
+            case 27:
+                // new calendar
+                cal.addCalendar(data.response);
+                Modal.modals.filter((x) => x.task === 27)[0].close();
+                break;
         }
 
-        // for each fullCalendar, sync events with BopCal
-        for (const fullCal of BopCal.fullCalendars) {
-            let fullCalEvents = fullCal.getEvents();
-            // remove events not in BopCal
-            for (const fullCalEvent of fullCalEvents) {
-                if (
-                    !BopCal.calendars[fullCalEvent.extendedProps.calendarName][
-                        fullCalEvent.id
-                    ]
-                )
-                    fullCalEvent.remove();
+        // old fullcal unfinished shit
+        if (1 === 2) {
+            // parse calendars
+            for (const cal of data.response) {
+                let uids = [];
+                const start = "",
+                    end = "";
+                if (!BopCal.calendars[cal.name])
+                    BopCal.calendars[cal.name] = {};
+                // parse events
+                for (const ical of cal.data) {
+                    const event = BopCal.icalToObject(ical.data);
+                    if (
+                        !BopCal.calendars[cal.name][event.uid] ||
+                        BopCal.calendars[cal.name][event.uid].etag !== ical.etag
+                    ) {
+                        BopCal.calendars[cal.name][event.uid] = {
+                            etag: ical.etag,
+                            href: ical.href,
+                            ical: event,
+                        };
+                        uids.push(event.uid);
+                        for (const fullCal of BopCal.fullCalendars) {
+                            // manage case where user opened/is editing event that is to be removed/updated
+                            // alert 'this event has been updated, would you like to apply these modifications, create a new event or refresh this window ?'
+
+                            // queue remove event (wip)
+                            fullCal.getEventById(event.uid)?.remove();
+                            // queue add event (wip)
+                            addFullCalEvent(fullCal, event);
+                        }
+                    }
+                }
+                // remove BopCal events that are in range of data but absent from it
+                for (const [key, value] of Object.entries(
+                    BopCal.calendars[cal.name]
+                ))
+                    if (
+                        !uids.includes(key) &&
+                        value.start < end &&
+                        value.end > start
+                    )
+                        delete BopCal.calendars[cal.name][key];
+            }
+
+            // for each fullCalendar, sync events with BopCal
+            for (const fullCal of BopCal.fullCalendars) {
+                let fullCalEvents = fullCal.getEvents();
+                // remove events not in BopCal
+                for (const fullCalEvent of fullCalEvents) {
+                    if (
+                        !BopCal.calendars[
+                            fullCalEvent.extendedProps.calendarName
+                        ][fullCalEvent.id]
+                    )
+                        fullCalEvent.remove();
+                }
             }
         }
 

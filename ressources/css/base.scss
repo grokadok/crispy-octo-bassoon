@@ -507,6 +507,8 @@ input {
     }
     &.select {
         & .container {
+            cursor: pointer;
+            user-select: none;
             /* & > input {
                 user-select: none;
                 cursor: pointer;
@@ -514,6 +516,13 @@ input {
             & > ul.fadeout {
                 display: none;
             }
+        }
+    }
+    &.address {
+        display: flex;
+        flex-direction: column;
+        & > div {
+            width: auto;
         }
     }
     &::after {

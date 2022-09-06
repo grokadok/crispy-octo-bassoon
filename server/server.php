@@ -854,6 +854,7 @@ class FWServer
                     ...json_decode($frame->data, true),
                 ];
                 $response = $this->wsTask($task);
+                unset($task['content'], $task['session'], $task['user'], $task['fd']);
                 if (!empty($response)) {
                     $message = json_encode([
                         "response" => $response,
@@ -2208,17 +2209,31 @@ class FWServer
                 // for each connected client linked to calendar
                 // if in range, send light event
                 // send notification anyway
-                foreach ($newEvent['users'] as $user) $this->serv->push($fd, json_encode(['event' => $newEvent['event']]));
+                foreach ($newEvent['users'] as $user) $this->serv->push($user['fd'], json_encode(['event' => $newEvent['event']]));
                 // !!! to complete
                 return;
             }
 
             /////////////////////////////////////////////////////
-            // ADD ALARM TO EVENT (xx)
+            // ADD ALARM TO EVENT (26)
             /////////////////////////////////////////////////////
 
             if ($f === 26 && isset($task['a']) && isset($task['c']))
                 return $this->calAddAlarm($task['c'], $task['a']);
+
+            /////////////////////////////////////////////////////
+            // CREATE CALENDAR (27)
+            /////////////////////////////////////////////////////
+
+            if ($f === 27 && isset($task['content']['name']))
+                return $this->calNewCalFolder($iduser, $task['content']);
+
+            /////////////////////////////////////////////////////
+            // SET CALENDAR COLOR (28)
+            /////////////////////////////////////////////////////
+
+            if ($f === 28 && isset($task['c']) && isset($task['x']))
+                return $this->calSetFolderColor($iduser, $task['c'], $task['x']);
 
             /////////////////////////////////////////////////////
             // ADD ATTENDEE TO EVENT (xx)
@@ -2230,10 +2245,6 @@ class FWServer
 
             /////////////////////////////////////////////////////
             // DELETE CALENDAR EVENT (xx)
-            /////////////////////////////////////////////////////
-
-            /////////////////////////////////////////////////////
-            // CREATE CALENDAR (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////

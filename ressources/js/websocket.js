@@ -134,7 +134,7 @@ class WSConnection {
                             }
                         }
                     }
-                } else if ([7, 12, 21].includes(data.f)) {
+                } else if ([7, 12].includes(data.f)) {
                     data.s === 8
                         ? BopChat.chats[0].parseData(data)
                         : Field.parseData(data);
@@ -377,6 +377,9 @@ class WSConnection {
                           BopChat.chats[0].updateUsers(data.chat);
                 } else if (data.f === 20) {
                     ClassMain.el.parseTab(data.i, data.response);
+                } else if ([21, 25, 27].includes(data.f)) {
+                    // receive bopcal data
+                    BopCal.parse(data);
                 } else if (data.f === 2501) {
                     BopTable.parseData(data);
                 }

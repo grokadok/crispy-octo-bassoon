@@ -879,6 +879,12 @@ function toISO8601ExtString(date) {
             date.slice(0, 13) + ":" + date.slice(13, 15) + ":" + date.slice(15);
     return date;
 }
+/** Format date to mysql datetime.
+ * @param {Date} date
+ */
+function toMYSQLDTString(date) {
+    return date.toISOString().slice(0, 19).replace("T", " ");
+}
 /**
  * Toggles between classes (useful when wanting to toggle between more than two classes)
  * @param {HTMLElement} el
@@ -921,6 +927,14 @@ function togglePw(el) {
         c[0].classList.remove("hide");
         c[1].classList.add("hide");
     }
+}
+/**
+ * Returns a date YYYYMMDD string from Date object.
+ * @param {Date} date
+ */
+function toYYYYMMDDString(date) {
+    const d = date.getDate();
+    return `${date.getFullYear()}${date.getMonth()}${d < 10 ? "0" + d : d}`;
 }
 /**
  * Removes class "blurred" from element(s).

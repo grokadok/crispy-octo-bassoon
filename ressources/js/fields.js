@@ -48,7 +48,8 @@ class Field {
                     postcode = document.createElement("input"),
                     city = document.createElement("input"),
                     country = document.createElement("input");
-                this.wrapper.setAttribute("aria-label", "Addresse");
+                this.wrapper.setAttribute("aria-label", "Adresse");
+                this.wrapper.classList.add("address");
                 setElementAttributes(street, [
                     ["placeholder", "2 rue du Port"],
                     ["name", "Numéro et voie"],
@@ -865,39 +866,39 @@ class Field {
                 if (data.response.id)
                     Field.fields[data.x].addSelectize(data.response.id, data.t);
                 break;
-            case 21:
-                // populate calendar
-                const field = Field.fields[data.x];
-                for (const calendar of data.response) {
-                    if (!field.data[calendar.name])
-                        field.data[calendar.name] = {
-                            role: calendar.role,
-                            events: {},
-                        };
-                    field.calendar.batchRendering(() => {
-                        for (const event of calendar.events) {
-                            // console.log(icalToObject(event.data));
-                            const eventObject = icalToObject(event.data);
-                            field.data[calendar.name].events[eventObject.uid] =
-                                {
-                                    etag: event.etag,
-                                    href: event.href,
-                                    data: eventObject,
-                                };
-                            delete field.data[calendar.name].events[
-                                eventObject.uid
-                            ].data.uid;
-                            field.calendar.addEvent({
-                                id: eventObject.uid,
-                                title: eventObject.VCALENDAR.VEVENT.TITLE,
-                                // allDay: create condition to check wether the event is allday or not
-                                // start:,
-                                // end:,
-                            });
-                        }
-                    });
-                }
-                break;
+            // case 21:
+            //     // populate calendar
+            //     const field = Field.fields[data.x];
+            //     for (const calendar of data.response) {
+            //         if (!field.data[calendar.name])
+            //             field.data[calendar.name] = {
+            //                 role: calendar.role,
+            //                 events: {},
+            //             };
+            //         field.calendar.batchRendering(() => {
+            //             for (const event of calendar.events) {
+            //                 // console.log(icalToObject(event.data));
+            //                 const eventObject = icalToObject(event.data);
+            //                 field.data[calendar.name].events[eventObject.uid] =
+            //                     {
+            //                         etag: event.etag,
+            //                         href: event.href,
+            //                         data: eventObject,
+            //                     };
+            //                 delete field.data[calendar.name].events[
+            //                     eventObject.uid
+            //                 ].data.uid;
+            //                 field.calendar.addEvent({
+            //                     id: eventObject.uid,
+            //                     title: eventObject.VCALENDAR.VEVENT.TITLE,
+            //                     // allDay: create condition to check wether the event is allday or not
+            //                     // start:,
+            //                     // end:,
+            //                 });
+            //             }
+            //         });
+            //     }
+            //     break;
         }
 
         // if (data.f === 7) {

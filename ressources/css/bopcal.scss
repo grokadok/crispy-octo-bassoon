@@ -12,6 +12,9 @@
     transform: translateX(calc(-1 * var(--cal-width)));
     transition: transform var(--transition-global);
     z-index: 1;
+    & ul {
+        padding: 0;
+    }
     & > button {
         position: absolute;
         inset: 0 0 auto auto;
@@ -27,15 +30,33 @@
     & > div {
         /* menu */
         &:first-of-type {
-            position: absolute;
-            inset: 0 0 auto 0;
+            /* position: absolute;
+            inset: 0 0 auto 0; */
             display: flex;
             flex-direction: row;
-            justify-content: center;
-            z-index: 1;
+            justify-content: space-evenly;
+            z-index: 2;
             & button {
                 background-color: transparent;
                 padding: 0.5rem;
+            }
+            /* calendar list */
+            & > ul {
+                /* position: relative; */
+                & > li {
+                    display: flex;
+                    flex-direction: row;
+                    background-color: var(--bg-chat);
+                    opacity: 1;
+                    /* pointer-events: none;
+                    transition: opacity var(--transition-global); */
+                }
+                /* &:hover {
+                    & > li {
+                        opacity: 1;
+                        pointer-events: all;
+                    }
+                } */
             }
         }
         /* mini cal */
