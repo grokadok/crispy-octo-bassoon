@@ -2163,18 +2163,17 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH CALENDAR'S EVENTS IN RANGE (22)
+            // FETCH CALENDARS' EVENTS IN RANGE (22)
             /////////////////////////////////////////////////////
 
-            if ($f === 22 && isset($task['c']) && isset($task['s']) && isset($task['e'])) {
+            if ($f === 22 && isset($task['s']) && isset($task['e'])) {
                 // with e & s as strings like '2022-08-29'
-                // $session = $this->db->request([
-                //     'query' => 'SELECT idsession FROM session WHERE iduser = ? AND fd = ?;',
-                //     'type' => 'ii',
-                //     'content' => [$iduser, $fd],
-                //     'array' => true,
-                // ])[0][0];
-                // store in session that client is connected with calendar, so that server can send updates.
+
+                // set range for each user's calendar to user/session
+
+                // get calendars' events in range
+
+
                 // client side, send data only on update, to avoid useless db updates.
                 foreach ($task['u'] as $cal)
                     $this->calSetSession($task['session'], $cal['cal'], $cal['start'], $cal['end']);
@@ -2188,17 +2187,15 @@ class FWServer
             // GET CALENDAR EVENT'S FULL DATA (23)
             /////////////////////////////////////////////////////
 
-            if ($f === 23 && isset($task['c'])) {
+            if ($f === 23 && isset($task['c']))
                 return $this->calGetEventData($task['c']);
-            }
 
             /////////////////////////////////////////////////////
             // GET CALENDAR DESCRIPTION (24)
             /////////////////////////////////////////////////////
 
-            if ($f === 24 && isset($task['d'])) {
+            if ($f === 24 && isset($task['d']))
                 return $this->calGetDescriptions([$task['d']]);
-            }
 
             /////////////////////////////////////////////////////
             // CREATE CALENDAR EVENT (25)
@@ -2209,7 +2206,8 @@ class FWServer
                 // for each connected client linked to calendar
                 // if in range, send light event
                 // send notification anyway
-                foreach ($newEvent['users'] as $user) $this->serv->push($user['fd'], json_encode(['event' => $newEvent['event']]));
+                // var_dump($newEvent['event']);
+                foreach ($newEvent['users'] as $user) $this->serv->push($user['fd'], json_encode(['f' => 25, 'c' => $task['c'], 'event' => $newEvent['event']]));
                 // !!! to complete
                 return;
             }
@@ -2236,6 +2234,34 @@ class FWServer
                 return $this->calSetFolderColor($iduser, $task['c'], $task['x']);
 
             /////////////////////////////////////////////////////
+            // DELETE CALENDAR (29)
+            /////////////////////////////////////////////////////
+
+            if ($f === 29 && isset($task['c'])) {
+                $fds = $this->calRemoveFolder($iduser, $task['c']);
+                if (!$fds) return ['fail' => 'User #' . $iduser . ' not owner of cal #' . $task['c'], 'message' => 'Echec de la suppression du calendrier.'];
+                $message = json_encode(['f' => 29, 'c' => $task['c'], 'x' => true]);
+                foreach ($fds as $fd) $this->serv->push($fd, $message);
+                $this->calRemoveUnusedDescriptions();
+                $this->calRemoveUnusedLocations();
+                return;
+            }
+
+            /////////////////////////////////////////////////////
+            // CALENDAR UNSUBSCRIBE (30)
+            /////////////////////////////////////////////////////
+
+            if ($f === 30 && isset($task['c']))
+                return $this->calRemoveFromUser($iduser, $task['c']);
+
+            /////////////////////////////////////////////////////
+            // SET CALENDAR VISIBILITY (31)
+            /////////////////////////////////////////////////////
+
+            if ($f === 31 && isset($task['c']) && isset($task['v']))
+                return $this->calSetVisibility($iduser, $task['c'], $task['v']);
+
+            /////////////////////////////////////////////////////
             // ADD ATTENDEE TO EVENT (xx)
             /////////////////////////////////////////////////////
 
@@ -2245,10 +2271,6 @@ class FWServer
 
             /////////////////////////////////////////////////////
             // DELETE CALENDAR EVENT (xx)
-            /////////////////////////////////////////////////////
-
-            /////////////////////////////////////////////////////
-            // DELETE CALENDAR (xx)
             /////////////////////////////////////////////////////
 
             /////////////////////////////////////////////////////

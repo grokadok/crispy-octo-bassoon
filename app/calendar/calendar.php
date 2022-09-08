@@ -113,7 +113,7 @@ trait BopCal
     }
     private function calAddEvent(int $iduser, int $cal_folder, array $event)
     {
-        if ($this->calCheckUserWriteAccess($iduser, $cal_folder)) return print("Write failure: user $iduser had no write access to cal_folder $cal_folder." . PHP_EOL);
+        if (!$this->calCheckUserWriteAccess($iduser, $cal_folder)) return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
 
         $uid = $event['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
 
@@ -124,6 +124,13 @@ trait BopCal
             'content' => [],
         ];
 
+        // type
+        if (isset($event['type'])) {
+            $request['into'] .= ',type';
+            $request['values'] .= ',?';
+            $request['type'] .= 'i';
+            $request['content'][] = $event['type'];
+        }
         // description
         if (isset($event['description'])) {
             $request['into'] .= ',description';
@@ -199,13 +206,13 @@ trait BopCal
         }
 
         $this->db->request([
-            'query' => 'INSERT INTO cal_component (uid, type, created, summary, organizer, start, end' . $request['into'] . ') VALUES ((SELECT UUID_TO_BIN(?,1)), 0, ?, ?, ?, ?, ?' . $request['values'] . ');',
-            'type' => 'sississ' . $request['type'],
-            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], $event['duration'], $event['all_day'], $event['transparency'], ...$request['content']],
+            'query' => 'INSERT INTO cal_component (uid, created, summary, organizer, start, end' . $request['into'] . ') VALUES (UUID_TO_BIN(?,1), ?, ?, ?, ?, ?' . $request['values'] . ');',
+            'type' => 'sssiss' . $request['type'],
+            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], ...$request['content']],
             'array' => true,
         ]);
         $idcomponent = $this->db->request([
-            'query' => 'SELECT MAX(idcal_component) FROM cal_component WHERE uid = (SELECT UUID_TO_BIN(?, 1)) AND created = ? LIMIT 1;',
+            'query' => 'SELECT MAX(idcal_component) FROM cal_component WHERE uid = (SELECT UUID_TO_BIN(?,1)) AND created = ? LIMIT 1;',
             'type' => 'ss',
             'content' => [$uid, $event['created']],
             'array' => true,
@@ -250,45 +257,45 @@ trait BopCal
         return ['event' => $this->calGetEventLightData($idcomponent), 'users' => $this->calGetConnectUsers($cal_folder)];
 
         // doc for calendar components
-        if (1 === 0) {
-            // tags ?
+        // if (1 === 0) {
+        //     // tags ?
 
-            // todo: due ? - not compatible with duration property.
+        //     // todo: due ? - not compatible with duration property.
 
-            // reccuring ?
-            // recurring: frequency ?
-            // recurring: interval ?
-            // recurring: until ?
-            // recurring: count ?
-            // recurring: week_start ?
-            // recurring: by_day ?
-            // recurring: by_monthday ?
-            // recurring: by_month ?
-            // recurring: by_setpos ?
-            // recurring: exceptions ?
-            // recurring: exceptions: date
-            // recurring: exceptions: all_day ?
+        //     // reccuring ?
+        //     // recurring: frequency ?
+        //     // recurring: interval ?
+        //     // recurring: until ?
+        //     // recurring: count ?
+        //     // recurring: week_start ?
+        //     // recurring: by_day ?
+        //     // recurring: by_monthday ?
+        //     // recurring: by_month ?
+        //     // recurring: by_setpos ?
+        //     // recurring: exceptions ?
+        //     // recurring: exceptions: date
+        //     // recurring: exceptions: all_day ?
 
-            // alarms ?
-            // alarms: action
-            // alarms: trigger absolute ?
-            // alarms: trigger relative ?
-            // alarms: trigger related ?
-            // alarms: summary ? - action=EMAIL: subject.
-            // alarms: description ? - action=EMAIL: body, action=DISPLAY: text content.
-            // alarms: repeat ?
-            // alarms: duration ? - interval between repeats.
+        //     // alarms ?
+        //     // alarms: action
+        //     // alarms: trigger absolute ?
+        //     // alarms: trigger relative ?
+        //     // alarms: trigger related ?
+        //     // alarms: summary ? - action=EMAIL: subject.
+        //     // alarms: description ? - action=EMAIL: body, action=DISPLAY: text content.
+        //     // alarms: repeat ?
+        //     // alarms: duration ? - interval between repeats.
 
-            // attendees ?
-            // attendees: attendee
-            // attendees: delegated from ?
-            // attendees: delegated to ?
-            // attendees: sent by ?
-            // attendees: language ?
-            // attendees: user type ?
-            // attendees: role ?
-            // attendees: status ?
-        }
+        //     // attendees ?
+        //     // attendees: attendee
+        //     // attendees: delegated from ?
+        //     // attendees: delegated to ?
+        //     // attendees: sent by ?
+        //     // attendees: language ?
+        //     // attendees: user type ?
+        //     // attendees: role ?
+        //     // attendees: status ?
+        // }
     }
     private function calAddLocation(string $location)
     {
@@ -324,12 +331,12 @@ trait BopCal
     }
     private function calCheckUserWriteAccess(int $iduser, int $cal_folder)
     {
-        return !empty($this->db->request([
-            'query' => 'SELECT read_write FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+        return $this->db->request([
+            'query' => 'SELECT read_only FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
             'type' => 'ii',
             'content' => [$iduser, $cal_folder],
             'array' => true,
-        ])[0][0]);
+        ])[0][0] === 0 ? true : false;
     }
     private function calGetConnectUsers(int $cal_folder, string $start = null, string $end = null)
     {
@@ -365,21 +372,14 @@ trait BopCal
     }
     private function calGetEventAlarms(int $idcomponent)
     {
-        $alarmIds = $this->db->request([
-            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+        $alarms = [];
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_alarm,action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
-            'array' => true,
-        ]);
-        $alarms = [];
-        if (!empty($alarmIds)) foreach ($alarmIds as $alarmId) {
-            $alarms[] = $this->db->request([
-                'query' => 'SELECT action,trigger_absolute,trigger_relative,trigger_related,summary,description,repeat_times,duration FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
-                'type' => 'i',
-                'content' => [$alarmId[0]],
-            ]);
-        }
-        return $alarms;
+        ]) as $alarm) $alarms[$alarm['idcal_alarm']] = $alarm;
+
+        return !empty($alarms) ? $alarms : null;
     }
     private function calGetEventAttendees(int $idcomponent)
     {
@@ -471,21 +471,20 @@ trait BopCal
     private function calGetEventLightData(int $idcomponent)
     {
         $event = $this->db->request([
-            'query' => "SELECT uid,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
+            'query' => "SELECT BIN_TO_UUID(uid,1) as uid,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
             'type' => 'i',
             'content' => [$idcomponent],
-        ]);
+        ])[0];
         // if rrule, get rrule
-        if ($event['rrule']) $event['rrule'] = $this->calGetEventRRule($event['idcal_component']);
+        if (!empty($event['rrule'])) $event['rrule'] = $this->calGetEventRRule($event['idcal_component']);
         // if rdate, get rdate
-        if ($event['rdate']) $event['rdates'] = $this->calGetEventRDate($event['idcal_component']);
+        if (!empty($event['rdate'])) $event['rdates'] = $this->calGetEventRDate($event['idcal_component']);
         // if exceptions, get'em
-        if ($event['rrule'] || $event['rdate'])
+        if (!empty($event['rrule']) || !empty($event['rdate']))
             $event['exceptions'] = $this->calGetEventException($event['idcal_component']);
         // alarms
         // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
-        $event['alarms'] = $this->catGetEventsAlarms($event['idcal_component']);
-
+        $event['alarms'] = $this->calGetEventAlarms($idcomponent);
         return $event;
     }
     private function calGetEventException(int $idcomponent)
@@ -507,7 +506,7 @@ trait BopCal
         foreach ($res as $val) $uids[] = $val['uid'];
         $uids = implode(',', $uids);
         $events = $this->db->request([
-            'query' => "SELECT idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN $uids AND start < ? AND end > ?;",
+            'query' => "SELECT BIN_TO_UUID(uid,1) as uid,idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN $uids AND start < ? AND end > ?;",
             'type' => 'ss',
             'content' => [$end, $start],
         ]);
@@ -521,7 +520,7 @@ trait BopCal
                 $events[$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);
             // alarms
             // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
-            $events[$key]['alarms'] = $this->catGetEventsAlarms($value['idcal_component']);
+            $events[$key]['alarms'] = $this->calGetEventAlarms($value['idcal_component']);
         }
         return $events;
     }
@@ -630,12 +629,12 @@ trait BopCal
     {
         $folders = [];
         foreach ($this->db->request([
-            'query' => 'SELECT idcal_folder,read_only,color FROM user_has_calendar WHERE iduser = ?;',
+            'query' => 'SELECT idcal_folder,read_only,color,visible FROM user_has_calendar WHERE iduser = ?;',
             'type' => 'i',
             'content' => [$iduser],
             'array' => true,
         ]) as $folder)
-            $folders[$folder[0]] = [
+            $folders["$folder[0]"] = [
                 'name' => $this->db->request([
                     'query' => 'SELECT name FROM cal_folder WHERE idcal_folder = ? LIMIT 1;',
                     'type' => 'i',
@@ -648,7 +647,8 @@ trait BopCal
                     'type' => 'ii',
                     'content' => [$folder[0], $iduser],
                 ])),
-                'color' => $folder[2],
+                'color' => !empty($folder[2]) ? $folder[2] : null,
+                'visible' => !empty($folder[3]),
             ];
         return $folders;
 
@@ -693,9 +693,10 @@ trait BopCal
             return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
         $uuid = $this->db->request([
             'query' => 'SELECT uuid();',
+            'array' => true,
         ])[0][0];
         $this->db->request([
-            'query' => 'INSERT INTO cal_file (uid, idcal_folder) VALUES ((SELECT UUID_TO_BIN(?,1), ?);',
+            'query' => 'INSERT INTO cal_file (uid, idcal_folder) VALUES (UUID_TO_BIN(?,1), ?);',
             'type' => 'si',
             'content' => [$uuid, $cal_folder],
         ]);
@@ -714,7 +715,7 @@ trait BopCal
             'query' => 'SELECT NULL FROM user_has_calendar LEFT JOIN cal_folder USING (idcal_folder) WHERE iduser = ? AND name = ? LIMIT 1;',
             'type' => 'is',
             'content' => [$iduser, $folder['name']],
-        ]))) return ['fail' => 'Calendar already exists',];
+        ]))) return ['fail' => 'Calendar already exists!', 'message' => 'Ce calendrier existe déjà, vous devez choisir un autre nom.'];
         $request = [
             'into' => '',
             'values' => '',
@@ -749,6 +750,7 @@ trait BopCal
             'description' => $folder['description'] ?? '',
             'owner' => true,
             'read_only' => false,
+            'visible' => true,
         ];
     }
     private function calComponentAddAlarm(int $idcomponent, array $alarm)
@@ -808,23 +810,17 @@ trait BopCal
             $request['type'] .= 's';
             $request['content'][] = $alarm['duration'];
         }
-
         $this->db->request([
-            'query' => 'INSERT INTO cal_alarm (action' . $request['into'] . ') VALUES (?' . $request['values'] . ');',
-            'type' => 'i' . $request['type'],
-            'content' => [$alarm['action'], ...$request['content']],
+            'query' => 'INSERT INTO cal_alarm (idcal_component, action' . $request['into'] . ') VALUES (?' . $request['values'] . ');',
+            'type' => 'ii' . $request['type'],
+            'content' => [$idcomponent, $alarm['action'], ...$request['content']],
         ]);
-        $idalarm = $this->db->request([
-            'query' => 'SELECT MAX(idcal_alarm) FROM cal_alarm WHERE action = ?;',
+        return $this->db->request([
+            'query' => 'SELECT MAX(idcal_alarm) FROM cal_alarm WHERE idcal_component = ?;',
             'type' => 'i',
-            'content' => [$alarm['action']],
+            'content' => [$idcomponent],
             'array' => true,
         ])[0][0];
-        $this->db->request([
-            'query' => 'INSERT INTO cal_comp_has_alarm (idcal_component,ical_alarm) VALUES (?,?);',
-            'type' => 'ii',
-            'content' => [$idcomponent, $idalarm],
-        ]);
     }
     /**
      * Adds attendee to cal component.
@@ -1267,7 +1263,7 @@ trait BopCal
             'content' => [$transparency, $idcomponent],
         ]);
     }
-    private function calComponentRemoveAlarm(int $idcomponent, int $idalarm)
+    private function calComponentRemoveAlarm(int $idalarm)
     {
         $iddescription = $this->db->request([
             'query' => 'SELECT description FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
@@ -1275,11 +1271,6 @@ trait BopCal
             'content' => [$idalarm],
             'array' => true,
         ])[0][0];
-        $this->db->request([
-            'query' => 'DELETE cal_comp_has_alarm WHERE idcal_component = ? AND idcal_alarm = ? LIMIT 1;',
-            'type' => 'ii',
-            'content' => [$idcomponent, $idalarm],
-        ]);
         $this->db->request([
             'query' => 'DELETE cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
             'type' => 'i',
@@ -1468,6 +1459,48 @@ trait BopCal
             'content' => [$idcomponent, ...$request['content']],
         ]);
     }
+    private function calRemoveFolder(int $iduser, int $cal_folder)
+    {
+        // if user is owner
+        if (!empty($this->db->request([
+            'query' => 'SELECT NULL FROM cal_folder WHERE idcal_folder = ? AND owner = ? LIMIT 1;',
+            'type' => 'ii',
+            'content' => [$cal_folder, $iduser],
+        ]))) {
+            $users = [];
+            foreach ($this->db->request([
+                'query' => 'SELECT iduser FROM user_has_calendar WHERE idcal_folder = ?;',
+                'type' => 'i',
+                'content' => [$cal_folder],
+                'array' => true,
+            ]) as $user) $users[] = $user[0];
+            $users = implode(',', $users);
+            $fds = [];
+            foreach ($this->db->request([
+                'query' => "SELECT fd FROM session WHERE iduser IN ($users);",
+                'array' => true,
+            ]) as $fd) $fds[] = $fd[0];
+            $this->db->request([
+                'query' => 'DELETE FROM cal_folder WHERE idcal_folder = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$cal_folder],
+                'array' => true,
+            ]);
+            return $fds;
+        }
+        return false;
+    }
+    private function calRemoveFromUser(int $iduser, int $cal_folder)
+    {
+        $this->db->request([
+            'query' => 'DELETE FROM user_has_calendar WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'ii',
+            'content' => [$iduser, $cal_folder],
+        ]);
+    }
+    /**
+     * Check if a specific description is unused to remove it.
+     */
     private function calRemoveUnusedDescription(int $iddescription)
     {
         if (empty($this->db->request([
@@ -1481,6 +1514,37 @@ trait BopCal
             'content' => [$iddescription],
         ]);
     }
+    /**
+     * Checks all descriptions for unused ones to remove them.
+     */
+    private function calRemoveUnusedDescriptions()
+    {
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_description FROM cal_description;',
+            'array' => true,
+        ]) as $iddescri) {
+            if (empty($this->db->request([
+                'query' => 'SELECT NULL FROM cal_component WHERE description = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$iddescri],
+            ])) && empty($this->db->request([
+                'query' => 'SELECT NULL FROM cal_folder WHERE decription = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$iddescri],
+            ])) && empty($this->db->request([
+                'query' => 'SELECT NULL FROM cal_alarm WHERE description = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$iddescri],
+            ]))) $this->db->request([
+                'query' => 'DELETE FROM cal_description WHERE idcal_description = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$iddescri],
+            ]);
+        }
+    }
+    /**
+     * Check if a specific location is unused to remove it.
+     */
     private function calRemoveUnusedLocation(int $idlocation)
     {
         if (empty($this->db->request([
@@ -1494,6 +1558,24 @@ trait BopCal
                 'type' => 'i',
                 'content' => [$idlocation],
             ]);
+    }
+    /**
+     * Checks all locations for unused ones to remove them.
+     */
+    private function calRemoveUnusedLocations()
+    {
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_location FROM cal_location;',
+            'array' => true,
+        ]) as $idloc) if (empty($this->db->request([
+            'query' => 'SELECT NULL FROM cal_component WHERE location = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idloc],
+        ]))) $this->db->request([
+            'query' => 'DELETE FROM cal_location WHERE idcal_location = ? LIMIT 1;',
+            'type' => 'i',
+            'content' => [$idloc],
+        ]);
     }
     private function calSetFolderColor(int $iduser, int $cal_folder, string $color)
     {
@@ -1523,6 +1605,14 @@ trait BopCal
                 'content' => [$start, $end, $idsession, $cal_folder],
             ]);
         return;
+    }
+    private function calSetVisibility(int $iduser, int $cal_folder, int $visible)
+    {
+        return $this->db->request([
+            'query' => 'UPDATE user_has_calendar SET visible = ? WHERE iduser = ? AND idcal_folder = ? LIMIT 1;',
+            'type' => 'iii',
+            'content' => [$visible, $iduser, $cal_folder],
+        ]);
     }
 
 

@@ -2,6 +2,7 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
+    z-index: 2;
     & .modal {
         position: absolute;
         inset: 3rem auto auto 2rem;

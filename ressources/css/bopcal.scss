@@ -46,6 +46,7 @@
                 & > li {
                     display: flex;
                     flex-direction: row;
+                    align-items: center;
                     background-color: var(--bg-chat);
                     opacity: 1;
                     /* pointer-events: none;
@@ -206,6 +207,12 @@
                 /* month */
                 & > div > div {
                     height: 100%;
+                    /* event */
+                    & > div > div > div {
+                        position: absolute;
+                        overflow: scroll;
+                        border-radius: 5px;
+                    }
                 }
             }
             &.year {
@@ -225,6 +232,7 @@
                         height: calc(100vh - 5rem);
                         &::after {
                             padding: 1rem;
+                            pointer-events: none;
                             transform: rotate(0deg);
                             writing-mode: unset;
                             z-index: 1;
@@ -239,10 +247,17 @@
                             }
                             /* day */
                             & > div {
+                                flex-direction: column;
+                                justify-content: space-around;
                                 flex: 1;
                                 height: 100%;
                                 aspect-ratio: auto;
                                 border: inset var(--text-placeholder) 1px;
+                                /* event */
+                                & > div {
+                                    position: static;
+                                    width: 5rem;
+                                }
                             }
                         }
                     }

@@ -377,7 +377,7 @@ class WSConnection {
                           BopChat.chats[0].updateUsers(data.chat);
                 } else if (data.f === 20) {
                     ClassMain.el.parseTab(data.i, data.response);
-                } else if ([21, 25, 27].includes(data.f)) {
+                } else if ([21, 25, 27, 29].includes(data.f)) {
                     // receive bopcal data
                     BopCal.parse(data);
                 } else if (data.f === 2501) {

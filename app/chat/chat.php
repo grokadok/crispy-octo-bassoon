@@ -159,6 +159,7 @@ trait BopChat
             "type" => $paramType,
             "content" => $paramContent,
         ]);
+        var_dump($res);
         return $res ?? false;
     }
     private function getLastMessage(int $chat)
