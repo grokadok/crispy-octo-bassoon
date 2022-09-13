@@ -297,6 +297,9 @@ input {
     & input {
         width: 100%;
         box-sizing: border-box;
+        &[data-intl-tel-input-id] {
+            box-sizing: unset;
+        }
         &.password {
             padding-right: 2.1rem;
             & ~ svg {

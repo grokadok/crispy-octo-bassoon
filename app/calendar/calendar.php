@@ -113,10 +113,14 @@ trait BopCal
     }
     private function calAddEvent(int $iduser, int $cal_folder, array $event)
     {
-        if (!$this->calCheckUserWriteAccess($iduser, $cal_folder)) return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
+        print("bla bla pouet" . PHP_EOL);
+        $test = $this->calCheckUserWriteAccess($iduser, $cal_folder);
+        var_dump($test);
+        if ($this->calCheckUserWriteAccess($iduser, $cal_folder) === false) return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
+        print("bla bla POUET" . PHP_EOL);
 
         $uid = $event['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
-
+        var_dump($uid);
         $request = [
             'into' => '',
             'values' => '',
@@ -209,7 +213,6 @@ trait BopCal
             'query' => 'INSERT INTO cal_component (uid, created, summary, organizer, start, end' . $request['into'] . ') VALUES (UUID_TO_BIN(?,1), ?, ?, ?, ?, ?' . $request['values'] . ');',
             'type' => 'sssiss' . $request['type'],
             'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], ...$request['content']],
-            'array' => true,
         ]);
         $idcomponent = $this->db->request([
             'query' => 'SELECT MAX(idcal_component) FROM cal_component WHERE uid = (SELECT UUID_TO_BIN(?,1)) AND created = ? LIMIT 1;',
@@ -498,31 +501,65 @@ trait BopCal
         ]) as $exception) $exceptions[] = $exception[0];
         return $exceptions;
     }
-    private function calGetEventInRange(int $cal_folder, string $start, string $end)
+    private function calGetEventsInRange(int $iduser, string $start, string $end)
     {
-        // get all uids from folder
-        $uids = [];
-        $res = $this->calGetFilesFromFolder($cal_folder);
-        foreach ($res as $val) $uids[] = $val['uid'];
-        $uids = implode(',', $uids);
-        $events = $this->db->request([
-            'query' => "SELECT BIN_TO_UUID(uid,1) as uid,idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN $uids AND start < ? AND end > ?;",
-            'type' => 'ss',
-            'content' => [$end, $start],
-        ]);
-        // if rrule, get rrule
-        foreach ($events as $key => $value) {
-            if ($value['rrule']) $events[$key]['rrule'] = $this->calGetEventRRule($value['idcal_component']);
-            // if rdate, get rdate
-            if ($value['rdate']) $events[$key]['rdates'] = $this->calGetEventRDate($value['idcal_component']);
-            // if exceptions, get'em
-            if ($value['rrule'] || $value['rdate'])
-                $events[$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);
-            // alarms
-            // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
-            $events[$key]['alarms'] = $this->calGetEventAlarms($value['idcal_component']);
+        // response = idcal_folder[idcal_component[]]
+        $response = [];
+        // foreach cal_folder, get events
+        foreach ($this->db->request([
+            'query' => 'SELECT idcal_folder FROM user_has_calendar WHERE iduser = ?;',
+            'type' => 'i',
+            'content' => [$iduser],
+            'array' => true,
+        ]) as $idcal) {
+            $response[$idcal[0]] = $this->db->request([
+                'query' => "SELECT BIN_TO_UUID(uid,1) as uid,idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN (SELECT uid FROM cal_file WHERE idcal_folder = ?) AND start < ? AND end > ?;",
+                'type' => 'iss',
+                'content' => [$idcal[0], $end, $start],
+            ]);
+            // if rrule, get rrule
+            foreach ($response[$idcal[0]] as $key => $value) {
+                if ($value['rrule']) $response[$idcal[0]][$key]['rrule'] = $this->calGetEventRRule($value['idcal_component']);
+                // if rdate, get rdate
+                if ($value['rdate']) $response[$idcal[0]][$key]['rdates'] = $this->calGetEventRDate($value['idcal_component']);
+                // if exceptions, get'em
+                if ($value['rrule'] || $value['rdate'])
+                    $response[$idcal[0]][$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);
+                // alarms
+                // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
+                $response[$idcal[0]][$key]['alarms'] = $this->calGetEventAlarms($value['idcal_component']);
+            }
         }
-        return $events;
+
+
+        // // get all idcal_folder for user
+        // $cal_folders = [];
+        // foreach ($this->db->request([
+        //     'query' => 'SELECT idcal_folder FROM user_has_calendar WHERE iduser = ?;',
+        //     'type' => 'i',
+        //     'content' => [$iduser],
+        //     'array' => true,
+        // ]) as $cal) $cal_folders[] = $cal[0];
+        // $cal_folders = implode(',', $cal_folders);
+        // // foreach ($res as $val) $uids[] = $val['uid'];
+        // $events = $this->db->request([
+        //     'query' => "SELECT BIN_TO_UUID(uid,1) as uid,idcal_component,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE uid IN (SELECT uid FROM cal_file WHERE idcal_folder IN ($cal_folders)) AND start < ? AND end > ?;",
+        //     'type' => 'ss',
+        //     'content' => [$end, $start],
+        // ]);
+        // // if rrule, get rrule
+        // foreach ($events as $key => $value) {
+        //     if ($value['rrule']) $events[$key]['rrule'] = $this->calGetEventRRule($value['idcal_component']);
+        //     // if rdate, get rdate
+        //     if ($value['rdate']) $events[$key]['rdates'] = $this->calGetEventRDate($value['idcal_component']);
+        //     // if exceptions, get'em
+        //     if ($value['rrule'] || $value['rdate'])
+        //         $events[$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);
+        //     // alarms
+        //     // !!! GET ALARMS WHERE ACTION NOT EMAIL NOR SOUND FOR APP, ONLY DISPLAY
+        //     $events[$key]['alarms'] = $this->calGetEventAlarms($value['idcal_component']);
+        // }
+        return $response;
     }
     private function calGetEventRDate(int $idcomponent)
     {

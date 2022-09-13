@@ -63,13 +63,27 @@ class BopCal {
         this.bigcal.cal.addEventListener("dblclick", (e) => {
             // if day, create event on day, at time if view = week or day, else allday if month
             if (e.target.getAttribute("data-date")) {
-                this.active
-                    ? this.newEvent(this.getDayElementDate(e))
-                    : msg.new({
-                          type: "warning",
-                          content:
-                              "Aucun calendrier sélectionné pour la création d'un nouvel événement.",
-                      });
+                if (this.active) {
+                    if (this.calendars[this.active].visible)
+                        this.newEvent(this.getDayElementDate(e));
+                    else
+                        msg.new({
+                            type: "theme",
+                            content:
+                                "Le calendrier actif est caché, le révéler pour pouvoir créer un événement ?",
+                            btn1listener: () => {
+                                this.toggleCalVisibility(this.active);
+                                msg.close();
+                            },
+                            btn1style: "success",
+                            btn1text: "révéler",
+                        });
+                } else
+                    msg.new({
+                        type: "warning",
+                        content:
+                            "Aucun calendrier sélectionné pour la création d'un nouvel événement.",
+                    });
             }
         });
 
@@ -97,7 +111,7 @@ class BopCal {
     }
     addCalendar(calendar) {
         // add calendar to this.calendars
-        this.calendars[`${calendar.id}`] = {
+        this.calendars[calendar.id] = {
             name: calendar.name,
             description: calendar.description,
             color: calendar.color ?? undefined,
@@ -106,7 +120,7 @@ class BopCal {
             components: {},
             visible: calendar.visible,
         };
-        this.minicalAddCalendar(calendar.id);
+        this.minicalAddCalendar(`${calendar.id}`);
     }
     /**
      * Adds event to calendar from object data.
@@ -117,8 +131,8 @@ class BopCal {
         console.log(event);
         this.calendars[idcal].components[event.uid] = {
             id: event.idcal_component,
-            start: new Date(`${event.start}Z`),
-            end: new Date(`${event.end}Z`),
+            start: new Date(`${event.start.replace(" ", "T")}Z`),
+            end: new Date(`${event.end.replace(" ", "T")}Z`),
             allday: event.allday,
             elements: {},
             summary: event.summary,
@@ -138,7 +152,7 @@ class BopCal {
             exceptions: event.exceptions,
             alarms: event.alarms,
         };
-        this.placeEvent(idcal, this.calendars[idcal].components[event.uid]);
+        this.placeComponent(idcal, this.calendars[idcal].components[event.uid]);
     }
     /**
      * Add month to calendars.
@@ -150,8 +164,14 @@ class BopCal {
         // => this, but with the option to hide duplicate weeks to show a compact view.
         const year = date.getFullYear(),
             month = date.getMonth(),
-            now = new Date();
-
+            now = new Date(),
+            start = toMYSQLDTString(new Date(year, month)),
+            end = toMYSQLDTString(new Date(year, month + 1));
+        socket.send({
+            f: 22,
+            s: start,
+            e: end,
+        });
         for (let cal of [this.minical, this.bigcal]) {
             // if year not in calendar, create it with its months.
             if (!cal.years[year]) {
@@ -353,7 +373,7 @@ class BopCal {
         delete this.calendars[idcal];
         // set active on next calendar, else undefined
         this.active =
-            this.active === idcal && this.calendars.lenght
+            this.active === idcal && this.calendars.length
                 ? Object.keys(this.calendars)[0]
                 : undefined;
     }
@@ -392,17 +412,104 @@ class BopCal {
     calUpdateColor(idcal, color) {
         // update events color in app.
         this.calendars[idcal].color = color;
-        for (const component of Object.values(
-            this.calendars[idcal].components
-        )) {
-            for (const element of Object.values(component.elements))
-                element.style.backgroundColor = color;
-        }
+        if (this.calendars[idcal].components)
+            for (const component of Object.values(
+                this.calendars[idcal].components
+            )) {
+                for (const element of Object.values(component.elements))
+                    element.style.backgroundColor = color;
+            }
         // update calendar color in db
         socket.send({
             f: 28,
             c: idcal,
             x: color,
+        });
+    }
+    componentEditor(component) {
+        new Modal({
+            buttons: [
+                {},
+                { text: "valider", requireValid: true },
+                {
+                    text: "supprimer",
+                    style: "warning",
+                    listener: () => {
+                        // prendre en compte la récurrence et la suppression de l'occurence ou de tous le cal_file.
+                        msg.new({
+                            content:
+                                "Confirmez vous la suppression de cet événement ?",
+                            style: "danger",
+                            btn1text: "supprimer",
+                            btn1listener: () => {},
+                        });
+                    },
+                },
+            ],
+            fields: [
+                // title
+                {
+                    compact: true,
+                    name: "Titre",
+                    placeholder: "Titre",
+                    required: true,
+                    type: "input_string",
+                    value: component.summary,
+                },
+                // date
+                {
+                    // new field: event date
+                    // one line summary (js generated from Intl.DateTimeFormat.prototype.formatRange() ?)
+                    // on click, expands to 5 fields :
+                    // - allday
+                    // - start
+                    // - end
+                    // - repeat (which expands to select: none, every day, every week, every month, every year, custom...)
+                    // - busy/free
+                    compact: true,
+                    type: "event_date",
+                    name: "date",
+                    required: true,
+                    value: {
+                        start: component.start,
+                        end: component.end,
+                        rrule: component.rrule,
+                        rdates: component.rdates,
+                        exceptions: component.exceptions,
+                    },
+                },
+                // alarms
+                // attendees
+                {
+                    // need more complex ui to set attendee role and other stuff
+                    add: (el) => {
+                        const modal = Modal.find(el),
+                            field = modal.fields.indexOf(Field.find(el));
+                        loadNewContact({
+                            childOf: modal,
+                            name: el.value,
+                            parentId: field,
+                        });
+                    },
+                    compact: true,
+                    multi: true,
+                    placeholder: "Invités",
+                    type: "selectize",
+                    task: 0,
+                    name: "attendees",
+                },
+                // notes (description)
+                {
+                    compact: true,
+                    type: "quill", // add quill simple without editing tools, but same style.
+                    name: "notes",
+                    value: component.description,
+                },
+            ],
+            // btn1listener: () => {
+            //     // send updated component to server. <- may not be needed.
+            // },
+            title: component.summary,
         });
     }
     destroy() {
@@ -563,24 +670,31 @@ class BopCal {
         });
     }
     minicalAddCalendar(idcal) {
-        const calendar = this.calendars[idcal];
-        let wrapper = document.createElement("li"),
-            check = document.createElement("input"),
+        let calendar = this.calendars[idcal],
+            wrapper = document.createElement("li"),
+            check = new Field({
+                type: "checkbox",
+                name: "visible",
+                compact: true,
+            }),
             name = document.createElement("span"),
             colorSelect = document.createElement("input"),
             removeButton = document.createElement("button");
         name.textContent = calendar.name;
         name.addEventListener("click", () => {
-            this.setDefaultCal(idcal);
+            this.setActiveCal(idcal);
         });
-        check.setAttribute("type", "checkbox");
-        check.checked = calendar.visible;
+
+        // check.type = "checkbox";
+        check.input[0].checked = calendar.visible;
         // if checked, show events, else hide them
-        check.addEventListener("change", (e) =>
-            this.toggleCalComponents(idcal, e.target.checked)
-        );
-        colorSelect.setAttribute("type", "color");
-        colorSelect.value = calendar.color ? calendar.color : "#759ece";
+        check.input[0].addEventListener("change", (e) => {
+            this.toggleCalVisibility(idcal, e.target.checked);
+            e.target.blur();
+        });
+        colorSelect.type = "color";
+        if (!calendar.color) calendar.color = "#759ece";
+        colorSelect.value = calendar.color;
         colorSelect.addEventListener("input", (e) => {
             const color = e.target.value;
             if (this.calendars[idcal].color !== color) {
@@ -596,18 +710,20 @@ class BopCal {
             this.calUnsubscribe(idcal);
             // else remove
         });
-        wrapper.append(check, name, colorSelect, removeButton);
+        wrapper.append(check.wrapper, name, colorSelect, removeButton);
         this.calendars[idcal].li = wrapper;
         this.minical.selector.append(wrapper);
-        if (!this.active) this.setDefaultCal(idcal);
+        if (!this.active) this.setActiveCal(idcal);
     }
     /**
-     *
-     * @param {Date} month
+     * Focus actual date in minical.
+     * @param {Date} date
      */
     minicalFocus(date) {
         const month =
-                this.minical.years[date.getFullYear()].months[date.getMonth()],
+                this.minical.years[date.getFullYear()].months[
+                    date.getMonth() - 1
+                ],
             x = month.offsetLeft,
             y = month.offsetTop;
         this.minical.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
@@ -644,13 +760,14 @@ class BopCal {
      * @param {Date} date
      */
     newEvent(date) {
-        const start = toMYSQLDTString(date);
-        date.setHours(date.getHours() + 1);
-        const end = toMYSQLDTString(date);
+        let eventDate = dateGetClosestQuarter(date);
+        const start = toMYSQLDTString(eventDate);
+        eventDate.setHours(eventDate.getHours() + 1);
+        const end = toMYSQLDTString(eventDate);
         // send server new event data: start,end
         socket.send({
             f: 25,
-            c: this.active,
+            c: parseInt(this.active),
             e: {
                 start: start,
                 end: end,
@@ -662,7 +779,6 @@ class BopCal {
     static parse(data) {
         const cal = BopCal.bopcals[0];
         if (data.response?.fail) {
-            // replace alert with auto check on input and valid button disable if name unavailable.
             console.error(data.response.fail);
             return msg.new({
                 content: data.response.message,
@@ -701,8 +817,16 @@ class BopCal {
                 //     },
                 // ];
                 if (data.response)
-                    for (const [key, value] of Object.entries(data.response))
-                        cal.addComponent(key, value);
+                    // date.response = {
+                    //     idcal: [
+                    //         {},
+                    //     ]
+                    // }
+                    for (const [calendar, events] of Object.entries(
+                        data.response
+                    ))
+                        for (const event of events)
+                            cal.addComponent(calendar, event);
                 break;
             case 25:
                 // new event
@@ -736,20 +860,9 @@ class BopCal {
      * @param {Number} idcal
      * @param {Object} event - event object stored in bigcal.
      */
-    placeEvent(idcal, event) {
-        // event = {
-        //     uid: {
-        //         start: Date,
-        //         end: Date,
-        //         allday: Boolean,
-        //         elements: {
-        //             date: HTMLElement,
-        //         },
-        //     },
-        // };
-
+    placeComponent(idcal, component) {
         // for each day, set start/end according to event start/end
-        for (const day of getDaysBetweenDates(event.start, event.end)) {
+        for (const day of getDaysBetweenDates(component.start, component.end)) {
             const nextDay = new Date(
                     day.getFullYear(),
                     day.getMonth(),
@@ -759,33 +872,33 @@ class BopCal {
             let classes = [],
                 top,
                 height,
-                el = event.elements[dateString] ?? undefined;
+                el = component.elements[dateString] ?? undefined;
             const dayWrapper = el
                 ? el.parentNode.parentNode
                 : this.bigcal.years[day.getFullYear()].months[
                       day.getMonth()
                   ].querySelector(`[data-date="${day.getDate()}"]:not(.fade)`);
-            if (event.allday) {
-                if (event.start.valueOf() >= day.valueOf())
+            if (component.allday) {
+                if (component.start.valueOf() >= day.valueOf())
                     classes.push("start");
-                if (event.end.valueOf() < nextDay.valueOf())
+                if (component.end.valueOf() < nextDay.valueOf())
                     classes.push("end");
             } else {
                 top =
-                    event.start.valueOf() < day.valueOf()
+                    component.start.valueOf() < day.valueOf()
                         ? "0px"
-                        : this.calcEventTop(event.start);
+                        : this.calcEventTop(component.start);
                 height =
-                    event.end.valueOf() < nextDay
-                        ? this.calcEventHeight(event.start, event.end)
-                        : this.calcEventHeight(event.start, nextDay);
+                    component.end.valueOf() < nextDay
+                        ? this.calcEventHeight(component.start, component.end)
+                        : this.calcEventHeight(component.start, nextDay);
             }
             // if el of event exists
             if (el) {
                 // if parent = allday
                 if (el.parentNode === dayWrapper.firstElementChild) {
                     // if !event.allday, move element to dayWrapper, set top / height
-                    if (!event.allday) {
+                    if (!component.allday) {
                         dayWrapper.lastElementChild.append(el);
                         el.className = "";
                         el.style.top = top;
@@ -797,7 +910,7 @@ class BopCal {
                 // if parent = dayWrapper
                 else {
                     // if event.allday, move element to allday, set start/end classes
-                    if (event.allday) {
+                    if (component.allday) {
                         dayWrapper.firstElementChild.append(el);
                         el.className = classes.join(" ");
                     }
@@ -811,28 +924,59 @@ class BopCal {
             // else create it
             else {
                 el = document.createElement("div");
-                let summary = document.createElement("span"),
-                    hour = document.createElement("span");
-                summary.textContent = event.summary ?? "New event";
-                hour.textContent = new Date(event.start).toTimeString();
+                let hour = document.createElement("span"),
+                    summary = document.createElement("span"),
+                    handleStart = document.createElement("div"),
+                    handleEnd = document.createElement("div");
+                hour.textContent = new Intl.DateTimeFormat("fr", {
+                    timeStyle: "short",
+                }).format(component.start);
+                summary.textContent = component.summary ?? "New event";
                 el.style.backgroundColor =
                     this.calendars[idcal].color ?? "turquoise";
-                el.append(summary, hour);
-                event.elements[dateString] = el;
-                if (event.allday) {
+                el.append(handleStart, hour, summary, handleEnd);
+                component.elements[dateString] = el;
+                if (component.allday) {
                     dayWrapper.firstElementChild.append(el);
                     el.className = classes;
                 } else {
                     dayWrapper.append(el);
-                    // dayWrapper.lastElementChild.append(el);
                     el.style.top = top;
                     el.style.height = height;
                 }
+                handleStart.addEventListener("mousedown", (e) => {
+                    // on mouse drag
+                    // if cursor date < end date
+                    // set start date to cursor date
+                    // apply to db
+                    // apply to object
+                    // apply to element
+                });
+                handleEnd.addEventListener("mousedown", (e) => {
+                    // on mouse drag
+                    // if cursor date > start date
+                    // set end date to cursor date
+                    // apply to db
+                    // apply to object
+                    // apply to element
+                });
+                el.addEventListener("mousedown", (e) => {
+                    // fade element
+                    // clone element, append to date above original element
+                    // on pointer move, append clone to date under pointer, at closest time
+                    // on mouseup, remove clone, move original to pointer.target date pointerY time.
+                    // set new eventlistener if necessary
+                });
+                el.addEventListener("dblclick", (e) => {
+                    // open event editor
+                    this.componentEditor(component);
+                });
             }
         }
     }
-    setDefaultCal(idcal) {
+    setActiveCal(idcal) {
         if (this.active === idcal) return;
+        console.log(`Active cal set to cal#${idcal}`);
         this.active = idcal;
         for (const [key, value] of Object.entries(this.calendars)) {
             key === idcal
@@ -845,16 +989,18 @@ class BopCal {
      * @param {Number} idcal
      * @param {Boolean} show
      */
-    toggleCalComponents(idcal, visible = true) {
+    toggleCalVisibility(idcal, visible = true) {
         this.calendars[idcal].visible = visible;
+        this.calendars[idcal].li.querySelector('[type="checkbox"]').checked =
+            visible;
         if (this.calendars[idcal].components)
             for (const component of Object.values(
                 this.calendars[idcal].components
             ))
                 for (const element of Object.values(component.elements))
                     visible
-                        ? element.classList.remove(hide)
-                        : element.classList.add(hide);
+                        ? element.classList.remove("hide")
+                        : element.classList.add("hide");
         // set visible = show to user_has_calendar;
         socket.send({ f: 31, c: idcal, v: visible ? 1 : 0 });
     }

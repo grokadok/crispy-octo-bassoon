@@ -6,16 +6,11 @@ class Modal {
     /**
      * Open a new modal.
      * @param {Object} options - Options to apply to the new modal.
-     * @param {Function} [options.btn0listener] - The function to run on activation of btn0.
-     * @param {String} [options.btn0style = "danger"] - The style of btn0. Accepted values: danger, info, success, warning.
-     * @param {String} [options.btn0text = "annuler"] - Text content of btn0.
-     * @param {Function} [options.btn1listener] - The function to run on activation of btn1.
-     * @param {String} [options.btn1style] - The style of btn1. Accepted values: danger, info, success, warning.
-     * @param {String} [options.btn1text] - Text content of btn1. If set, shows btn1, else it's hidden.
-     * @param {Function} [options.btn2listener] - The function to run on activation of btn2. If set, enables btn2, else disabled.
-     * @param {Boolean} [options.btn2ParentOnly] - btn2 appears only on the first parent.
-     * @param {String} [options.btn2text] - Text content of btn2. If set, shows btn2, else it's hidden.
-     * @param {String} [options.btn2style] - The style of btn2. Accepted values: danger, info, success, warning.
+     * @param {Object[]} [options.buttons] - Set buttons and their properties, if undefined, only cancel button.
+     * @param {String} [options.buttons[].text] - Button text content.
+     * @param {String} [options.buttons[].style] - Button style: info, success, warning, danger.
+     * @param {Function} [options.buttons[].listener] - Button on click listener function.
+     * @param {Boolean} [options.buttons.requireValid] - Button disabled if checkRequiredFields() returns false.
      * @param {Object} [options.childOf] - The parent modal if there's one.
      * @param {Object} options.fields - The fields of the modal.
      * @param {Function} [options.fields.add] - The function to add a new value to a selectize, whether to open a new modal or simply add the value.
@@ -59,49 +54,51 @@ class Modal {
                 this.fields.push(fieldObject);
             }
 
-            // footer buttons
-            let btn0 = document.createElement("button"),
-                btn1 = options.btn1text
-                    ? document.createElement("button")
-                    : false,
-                btn2 = options.btn2text
-                    ? document.createElement("button")
-                    : false;
-            btn0.classList.add(options.btn0style ?? "danger");
-            btn0.textContent = options.btn0text ?? "annuler";
-            btn0.addEventListener("click", (e) => {
-                if (options.btn0listener) options.btn0listener(e);
-                else
-                    msg.new({
-                        content: `Êtes-vous sûr de vouloir annuler ? Toutes les informations rentrées seront perdues.`,
-                        type: "warning",
-                        btn1text: "continuer",
-                        btn1style: "success",
-                        btn1listener: function () {
-                            const modal = Modal.find(btn0);
-                            modal.close();
-                            msg.close();
-                        },
-                    });
-            });
-            this.footer.appendChild(btn0);
-            if (btn1) {
-                let field = this;
-                btn1.textContent = options.btn1text;
-                btn1.addEventListener(
-                    "click",
-                    options.btn1listener ?? (() => field.modalOk())
-                );
-                btn1.classList.add(options.btn1style ?? "success");
-                this.footer.appendChild(btn1);
+            // first button cancel base
+            this.buttons = [
+                {
+                    text: "annuler",
+                    listener: () => {
+                        msg.new({
+                            content: `Êtes-vous sûr de vouloir annuler ? Toutes les informations rentrées seront perdues.`,
+                            type: "warning",
+                            btn1text: "continuer",
+                            btn1style: "success",
+                            btn1listener: () => {
+                                this.close();
+                                msg.close();
+                            },
+                        });
+                    },
+                    style: "danger",
+                },
+            ];
+            // store buttons data into object
+            if (options.buttons) {
+                console.log(options.buttons);
+                for (const [key, value] of options.buttons.entries()) {
+                    if (!this.buttons[key]) this.buttons[key] = {};
+                    if (!objIsEmpty(value)) {
+                        if (value.text) this.buttons[key].text = value.text;
+                        if (value.listener)
+                            this.buttons[key].listener = value.listener;
+                        if (value.style) this.buttons[key].style = value.style;
+                        if (value.requireValid)
+                            this.buttons[key].requireValid = value.requireValid;
+                    }
+                }
             }
-            if (btn2) {
-                btn2.textContent = options.btn2text;
-                btn2.addEventListener("click", options.btn2listener);
-                btn2.classList.add(options.btn2style ?? "success");
-                this.footer.appendChild(btn2);
+            // for each stored button, generate element
+            for (const [key, value] of this.buttons.entries()) {
+                let button = document.createElement("button");
+                button.textContent = value.text;
+                button.addEventListener("click", () => {
+                    value.listener ? value.listener() : this.modalOk();
+                });
+                button.classList.add(value.style ?? "success");
+                this.buttons[key].node = button;
+                this.footer.append(button);
             }
-            this.btns = this.footer.getElementsByTagName("button");
             this.header.appendChild(this.title);
             this.wrapper.append(this.header, this.content, this.footer);
 
@@ -133,14 +130,16 @@ class Modal {
      * Checks validity of required element's fields.
      */
     checkRequiredFields() {
-        for (const field of this.fields) {
+        for (const field of this.fields)
             if (field.required && !field.isValid) {
-                for (const btn of this.btns)
-                    if (btn !== this.btns[0]) disable(btn);
+                disable(
+                    this.buttons
+                        .filter((x) => x.requireValid)
+                        .map((x) => x.node)
+                );
                 return false;
             }
-        }
-        for (const btn of this.btns) if (btn !== this.btns[0]) enable(btn);
+        enable(this.buttons.filter((x) => x.requireValid).map((x) => x.node));
         return true;
     }
     /**
@@ -273,6 +272,13 @@ class Modal {
             data.child === -1
                 ? Modal.modals[data.parent]
                 : Modal.modals[data.parent].children[data.child];
+        if (data.response.fail) {
+            console.error(data.response.error);
+            return msg.new({
+                type: "danger",
+                content: data.response.message ?? "Une erreur est survenue.",
+            });
+        }
         switch (data.f) {
             case 8: // send email
                 msg.new({
@@ -383,8 +389,9 @@ function loadNewCompany(options) {
         name = options.name ?? "";
     }
     const params = {
-        btn1text: "créer",
-        btn1style: "success",
+        // btn1text: "créer",
+        // btn1style: "success",
+        buttons: [{}, { text: "créer", requireValid: true }],
         fields: [
             {
                 compact: true,
@@ -469,20 +476,7 @@ function loadNewContact(options) {
         }
     }
     const params = {
-        btn1text: "créer",
-        btn1style: "success",
-        btn2modalOnly: true,
-        btn2text: "créer & ticket",
-        btn2style: "info",
-        btn2listener: function () {
-            console.log(
-                "create contact, then change modal to new ticket with created contact as client"
-            );
-            unblurElements([modalContainer, navbar, topbar, main]);
-            fadeOut(modalContainer);
-            resetModal(modal);
-        },
-
+        buttons: [{}, { text: "créer", requireValid: true }],
         fields: [
             {
                 compact: true,
@@ -562,7 +556,6 @@ function loadNewContact(options) {
                 type: "selectize",
             },
         ],
-
         // newmodal: newModalEl,
         childOf: childOf,
         parentId: parentId,
@@ -581,18 +574,24 @@ function loadNewEmail(contacts) {
         }
     }
     const params = {
-        btn1text: "Envoyer",
-        btn1style: "success",
-        btn2modalOnly: false,
-        btn2text: "Envoi décalé",
-        btn2style: "info",
-        btn2listener: function () {
-            console.log("show date/hour picker and program mail sending");
-            msg.new({
-                content: "Under construction",
-                type: "warning",
-            });
-        },
+        buttons: [
+            {},
+            { text: "envoyer", requireValid: true },
+            {
+                text: "envoi décalé",
+                style: "info",
+                requireValid: true,
+                listener: () => {
+                    console.log(
+                        "show date/hour picker and program mail sending"
+                    );
+                    msg.new({
+                        content: "Under construction",
+                        type: "warning",
+                    });
+                },
+            },
+        ],
 
         fields: [
             {
@@ -674,18 +673,36 @@ function loadNewEmail(contacts) {
 function loadNewTicket(contact) {
     const client = contact ?? undefined,
         params = {
-            btn1text: "créer",
-            btn1style: "success",
-            btn2modalOnly: true,
-            btn2text: "créer & ouvrir",
-            btn2style: "info",
-            btn2listener: function () {
-                console.log("create ticket, then close modal and open ticket");
-                unblurElements([modalContainer, navbar, topbar, main]);
-                fadeOut(modalContainer);
-                resetModal(modal);
-                // open ticket
-            },
+            buttons: [
+                {},
+                { text: "créer", requireValid: true },
+                {
+                    text: "créer & ouvrir",
+                    style: "info",
+                    requireValid: true,
+                    listener: () => {
+                        console.log(
+                            "create ticket, then close modal and open ticket"
+                        );
+                        unblurElements([modalContainer, navbar, topbar, main]);
+                        fadeOut(modalContainer);
+                        resetModal(modal);
+                        // open ticket
+                    },
+                },
+            ],
+            // btn1text: "créer",
+            // btn1style: "success",
+            // btn2modalOnly: true,
+            // btn2text: "créer & ouvrir",
+            // btn2style: "info",
+            // btn2listener: function () {
+            //     console.log("create ticket, then close modal and open ticket");
+            //     unblurElements([modalContainer, navbar, topbar, main]);
+            //     fadeOut(modalContainer);
+            //     resetModal(modal);
+            //     // open ticket
+            // },
             fields: [
                 {
                     add: (el) => {
@@ -709,15 +726,14 @@ function loadNewTicket(contact) {
                 {
                     compact: true,
                     name: "Sujet",
-                    placeholder: "Problème de solanum tuberosum.",
+                    placeholder: "Sujet...",
                     required: true,
                     type: "input_string",
                 },
                 {
                     compact: true,
                     name: "Description",
-                    placeholder:
-                        "C'est tout ce que ça te fait quand j'te dis qu'on va manger des chips ?",
+                    placeholder: "Description...",
                     type: "quill",
                 },
                 {
@@ -743,7 +759,7 @@ function loadNewTicket(contact) {
                     compact: true,
                     multi: false,
                     name: "Attribué à",
-                    placeholder: "Cuisine",
+                    placeholder: "Attribué à...",
                     required: true,
                     task: 4,
                     type: "selectize",
@@ -753,7 +769,7 @@ function loadNewTicket(contact) {
                     compact: true,
                     multi: true,
                     name: "Tags",
-                    placeholder: "Serpentard, moldu...",
+                    placeholder: "Étiquettes",
                     task: 1,
                     type: "selectize",
                 },

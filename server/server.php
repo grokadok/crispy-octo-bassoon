@@ -2168,19 +2168,10 @@ class FWServer
 
             if ($f === 22 && isset($task['s']) && isset($task['e'])) {
                 // with e & s as strings like '2022-08-29'
-
-                // set range for each user's calendar to user/session
-
-                // get calendars' events in range
-
-
                 // client side, send data only on update, to avoid useless db updates.
-                foreach ($task['u'] as $cal)
-                    $this->calSetSession($task['session'], $cal['cal'], $cal['start'], $cal['end']);
-                $response = [];
-                foreach ($task['c'] as $cal_folder)
-                    $response[$cal_folder] = $this->calGetEventInRange($cal_folder, $task['s'], $task['e']);
-                return $response;
+                // foreach ($task['u'] as $cal)
+                //     $this->calSetSession($task['session'], $cal['cal'], $cal['start'], $cal['end']);
+                return $this->calGetEventsInRange($iduser, $task['s'], $task['e']);
             }
 
             /////////////////////////////////////////////////////
@@ -2207,6 +2198,7 @@ class FWServer
                 // if in range, send light event
                 // send notification anyway
                 // var_dump($newEvent['event']);
+                var_dump($newEvent);
                 foreach ($newEvent['users'] as $user) $this->serv->push($user['fd'], json_encode(['f' => 25, 'c' => $task['c'], 'event' => $newEvent['event']]));
                 // !!! to complete
                 return;

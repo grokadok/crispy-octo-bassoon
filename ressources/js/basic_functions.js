@@ -117,18 +117,24 @@ function convertIntToHour(int) {
     }
 }
 /**
+ * Returns date with time rounded to closest quarter.
+ * @param {Date} date
+ * @returns
+ */
+function dateGetClosestQuarter(date) {
+    const minutes = date.getMinutes(),
+        hours = date.getHours(),
+        m = ((((minutes + 7.5) / 15) | 0) * 15) % 60,
+        h = (((minutes / 105 + 0.5) | 0) + hours) % 24;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m);
+}
+/**
  * Sets disabled=true to element(s).
  * @param {HTMLElement|HTMLElement[]} el - Element or array of elements to be disabled.
  */
 function disable(el) {
     const action = (el) => (el.disabled = true);
-    if (Array.isArray(el)) {
-        for (let e of el) {
-            action(e);
-        }
-    } else {
-        action(el);
-    }
+    Array.isArray(el) ? el.forEach((x) => action(x)) : action(el);
 }
 /**
  * Simple timer to enable elements after a short time (e.g. to avoid mistype)
@@ -179,13 +185,7 @@ function emptyModal(el) {
  */
 function enable(el) {
     const action = (el) => (el.disabled = false);
-    if (Array.isArray(el)) {
-        for (let e of el) {
-            action(e);
-        }
-    } else {
-        action(el);
-    }
+    Array.isArray(el) ? el.forEach((x) => action(x)) : action(el);
 }
 /**
  * Removes class "fadeout" & "hidden"
@@ -520,6 +520,11 @@ function objectToIcal(cal) {
     };
     for (const [key, value] of Object.entries(cal)) action(key, value);
     return ical;
+}
+function objIsEmpty(obj) {
+    let state = true;
+    for (const prop in obj) return (state = false);
+    return state;
 }
 /**
  * Refresh data from tabulators from element.

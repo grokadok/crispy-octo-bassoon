@@ -24,7 +24,7 @@ class Field {
         this.isValid = false;
         this.timer;
         this.add = params.add ?? undefined;
-        this.modal = params.modal ?? false;
+        // this.modal = params.modal ?? false; <- nope ?
         this.multi = params.multi;
         this.name = params.name;
         this.task = params.task ?? undefined;
@@ -108,6 +108,89 @@ class Field {
                 this.wrapper.append(fieldElement);
                 break;
             }
+            case "checkbox": {
+                let fieldElement = document.createElement("input");
+                fieldElement.type = "checkbox";
+                fieldElement.checked = this.value;
+                this.input.push(fieldElement);
+                this.wrapper.append(fieldElement);
+                fieldElement.addEventListener("click", (e) => e.target.blur());
+                break;
+            }
+            case "datepicker": {
+                let fieldElement = document.createElement("input");
+                fieldElement.type = "datetime-local";
+                fieldElement.valueAsDate = params.value ?? new Date();
+                if (params.min) fieldElement.min = params.min;
+                if (params.max) fieldElement.max = params.max;
+                this.input.push(fieldElement);
+                this.wrapper.append(fieldElement);
+                break;
+            }
+            case "event_date": {
+                console.log(params);
+                let summary = document.createElement("span"),
+                    allday = new Field({
+                        compact: true,
+                        name: "all-day",
+                        type: "checkbox",
+                    }),
+                    start = new Field({
+                        compact: true,
+                        max: params.value.end.toISOString().substr(0, 16),
+                        name: "Start",
+                        required: true,
+                        type: "datepicker",
+                        value: params.value.start,
+                    }),
+                    end = new Field({
+                        compact: true,
+                        min: params.value.start.toISOString().substr(0, 16),
+                        name: "End",
+                        required: true,
+                        type: "datepicker",
+                        value: params.value.end,
+                    }),
+                    repeat = document.createElement("div");
+                // busy = new Field({
+                //     compact: true,
+                //     type: "checkbox",
+                //     name: "Busy",
+                //     value: params.value.busy
+                // });
+                summary.textContent = new Intl.DateTimeFormat("fr", {
+                    year: "2-digit",
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "numeric",
+                }).formatRange(params.value.start, params.value.end);
+                summary.addEventListener("click", () => {
+                    // hide summary, show other elements > set class to wrapper
+                    summary.classList.add("hide");
+                    for (const element of [
+                        allday.wrapper,
+                        start.wrapper,
+                        end.wrapper,
+                        repeat,
+                        // busy.wrapper,
+                    ])
+                        element.classList.remove("hide");
+                });
+                // start event listener :
+                // on date change, set min to end
+                // end event listener :
+                // on date change, set max to start
+                this.wrapper.append(
+                    summary,
+                    allday.wrapper,
+                    start.wrapper,
+                    end.wrapper,
+                    repeat
+                    // busy.wrapper
+                );
+                break;
+            }
             case "email": {
                 let fieldElement = document.createElement("input");
                 setElementAttributes(fieldElement, [
@@ -121,12 +204,12 @@ class Field {
                 ]);
                 this.wrapper.append(fieldElement);
                 fieldElement.value = params.value ?? "";
-                fieldElement.addEventListener("input", function () {
-                    const field = Field.find(fieldElement);
-                    field.getValid();
-                    if (field.modal)
-                        Modal.find(fieldElement)?.checkRequiredFields();
-                });
+                if (this.required)
+                    fieldElement.addEventListener("input", () => {
+                        this.getValid();
+                        if (Modal.find(fieldElement))
+                            Modal.find(fieldElement).checkRequiredFields();
+                    });
                 this.input.push(fieldElement);
                 break;
             }
@@ -159,10 +242,11 @@ class Field {
                 this.wrapper.append(fieldElement);
                 fieldElement.textContent = params.value ?? "";
                 if (this.required) {
-                    const field = this;
+                    // const field = this;
                     fieldElement.addEventListener("input", () => {
-                        field.getValid();
-                        Modal.find(fieldElement)?.checkRequiredFields();
+                        this.getValid();
+                        if (Modal.find(fieldElement))
+                            Modal.find(fieldElement).checkRequiredFields();
                     });
                 }
                 this.input.push(fieldElement);
@@ -238,16 +322,18 @@ class Field {
                 });
                 fieldElement.addEventListener("input", function () {
                     fieldElement.removeAttribute("data-phone");
-                    const field = Field.find(fieldElement);
-                    field.getValid();
-                    if (field.modal)
-                        Modal.find(fieldElement)?.checkRequiredFields();
+                    // const field = Field.find(fieldElement);
+                    if (this.required) {
+                        this.getValid();
+                        if (Modal.find(fieldElement))
+                            Modal.find(fieldElement).checkRequiredFields();
+                    }
                 });
                 this.input.push(fieldElement);
                 break;
             }
             case "quill": {
-                let editor = document.createElement("div");
+                let fieldElement = document.createElement("div");
                 const toolbarOptions = [
                         ["bold", "italic", "underline", "strike"], // toggled buttons
                         ["blockquote", "code-block"],
@@ -268,7 +354,7 @@ class Field {
                         ["clean"],
                     ],
                     options = {
-                        debug: "log",
+                        debug: "warn",
                         modules: {
                             toolbar: toolbarOptions,
                         },
@@ -277,8 +363,15 @@ class Field {
                             : "Votre texte...",
                         theme: "bubble",
                     };
-                this.wrapper.append(editor);
-                this.quill = new Quill(editor, options);
+                this.wrapper.append(fieldElement);
+                this.quill = new Quill(fieldElement, options);
+                if (this.required) {
+                    this.quill.on("text-change", () => {
+                        this.getValid();
+                        if (Modal.find(fieldElement))
+                            Modal.find(fieldElement).checkRequiredFields();
+                    });
+                }
                 break;
             }
             case "select": {
@@ -663,10 +756,9 @@ class Field {
                 }
                 break;
             case "quill":
-                this.isValid =
-                    this.quill.container.innerText.trim().length > 0
-                        ? true
-                        : false;
+                this.isValid = this.quill.getText().trim().length
+                    ? true
+                    : false;
                 break;
             case "selectize":
                 this.isValid = this.selected.length > 0 ? true : false;
