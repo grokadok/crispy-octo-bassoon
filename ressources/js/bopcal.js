@@ -22,12 +22,17 @@ class BopCal {
         this.minical = { cal: document.createElement("div"), years: {} };
         this.minical.cal.className = "mini";
         this.bigcal = {
-            wrapper: document.createElement("div"),
             cal: document.createElement("div"),
-            years: {},
             layout: document.createElement("div"),
+            // topmask: document.createElement("div"),
+            wrapper: document.createElement("div"),
+            years: {},
         };
-        this.bigcal.wrapper.append(this.bigcal.layout, this.bigcal.cal);
+        this.bigcal.wrapper.append(
+            this.bigcal.layout,
+            // this.bigcal.topmask,
+            this.bigcal.cal
+        );
         this.toggle = document.createElement("button");
         this.toggle.textContent = "calendar";
         this.toggle.addEventListener("click", () => {
@@ -49,7 +54,6 @@ class BopCal {
         // create 24 divs
         for (let i = 0; i < 24; i++) {
             let hour = document.createElement("div");
-            // hour in each one, ::after absolute inset:0 auto 0 0;
             hour.setAttribute("data-hour", convertIntToHour(i));
             this.bigcal.layout.append(hour);
         }
@@ -244,6 +248,10 @@ class BopCal {
                         info = document.createElement("div"),
                         allday = document.createElement("div"),
                         regular = document.createElement("div");
+                    info.textContent = new Intl.DateTimeFormat("fr", {
+                        weekday: "short",
+                        day: "numeric",
+                    }).format(day);
                     dayWrapper.append(info, allday, regular);
                     dayWrapper.setAttribute("data-date", day.getDate());
                     if (dayDate.getMonth() !== date.getMonth())
@@ -983,19 +991,27 @@ class BopCal {
                 }
                 handleStart.addEventListener("mousedown", (e) => {
                     const cal = this,
-                        applied = false;
+                        applied = false,
+                        limit = this.bigcal.cal.getBoundingClientRect();
                     // on mouse drag
                     function onPointerMove(e) {
-                        const newDate = dateGetClosestQuarter(
-                            cal.getCursorDate(e)
-                        );
-                        // if cursor date < end date
-                        if (newDate < component.end) {
-                            // set start date to cursor date
-                            // apply to object
-                            component.start = newDate;
-                            // apply to element
-                            cal.placeComponent(idcal, component);
+                        if (
+                            e.clientX > limit.left &&
+                            e.clientX < limit.right &&
+                            e.clientY > limit.top &&
+                            e.clientY < limit.bottom
+                        ) {
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e)
+                            );
+                            // if cursor date < end date
+                            if (newDate < component.end) {
+                                // set start date to cursor date
+                                // apply to object
+                                component.start = newDate;
+                                // apply to element
+                                cal.placeComponent(idcal, component);
+                            }
                         }
                     }
                     document.addEventListener("pointermove", onPointerMove);
@@ -1029,19 +1045,27 @@ class BopCal {
                 handleEnd.addEventListener("mousedown", (e) => {
                     // on mouse drag
                     const cal = this,
-                        applied = false;
+                        applied = false,
+                        limit = this.bigcal.cal.getBoundingClientRect();
                     // on mouse drag
                     function onPointerMove(e) {
-                        const newDate = dateGetClosestQuarter(
-                            cal.getCursorDate(e)
-                        );
-                        // if cursor date > start date
-                        if (newDate > component.start) {
-                            // set end date to cursor date
-                            // apply to element
-                            component.end = newDate;
-                            // apply to element
-                            cal.placeComponent(idcal, component);
+                        if (
+                            e.clientX > limit.left &&
+                            e.clientX < limit.right &&
+                            e.clientY > limit.top &&
+                            e.clientY < limit.bottom
+                        ) {
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e)
+                            );
+                            // if cursor date > start date
+                            if (newDate > component.start) {
+                                // set end date to cursor date
+                                // apply to element
+                                component.end = newDate;
+                                // apply to element
+                                cal.placeComponent(idcal, component);
+                            }
                         }
                     }
                     document.addEventListener("pointermove", onPointerMove);
@@ -1075,7 +1099,8 @@ class BopCal {
                 el.addEventListener("click", () => this.componentFocus(el));
                 el.addEventListener("mousedown", (e) => {
                     if (e.target !== handleStart && e.target !== handleEnd) {
-                        let cal = this;
+                        let cal = this,
+                            limit = this.bigcal.cal.getBoundingClientRect();
                         const clone = el.cloneNode(),
                             duration = component.end - component.start,
                             offset = e.clientY - el.getBoundingClientRect().y;
@@ -1088,15 +1113,22 @@ class BopCal {
                         // on pointer move, append clone to date under pointer, at closest time
                         function onPointerMove(e) {
                             e.preventDefault();
-                            const newDate = dateGetClosestQuarter(
-                                cal.getCursorDate(e, offset)
-                            );
-                            if (newDate !== component.start) {
-                                component.start = newDate;
-                                component.end = new Date(
-                                    component.start.valueOf() + duration
+                            if (
+                                e.clientX > limit.left &&
+                                e.clientX < limit.right &&
+                                e.clientY > limit.top &&
+                                e.clientY < limit.bottom
+                            ) {
+                                const newDate = dateGetClosestQuarter(
+                                    cal.getCursorDate(e, offset)
                                 );
-                                cal.placeComponent(idcal, component);
+                                if (newDate !== component.start) {
+                                    component.start = newDate;
+                                    component.end = new Date(
+                                        component.start.valueOf() + duration
+                                    );
+                                    cal.placeComponent(idcal, component);
+                                }
                             }
 
                             // get Y to set hour if !=

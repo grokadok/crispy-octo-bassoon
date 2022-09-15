@@ -202,19 +202,34 @@
                 padding-top: calc(var(--allday-height) + var(--info-height));
                 display: flex;
                 flex-direction: column;
+                background: linear-gradient(
+                    90deg,
+                    var(--bg-chat) 0%,
+                    rgba(0, 0, 0, 0) 5rem
+                );
+                pointer-events: none;
+                z-index: 2;
                 /* hour */
                 & > div {
                     flex: 1;
-                    background-image: repeating-linear-gradient(
+                    /* background-image: repeating-linear-gradient(
                         var(--text-secondary) 0 0.1px,
                         transparent 1px 100%
-                    );
+                    ); */
                     padding: 0.4rem;
                     &::after {
                         content: attr(data-hour);
                     }
                 }
             }
+            /* & > div:nth-of-type(2) {
+                position: absolute;
+                inset: 0 0 auto 0;
+                height: calc(var(--info-height) + var(--allday-height));
+                background-color: red;
+                border: solid lime;
+                z-index: 3;
+            } */
             /* calendar */
             & > div:last-of-type {
                 height: 100%;
@@ -227,6 +242,19 @@
                 /* day children */
                 & [data-date] > div {
                     position: relative;
+                    /* date info */
+                    &:first-of-type {
+                        position: sticky;
+                        top: 0;
+                        background-color: var(--bg-chat);
+                        z-index: 1;
+                    }
+                    /* all day */
+                    &:nth-of-type(2) {
+                        position: sticky;
+                        top: var(--info-height);
+                        background-color: var(--bg-chat);
+                    }
                     /* regular event */
                     &:last-of-type > div {
                         position: absolute;
@@ -267,7 +295,7 @@
                         }
                         &.clone {
                             background: transparent;
-                            outline: dotted 0.4rem;
+                            outline: dashed 0.4rem;
                         }
                         &.hide {
                             display: none;
@@ -358,17 +386,30 @@
                             calc((100vw - var(--cal-width)) / 7),
                             20rem
                         ); */
+                        height: auto;
                         display: flex;
                         flex-direction: column;
-                        height: auto;
                         border-left: 1px var(--text-placeholder) inset;
                         /* aspect-ratio: auto; */
                         scroll-snap-align: start;
+                        scroll-margin-left: 4rem;
                         & > div {
                             width: 100%;
                             /* day info */
                             &:first-of-type {
                                 height: var(--info-height);
+                                line-height: var(--info-height);
+                                color: var(--accent-secondary);
+                                font-weight: bolder;
+                                text-align: center;
+                                text-transform: full-width capitalize;
+                                /* &::after {
+                                    content: "";
+                                    position: absolute;
+                                    inset: 0;
+                                    background-color: lime;
+                                    z-index: 5;
+                                } */
                             }
                             /* all day */
                             &:nth-of-type(2) {
@@ -387,6 +428,11 @@
                             /* regular */
                             &:last-of-type {
                                 height: var(--day-height);
+                                background: repeating-linear-gradient(
+                                    var(--text-fade) 0px,
+                                    transparent 2px,
+                                    transparent calc(var(--day-height) / 24)
+                                );
                                 /* regular event */
                                 & > div {
                                     &.start > div:first-of-type,
@@ -399,11 +445,14 @@
                                 }
                             }
                         }
-                        &.today {
-                            background-color: transparent;
+                        &::after {
+                            content: "";
                         }
                         &:hover {
                             outline: none;
+                        }
+                        &.today {
+                            background-color: transparent;
                         }
                         &.fade {
                             display: none;
@@ -421,7 +470,7 @@
             }
             /* day */
             &.day [data-date] {
-                width: calc(100vw - var(--cal-width));
+                width: calc(100vw - var(--cal-width) - 4rem);
             }
             &.locked {
                 opacity: 1;
