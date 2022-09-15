@@ -63,7 +63,10 @@ class BopCal {
         });
         this.bigcal.cal.addEventListener("dblclick", (e) => {
             // if day, create event on day, at time if view = week or day, else allday if month
-            if (e.target.getAttribute("data-date")) {
+            if (
+                e.target.parentNode.getAttribute("data-date") &&
+                e.target !== e.target.parentNode.firstElementChild
+            ) {
                 if (this.active) {
                     if (this.calendars[this.active].visible)
                         this.newEvent(this.getCursorDate(e));
@@ -237,7 +240,11 @@ class BopCal {
                         }
                         monthWrapper.append(weekWrapper);
                     }
-                    let dayWrapper = document.createElement("div");
+                    let dayWrapper = document.createElement("div"),
+                        info = document.createElement("div"),
+                        allday = document.createElement("div"),
+                        regular = document.createElement("div");
+                    dayWrapper.append(info, allday, regular);
                     dayWrapper.setAttribute("data-date", day.getDate());
                     if (dayDate.getMonth() !== date.getMonth())
                         dayWrapper.classList.add("fade");
@@ -538,19 +545,23 @@ class BopCal {
     /**
      *
      * @param {PointerEvent} e
+     * @param {Number} [offset=0]
      */
-    getCursorDate(e) {
+    getCursorDate(e, offset = 0) {
+        // if e.target = allday ...
+        // else
         const monthEl = e.target.closest("[data-month]"),
             day = e.target.closest("[data-date]"),
+            regular = day.lastElementChild,
             // const monthEl = e.target.parentNode.parentNode,
             //     day = e.target.getAttribute("data-date"),
             hours =
-                (e.clientY - day.getBoundingClientRect().y) /
-                (day.offsetHeight / 24);
+                (e.clientY - offset - regular.getBoundingClientRect().y) /
+                (regular.offsetHeight / 24);
         let date = new Date(parseInt(monthEl.getAttribute("data-value")));
         // if element classlist contains fade. day belongs to previous/next month
         if (day.classList.contains("fade"))
-            e.target.parentNode === monthEl.firstElementChild
+            day.parentNode === monthEl.firstElementChild
                 ? date.setMonth(date.getMonth() - 1)
                 : date.setMonth(date.getMonth() + 1);
         date.setDate(day.getAttribute("data-date"));
@@ -896,15 +907,11 @@ class BopCal {
                 height,
                 el = component.elements[dateString] ?? undefined;
             const dayWrapper = el
-                ? el.parentNode
-                : // ? el.parentNode.parentNode // set again when allday set.
-                  this.bigcal.years[day.getFullYear()].months[
+                ? el.parentNode.parentNode
+                : this.bigcal.years[day.getFullYear()].months[
                       day.getMonth()
                   ].querySelector(`[data-date="${day.getDate()}"]:not(.fade)`);
-            if (component.allday) {
-                if (component.start >= day) classes.push("start");
-                if (component.end < nextDay) classes.push("end");
-            } else {
+            if (!component.allday) {
                 top =
                     component.start < day
                         ? "0px"
@@ -922,31 +929,24 @@ class BopCal {
             }
             // if el of event exists
             if (el) {
-                console.log(el);
-                console.warn(day);
-                console.info(dayWrapper);
                 el.getElementsByTagName("span")[0].textContent =
                     new Intl.DateTimeFormat("fr", {
                         timeStyle: "short",
                     }).format(component.start);
                 // if parent = allday
-                if (el.parentNode === dayWrapper.firstElementChild) {
+                if (el.parentNode === dayWrapper.children[1]) {
                     // if !event.allday, move element to dayWrapper, set top / height
                     if (!component.allday) {
                         dayWrapper.lastElementChild.append(el);
-                        el.className = "";
                         el.style.top = top;
                         el.style.height = height;
                     }
-                    // else if start/end, set classes accordingly
-                    else el.className = classes.join(" ");
                 }
                 // if parent = dayWrapper
                 else {
                     // if event.allday, move element to allday, set start/end classes
                     if (component.allday) {
-                        dayWrapper.firstElementChild.append(el);
-                        el.className = classes.join(" ");
+                        dayWrapper.children[1].append(el);
                     }
                     // else update top/height if necessary
                     else {
@@ -974,21 +974,27 @@ class BopCal {
                 el.append(handleStart, hour, summary, handleEnd);
                 component.elements[dateString] = el;
                 if (component.allday) {
-                    dayWrapper.firstElementChild.append(el);
+                    dayWrapper.children[1].append(el);
                     el.className = classes;
                 } else {
-                    dayWrapper.append(el);
+                    dayWrapper.lastElementChild.append(el);
                     el.style.top = top;
                     el.style.height = height;
                 }
                 handleStart.addEventListener("mousedown", (e) => {
-                    const cal = this;
+                    const cal = this,
+                        applied = false;
+                    // on mouse drag
                     function onPointerMove(e) {
                         const newDate = dateGetClosestQuarter(
                             cal.getCursorDate(e)
                         );
+                        // if cursor date < end date
                         if (newDate < component.end) {
+                            // set start date to cursor date
+                            // apply to object
                             component.start = newDate;
+                            // apply to element
                             cal.placeComponent(idcal, component);
                         }
                     }
@@ -1000,6 +1006,9 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
+                            if (!applied) {
+                                // apply to db
+                            }
                         },
                         { once: true }
                     );
@@ -1010,25 +1019,28 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
+                            if (!applied) {
+                                // apply to db
+                            }
                         },
                         { once: true }
                     );
-                    // on mouse drag
-                    // if cursor date < end date
-                    // set start date to cursor date
-                    // apply to db
-                    // apply to object
-                    // apply to element
                 });
                 handleEnd.addEventListener("mousedown", (e) => {
                     // on mouse drag
-                    const cal = this;
+                    const cal = this,
+                        applied = false;
+                    // on mouse drag
                     function onPointerMove(e) {
                         const newDate = dateGetClosestQuarter(
                             cal.getCursorDate(e)
                         );
+                        // if cursor date > start date
                         if (newDate > component.start) {
+                            // set end date to cursor date
+                            // apply to element
                             component.end = newDate;
+                            // apply to element
                             cal.placeComponent(idcal, component);
                         }
                     }
@@ -1040,6 +1052,9 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
+                            if (!applied) {
+                                // apply to db
+                            }
                         },
                         { once: true }
                     );
@@ -1050,63 +1065,88 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
+                            if (!applied) {
+                                // apply to db
+                            }
                         },
                         { once: true }
                     );
-                    // on mouse drag
-                    // if cursor date > start date
-                    // set end date to cursor date
-                    // apply to db
-                    // apply to object
-                    // apply to element
                 });
                 el.addEventListener("click", () => this.componentFocus(el));
                 el.addEventListener("mousedown", (e) => {
-                    el.classList.add("dragging"); // transparent element
-                    // clone element, append to date above original element
-                    // on pointer move, append clone to date under pointer, at closest time
-                    function onPointerMove(event) {
-                        event.preventDefault();
-                        // get Y to set hour if !=
-                        // get target to set date if !=
-                        // set component's new dates (new start + duration)
-                        // place component accordingly
+                    if (e.target !== handleStart && e.target !== handleEnd) {
+                        let cal = this;
+                        const clone = el.cloneNode(),
+                            duration = component.end - component.start,
+                            offset = e.clientY - el.getBoundingClientRect().y;
+                        el.classList.add("dragging"); // transparent element
+                        clone.classList.add("clone");
+                        clone.style.outlineColor = clone.style.backgroundColor;
+                        clone.style.backgroundColor = "";
+                        el.parentNode.append(clone);
+                        // clone element, append to date above original element
+                        // on pointer move, append clone to date under pointer, at closest time
+                        function onPointerMove(e) {
+                            e.preventDefault();
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e, offset)
+                            );
+                            if (newDate !== component.start) {
+                                component.start = newDate;
+                                component.end = new Date(
+                                    component.start.valueOf() + duration
+                                );
+                                cal.placeComponent(idcal, component);
+                            }
+
+                            // get Y to set hour if !=
+                            // get target to set date if !=
+                            // set component's new dates (new start + duration)
+                            // place component accordingly
+                        }
+                        const release = () => {
+                            el.classList.remove("dragging");
+                            clone?.remove();
+                            // update db
+                        };
+                        document.addEventListener("pointermove", onPointerMove);
+                        // on mouseup, remove clone, move original to pointer.target date pointerY time.
+                        document.addEventListener(
+                            "pointerup",
+                            () => {
+                                document.removeEventListener(
+                                    "pointermove",
+                                    onPointerMove
+                                );
+                                release();
+                            },
+                            { once: true }
+                        );
+                        document.body.addEventListener(
+                            "pointerleave",
+                            () => {
+                                document.removeEventListener(
+                                    "pointermove",
+                                    onPointerMove
+                                );
+                                release();
+                            },
+                            { once: true }
+                        );
+                        // set new eventlistener if necessary
                     }
-                    const release = (el) => {
-                        el.classList.remove("dragging");
-                        //
-                    };
-                    document.addEventListener("pointermove", onPointerMove);
-                    // on mouseup, remove clone, move original to pointer.target date pointerY time.
-                    document.addEventListener(
-                        "pointerup",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            release(el);
-                        },
-                        { once: true }
-                    );
-                    document.body.addEventListener(
-                        "pointerleave",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            release(el);
-                        },
-                        { once: true }
-                    );
-                    // set new eventlistener if necessary
                 });
                 el.addEventListener("dblclick", (e) => {
                     // open event editor
                     this.componentEditor(component);
                 });
             }
+            component.start >= day
+                ? el.classList.add("start")
+                : el.classList.remove("start");
+            component.end < nextDay
+                ? el.classList.add("end")
+                : el.classList.remove("end");
         }
     }
     componentFocus(el) {
