@@ -228,6 +228,7 @@
                         overflow: scroll;
                         border-radius: 5px;
                         user-select: none;
+                        cursor: pointer;
                         & > div {
                             position: absolute;
                             height: 0.5rem;
@@ -243,10 +244,11 @@
                             }
                         }
                         & > span {
-                            color: transparent;
+                            /* color: transparent;
                             background-color: inherit;
-                            background-clip: text;
-                            filter: invert(1) grayscale(1) contrast(9);
+                            background-clip: text; */
+                            filter: brightness(1.5);
+                            /* filter: invert(1) grayscale(1) contrast(9); */
                             &:first-of-type {
                                 position: absolute;
                                 inset: 0;

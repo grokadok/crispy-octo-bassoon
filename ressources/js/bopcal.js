@@ -59,13 +59,14 @@ class BopCal {
         });
         this.bigcal.cal.addEventListener("click", (e) => {
             // if number (day, week, month), set view to corresponding date.
+            // if event, set focus to it
         });
         this.bigcal.cal.addEventListener("dblclick", (e) => {
             // if day, create event on day, at time if view = week or day, else allday if month
             if (e.target.getAttribute("data-date")) {
                 if (this.active) {
                     if (this.calendars[this.active].visible)
-                        this.newEvent(this.getDayElementDate(e));
+                        this.newEvent(this.getCursorDate(e));
                     else
                         msg.new({
                             type: "theme",
@@ -128,7 +129,6 @@ class BopCal {
     addComponent(idcal, event) {
         if (!this.calendars[idcal].components)
             this.calendars[idcal].components = {};
-        console.log(event);
         this.calendars[idcal].components[event.uid] = {
             id: event.idcal_component,
             start: new Date(`${event.start.replace(" ", "T")}Z`),
@@ -416,8 +416,14 @@ class BopCal {
             for (const component of Object.values(
                 this.calendars[idcal].components
             )) {
-                for (const element of Object.values(component.elements))
-                    element.style.backgroundColor = color;
+                for (const element of Object.values(component.elements)) {
+                    element.style.backgroundColor = convertHexToRGB(
+                        color
+                    ).replace(")", ", .3)");
+                    Array.from(element.getElementsByTagName("span")).forEach(
+                        (x) => (x.style.color = color)
+                    );
+                }
             }
         // update calendar color in db
         socket.send({
@@ -533,19 +539,21 @@ class BopCal {
      *
      * @param {PointerEvent} e
      */
-    getDayElementDate(e) {
-        const monthEl = e.target.parentNode.parentNode,
-            day = e.target.getAttribute("data-date"),
+    getCursorDate(e) {
+        const monthEl = e.target.closest("[data-month]"),
+            day = e.target.closest("[data-date]"),
+            // const monthEl = e.target.parentNode.parentNode,
+            //     day = e.target.getAttribute("data-date"),
             hours =
-                (e.clientY - e.target.getBoundingClientRect().y) /
-                (e.target.offsetHeight / 24);
+                (e.clientY - day.getBoundingClientRect().y) /
+                (day.offsetHeight / 24);
         let date = new Date(parseInt(monthEl.getAttribute("data-value")));
         // if element classlist contains fade. day belongs to previous/next month
-        if (e.target.classList.contains("fade"))
+        if (day.classList.contains("fade"))
             e.target.parentNode === monthEl.firstElementChild
-                ? date.setMonth(month.getMonth() - 1)
-                : date.setMonth(month.getMonth() + 1);
-        date.setDate(day);
+                ? date.setMonth(date.getMonth() - 1)
+                : date.setMonth(date.getMonth() + 1);
+        date.setDate(day.getAttribute("data-date"));
         date.setTime(date.getTime() + hours * 60 * 60 * 1000);
         return date;
     }
@@ -698,7 +706,6 @@ class BopCal {
         colorSelect.addEventListener("input", (e) => {
             const color = e.target.value;
             if (this.calendars[idcal].color !== color) {
-                console.log(`cal#${idcal} set color to ${color}`);
                 this.calUpdateColor(idcal, color);
             }
         });
@@ -732,7 +739,15 @@ class BopCal {
         if (Modal.modals.filter((x) => x.task === 27).length) {
             return Modal.modals.filter((x) => x.task === 27)[0].close();
         }
-        new Modal({
+        const modal = new Modal({
+            buttons: [
+                {
+                    listener: () => {
+                        modal.close();
+                    },
+                },
+                { text: "créer", requireValid: true },
+            ],
             title: "Nouveau calendrier",
             fields: [
                 {
@@ -750,9 +765,6 @@ class BopCal {
                 },
             ],
             task: 27,
-            btn0listener: (e) => Modal.find(e.target).close(),
-            btn1text: "créer",
-            btn1style: "success",
         });
     }
     /**
@@ -856,13 +868,23 @@ class BopCal {
         }
     }
     /**
-     * Places/updates event in bigcal according to event's data in bopcal.events.
+     * Places/updates component in bigcal according to component's data.
      * @param {Number} idcal
-     * @param {Object} event - event object stored in bigcal.
+     * @param {Object} component - Component object stored in bigcal.
      */
     placeComponent(idcal, component) {
+        // get dates between start & end
+        const dates = getDaysBetweenDates(component.start, component.end),
+            datesStrings = dates.map((x) => toYYYYMMDDString(x));
+        // delete unused elements
+        for (const datestring of Object.keys(component.elements)) {
+            if (!datesStrings.includes(datestring)) {
+                component.elements[datestring].remove();
+                delete component.elements[datestring];
+            }
+        }
         // for each day, set start/end according to event start/end
-        for (const day of getDaysBetweenDates(component.start, component.end)) {
+        for (const day of dates) {
             const nextDay = new Date(
                     day.getFullYear(),
                     day.getMonth(),
@@ -874,27 +896,39 @@ class BopCal {
                 height,
                 el = component.elements[dateString] ?? undefined;
             const dayWrapper = el
-                ? el.parentNode.parentNode
-                : this.bigcal.years[day.getFullYear()].months[
+                ? el.parentNode
+                : // ? el.parentNode.parentNode // set again when allday set.
+                  this.bigcal.years[day.getFullYear()].months[
                       day.getMonth()
                   ].querySelector(`[data-date="${day.getDate()}"]:not(.fade)`);
             if (component.allday) {
-                if (component.start.valueOf() >= day.valueOf())
-                    classes.push("start");
-                if (component.end.valueOf() < nextDay.valueOf())
-                    classes.push("end");
+                if (component.start >= day) classes.push("start");
+                if (component.end < nextDay) classes.push("end");
             } else {
                 top =
-                    component.start.valueOf() < day.valueOf()
+                    component.start < day
                         ? "0px"
                         : this.calcEventTop(component.start);
                 height =
-                    component.end.valueOf() < nextDay
-                        ? this.calcEventHeight(component.start, component.end)
-                        : this.calcEventHeight(component.start, nextDay);
+                    component.end < nextDay
+                        ? this.calcEventHeight(
+                              component.start < day ? day : component.start,
+                              component.end
+                          )
+                        : this.calcEventHeight(
+                              component.start < day ? day : component.start,
+                              nextDay
+                          );
             }
             // if el of event exists
             if (el) {
+                console.log(el);
+                console.warn(day);
+                console.info(dayWrapper);
+                el.getElementsByTagName("span")[0].textContent =
+                    new Intl.DateTimeFormat("fr", {
+                        timeStyle: "short",
+                    }).format(component.start);
                 // if parent = allday
                 if (el.parentNode === dayWrapper.firstElementChild) {
                     // if !event.allday, move element to dayWrapper, set top / height
@@ -932,8 +966,11 @@ class BopCal {
                     timeStyle: "short",
                 }).format(component.start);
                 summary.textContent = component.summary ?? "New event";
-                el.style.backgroundColor =
-                    this.calendars[idcal].color ?? "turquoise";
+                el.style.backgroundColor = convertHexToRGB(
+                    this.calendars[idcal].color
+                ).replace(")", ", .3)");
+                hour.style.color = this.calendars[idcal].color;
+                summary.style.color = this.calendars[idcal].color;
                 el.append(handleStart, hour, summary, handleEnd);
                 component.elements[dateString] = el;
                 if (component.allday) {
@@ -945,6 +982,37 @@ class BopCal {
                     el.style.height = height;
                 }
                 handleStart.addEventListener("mousedown", (e) => {
+                    const cal = this;
+                    function onPointerMove(e) {
+                        const newDate = dateGetClosestQuarter(
+                            cal.getCursorDate(e)
+                        );
+                        if (newDate < component.end) {
+                            component.start = newDate;
+                            cal.placeComponent(idcal, component);
+                        }
+                    }
+                    document.addEventListener("pointermove", onPointerMove);
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                        },
+                        { once: true }
+                    );
+                    document.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                        },
+                        { once: true }
+                    );
                     // on mouse drag
                     // if cursor date < end date
                     // set start date to cursor date
@@ -954,17 +1022,84 @@ class BopCal {
                 });
                 handleEnd.addEventListener("mousedown", (e) => {
                     // on mouse drag
+                    const cal = this;
+                    function onPointerMove(e) {
+                        const newDate = dateGetClosestQuarter(
+                            cal.getCursorDate(e)
+                        );
+                        if (newDate > component.start) {
+                            component.end = newDate;
+                            cal.placeComponent(idcal, component);
+                        }
+                    }
+                    document.addEventListener("pointermove", onPointerMove);
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                        },
+                        { once: true }
+                    );
+                    document.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                        },
+                        { once: true }
+                    );
+                    // on mouse drag
                     // if cursor date > start date
                     // set end date to cursor date
                     // apply to db
                     // apply to object
                     // apply to element
                 });
+                el.addEventListener("click", () => this.componentFocus(el));
                 el.addEventListener("mousedown", (e) => {
-                    // fade element
+                    el.classList.add("dragging"); // transparent element
                     // clone element, append to date above original element
                     // on pointer move, append clone to date under pointer, at closest time
+                    function onPointerMove(event) {
+                        event.preventDefault();
+                        // get Y to set hour if !=
+                        // get target to set date if !=
+                        // set component's new dates (new start + duration)
+                        // place component accordingly
+                    }
+                    const release = (el) => {
+                        el.classList.remove("dragging");
+                        //
+                    };
+                    document.addEventListener("pointermove", onPointerMove);
                     // on mouseup, remove clone, move original to pointer.target date pointerY time.
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            release(el);
+                        },
+                        { once: true }
+                    );
+                    document.body.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            release(el);
+                        },
+                        { once: true }
+                    );
                     // set new eventlistener if necessary
                 });
                 el.addEventListener("dblclick", (e) => {
@@ -972,6 +1107,17 @@ class BopCal {
                     this.componentEditor(component);
                 });
             }
+        }
+    }
+    componentFocus(el) {
+        if (this.focus && this.focus === el) {
+            delete this.focus;
+            el.classList.remove("focus");
+            return;
+        } else {
+            if (this.focus) this.focus.classList.remove("focus");
+            el.classList.add("focus");
+            this.focus = el;
         }
     }
     setActiveCal(idcal) {
