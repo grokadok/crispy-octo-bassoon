@@ -2163,7 +2163,7 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // FETCH CALENDARS' EVENTS IN RANGE (22)
+            // FETCH CALENDARS' COMPONENTS IN RANGE (22)
             /////////////////////////////////////////////////////
 
             if ($f === 22 && isset($task['s']) && isset($task['e'])) {
@@ -2175,7 +2175,7 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // GET CALENDAR EVENT'S FULL DATA (23)
+            // GET CALENDAR COMPONENT'S FULL DATA (23)
             /////////////////////////////////////////////////////
 
             if ($f === 23 && isset($task['c']))
@@ -2189,7 +2189,7 @@ class FWServer
                 return $this->calGetDescriptions([$task['d']]);
 
             /////////////////////////////////////////////////////
-            // CREATE CALENDAR EVENT (25)
+            // CREATE CALENDAR COMPONENT (25)
             /////////////////////////////////////////////////////
 
             if ($f === 25 && isset($task['c']) && isset($task['e'])) {
@@ -2205,7 +2205,7 @@ class FWServer
             }
 
             /////////////////////////////////////////////////////
-            // ADD ALARM TO EVENT (26)
+            // ADD ALARM TO COMPONENT (26)
             /////////////////////////////////////////////////////
 
             if ($f === 26 && isset($task['a']) && isset($task['c']))
@@ -2252,6 +2252,16 @@ class FWServer
 
             if ($f === 31 && isset($task['c']) && isset($task['v']))
                 return $this->calSetVisibility($iduser, $task['c'], $task['v']);
+
+            /////////////////////////////////////////////////////
+            // UPDATE COMPONENT'S RANGE (32)
+            /////////////////////////////////////////////////////
+
+            if ($f === 32) {
+                // if modified === db modified
+                // if start, update start
+                // if end, update end
+            }
 
             /////////////////////////////////////////////////////
             // ADD ATTENDEE TO EVENT (xx)

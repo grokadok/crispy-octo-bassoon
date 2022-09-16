@@ -96,6 +96,7 @@
                 align-items: center;
                 justify-content: center;
                 scroll-snap-align: start;
+                scroll-snap-stop: always;
                 &::after {
                     content: attr(data-month);
                     position: absolute;
@@ -180,6 +181,7 @@
         &:last-of-type {
             --allday-height: 0rem;
             --info-height: 2rem;
+            --info-width: 4rem;
             position: absolute;
             left: 100%;
             bottom: 0;
@@ -197,39 +199,61 @@
             /* Layout */
             & > div:first-of-type {
                 position: absolute;
-                inset: 0 0 auto 0;
-                height: var(--day-height);
-                padding-top: calc(var(--allday-height) + var(--info-height));
-                display: flex;
-                flex-direction: column;
-                background: linear-gradient(
-                    90deg,
-                    var(--bg-chat) 0%,
-                    rgba(0, 0, 0, 0) 5rem
-                );
-                pointer-events: none;
+                inset: calc(var(--info-height) + var(--allday-height)) 0 0 0;
+                overflow: scroll;
                 z-index: 2;
-                /* hour */
+                pointer-events: none;
                 & > div {
-                    flex: 1;
-                    /* background-image: repeating-linear-gradient(
-                        var(--text-secondary) 0 0.1px,
-                        transparent 1px 100%
-                    ); */
-                    padding: 0.4rem;
-                    &::after {
-                        content: attr(data-hour);
+                    position: absolute;
+                    inset: 0 0 auto 0;
+                    height: var(--day-height);
+                    display: flex;
+                    flex-direction: column;
+                    background: linear-gradient(
+                        90deg,
+                        var(--bg-chat) 0%,
+                        rgba(0, 0, 0, 0) 5rem
+                    );
+                    pointer-events: none;
+                    /* hour */
+                    & > div {
+                        flex: 1;
+                        background-image: repeating-linear-gradient(
+                            var(--text-secondary) 0 0.1px,
+                            transparent 1px 100%
+                        );
+                        padding: 0.4rem;
+                        &::after {
+                            content: attr(data-hour);
+                            color: var(--accent-secondary);
+                        }
                     }
                 }
             }
-            /* & > div:nth-of-type(2) {
+            /* week info */
+            & > div:nth-of-type(2) {
                 position: absolute;
-                inset: 0 0 auto 0;
-                height: calc(var(--info-height) + var(--allday-height));
-                background-color: red;
-                border: solid lime;
+                inset: 0 auto auto 0;
+                width: var(--info-width);
+                height: var(--info-height);
+                border-radius: 9px 0 0 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background-color: var(--accent-secondary);
+                cursor: pointer;
                 z-index: 3;
-            } */
+                & > span {
+                    color: var(--text);
+                    font-size: 1.3rem;
+                    font-weight: lighter;
+                    scale: 1;
+                    transition: scale var(--transition-pages);
+                }
+                &:hover > span {
+                    scale: 1.1;
+                }
+            }
             /* calendar */
             & > div:last-of-type {
                 height: 100%;
@@ -259,13 +283,13 @@
                     &:last-of-type > div {
                         position: absolute;
                         width: 100%;
+                        border-radius: 5px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        overflow: scroll;
-                        border-radius: 5px;
-                        user-select: none;
                         cursor: pointer;
+                        overflow: scroll;
+                        user-select: none;
                         /* handles */
                         & > div {
                             position: absolute;
@@ -291,6 +315,9 @@
                                 position: absolute;
                                 display: none;
                                 inset: 0;
+                            }
+                            &:last-of-type {
+                                font-variant: small-caps;
                             }
                         }
                         &.clone {
@@ -392,17 +419,26 @@
                         border-left: 1px var(--text-placeholder) inset;
                         /* aspect-ratio: auto; */
                         scroll-snap-align: start;
-                        scroll-margin-left: 4rem;
+                        scroll-margin-left: var(--info-width);
                         & > div {
                             width: 100%;
                             /* day info */
                             &:first-of-type {
                                 height: var(--info-height);
-                                line-height: var(--info-height);
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
                                 color: var(--accent-secondary);
-                                font-weight: bolder;
-                                text-align: center;
-                                text-transform: full-width capitalize;
+                                cursor: pointer;
+                                & > span {
+                                    font-weight: bolder;
+                                    scale: 1;
+                                    text-transform: full-width capitalize;
+                                    transition: scale var(--transition-global);
+                                }
+                                &:hover > span {
+                                    scale: 1.05;
+                                }
                                 /* &::after {
                                     content: "";
                                     position: absolute;
@@ -428,11 +464,11 @@
                             /* regular */
                             &:last-of-type {
                                 height: var(--day-height);
-                                background: repeating-linear-gradient(
+                                /* background: repeating-linear-gradient(
                                     var(--text-fade) 0px,
                                     transparent 2px,
                                     transparent calc(var(--day-height) / 24)
-                                );
+                                ); */
                                 /* regular event */
                                 & > div {
                                     &.start > div:first-of-type,

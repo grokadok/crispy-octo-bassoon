@@ -24,13 +24,16 @@ class BopCal {
         this.bigcal = {
             cal: document.createElement("div"),
             layout: document.createElement("div"),
-            // topmask: document.createElement("div"),
             wrapper: document.createElement("div"),
             years: {},
+            info: document.createElement("div"),
         };
+        this.bigcal.info.append(document.createElement("span"));
+        this.bigcal.info.firstElementChild.textContent = "W##";
+        this.bigcal.layout.append(document.createElement("div"));
         this.bigcal.wrapper.append(
             this.bigcal.layout,
-            // this.bigcal.topmask,
+            this.bigcal.info,
             this.bigcal.cal
         );
         this.toggle = document.createElement("button");
@@ -55,11 +58,10 @@ class BopCal {
         for (let i = 0; i < 24; i++) {
             let hour = document.createElement("div");
             hour.setAttribute("data-hour", convertIntToHour(i));
-            this.bigcal.layout.append(hour);
+            this.bigcal.layout.firstElementChild.append(hour);
         }
         this.bigcal.cal.addEventListener("scroll", (e) => {
-            // this.bigcal.layout.topScroll=e.scroll
-            this.bigcal.layout.style.top = `-${this.bigcal.cal.scrollTop}px`;
+            this.bigcal.layout.firstElementChild.style.top = `-${this.bigcal.cal.scrollTop}px`;
         });
         this.bigcal.cal.addEventListener("click", (e) => {
             // if number (day, week, month), set view to corresponding date.
@@ -109,7 +111,6 @@ class BopCal {
         this.menu.append(todayButton, this.minical.selector, calAdd);
         this.getCalendars();
         this.generateCalendar();
-
         this.wrapper.append(
             this.toggle,
             this.menu,
@@ -138,6 +139,7 @@ class BopCal {
             this.calendars[idcal].components = {};
         this.calendars[idcal].components[event.uid] = {
             id: event.idcal_component,
+            modified: event.modified,
             start: new Date(`${event.start.replace(" ", "T")}Z`),
             end: new Date(`${event.end.replace(" ", "T")}Z`),
             allday: event.allday,
@@ -230,13 +232,6 @@ class BopCal {
                         weekWrapper = document.createElement("div");
                         weekWrapper.setAttribute("data-week", weekNumber);
                         if (cal === this.minical) {
-                            // weekWrapper.addEventListener("mouseover", (e) => {
-                            //     if (
-                            //         e.target.getAttribute("data-week") &&
-                            //         !this.bigcal.lock
-                            //         )
-                            //         this.bigcalFocus(dayDate, "week");
-                            //     });
                             weekWrapper.addEventListener("click", (e) => {
                                 e.stopPropagation();
                                 this.bigcalFocus(dayDate, "week", true);
@@ -248,10 +243,12 @@ class BopCal {
                         info = document.createElement("div"),
                         allday = document.createElement("div"),
                         regular = document.createElement("div");
-                    info.textContent = new Intl.DateTimeFormat("fr", {
-                        weekday: "short",
-                        day: "numeric",
-                    }).format(day);
+                    info.append(document.createElement("span"));
+                    info.firstElementChild.textContent =
+                        new Intl.DateTimeFormat("fr", {
+                            weekday: "short",
+                            day: "numeric",
+                        }).format(day);
                     dayWrapper.append(info, allday, regular);
                     dayWrapper.setAttribute("data-date", day.getDate());
                     if (dayDate.getMonth() !== date.getMonth())
@@ -259,12 +256,6 @@ class BopCal {
                     if (dayDate.toDateString() === now.toDateString())
                         dayWrapper.classList.add("today");
                     if (cal === this.minical) {
-                        // dayWrapper.addEventListener("mouseover", (e) => {
-                        //     e.stopPropagation();
-                        //     if (!this.bigcal.lock) {
-                        //         this.bigcalFocus(dayDate, "day");
-                        //     }
-                        // });
                         dayWrapper.addEventListener("click", (e) => {
                             e.stopPropagation();
                             this.bigcalFocus(dayDate, "day", true);
@@ -358,7 +349,7 @@ class BopCal {
     calcEventHeight(start, end) {
         return `${
             ((end.valueOf() - start.valueOf()) / 1000 / 60 / 60) *
-            this.bigcal.layout.firstChild.offsetHeight
+            this.bigcal.layout.firstElementChild.firstElementChild.offsetHeight
         }px`;
     }
     /**
@@ -366,7 +357,8 @@ class BopCal {
      */
     calcEventTop(date) {
         return `${
-            this.bigcal.layout.firstChild.offsetHeight *
+            this.bigcal.layout.firstElementChild.firstElementChild
+                .offsetHeight *
             (date.getHours() + date.getMinutes() / 60)
         }px`;
     }
@@ -542,9 +534,6 @@ class BopCal {
     static destroyAll() {
         for (let cal of BopCal.bopcals) cal.destroy();
     }
-    dragEvent() {
-        // updates object in bopcal.events
-    }
     getCalendars() {
         socket.send({
             f: 21,
@@ -598,7 +587,7 @@ class BopCal {
                 rootMargin: "0px 0px",
                 threshold: 1,
             },
-            quantity = 5, // how many months to load at once
+            quantity = 1, // how many months to load at once
             loadloop = (date, up = false) => {
                 let last;
                 const monthHeight = convertRemToPixels(14);
@@ -1024,6 +1013,15 @@ class BopCal {
                             );
                             if (!applied) {
                                 // apply to db
+                                // send function, start/stop, uid, modified
+                                socket.send({
+                                    f: 32,
+                                    s: toMYSQLDTString(component.start),
+                                    e: toMYSQLDTString(component.end),
+                                    u: component.uid,
+                                    m: component.modified,
+                                });
+                                applied = true;
                             }
                         },
                         { once: true }
@@ -1037,6 +1035,14 @@ class BopCal {
                             );
                             if (!applied) {
                                 // apply to db
+                                socket.send({
+                                    f: 32,
+                                    s: toMYSQLDTString(component.start),
+                                    e: toMYSQLDTString(component.end),
+                                    u: component.uid,
+                                    m: component.modified,
+                                });
+                                applied = true;
                             }
                         },
                         { once: true }
