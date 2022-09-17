@@ -161,7 +161,7 @@ class BopCal {
             exceptions: event.exceptions,
             alarms: event.alarms,
         };
-        this.placeComponent(idcal, this.calendars[idcal].components[event.uid]);
+        this.placeComponent(idcal, event.uid);
     }
     /**
      * Add month to calendars.
@@ -525,6 +525,17 @@ class BopCal {
             title: component.summary,
         });
     }
+    componentFocus(el) {
+        if (this.focus && this.focus === el) {
+            delete this.focus;
+            el.classList.remove("focus");
+            return;
+        } else {
+            if (this.focus) this.focus.classList.remove("focus");
+            el.classList.add("focus");
+            this.focus = el;
+        }
+    }
     destroy() {
         this.minical.observer?.disconnect();
         this.wrapper.innerHTML = "";
@@ -814,34 +825,7 @@ class BopCal {
                     cal.minicalAddCalendar(key);
                 break;
             case 22:
-                // data.response = [
-                //     {
-                //         idcal: {
-                //             uid,
-                //             idcal_component,
-                //             type,
-                //             summary,
-                //             start,
-                //             end,
-                //             all_day,
-                //             transparency,
-                //             sequence,
-                //             rrule,
-                //             rdate,
-                //             recur_id,
-                //             thisandfuture,
-                //             rrule,
-                //             rdates,
-                //             exceptions,
-                //         },
-                //     },
-                // ];
                 if (data.response)
-                    // date.response = {
-                    //     idcal: [
-                    //         {},
-                    //     ]
-                    // }
                     for (const [calendar, events] of Object.entries(
                         data.response
                     ))
@@ -873,14 +857,38 @@ class BopCal {
                     cal.calRemove(data.c);
                 }
                 break;
+            case 32:
+                let component = cal.calendars[data.c].components[data.u];
+                component.modified = data.m;
+                component.start = new Date(`${data.s.replace(" ", "T")}Z`);
+                component.end = new Date(`${data.e.replace(" ", "T")}Z`);
+                cal.placeComponent(data.c, data.u);
+                break;
         }
+    }
+    /**
+     * Applys new range to component in db.
+     * @param {Number} idcal
+     * @param {String} uid
+     */
+    componentApplyRange(idcal, uid) {
+        const component = this.calendars[idcal].components[uid];
+        socket.send({
+            f: 32,
+            s: toMYSQLDTString(component.start),
+            e: toMYSQLDTString(component.end),
+            u: uid,
+            i: component.id,
+            m: component.modified,
+        });
     }
     /**
      * Places/updates component in bigcal according to component's data.
      * @param {Number} idcal
-     * @param {Object} component - Component object stored in bigcal.
+     * @param {String} uid - Component object stored in bigcal.
      */
-    placeComponent(idcal, component) {
+    placeComponent(idcal, uid) {
+        let component = this.calendars[idcal].components[uid];
         // get dates between start & end
         const dates = getDaysBetweenDates(component.start, component.end),
             datesStrings = dates.map((x) => toYYYYMMDDString(x));
@@ -980,8 +988,8 @@ class BopCal {
                 }
                 handleStart.addEventListener("mousedown", (e) => {
                     const cal = this,
-                        applied = false,
                         limit = this.bigcal.cal.getBoundingClientRect();
+                    let applied = false;
                     // on mouse drag
                     function onPointerMove(e) {
                         if (
@@ -999,7 +1007,7 @@ class BopCal {
                                 // apply to object
                                 component.start = newDate;
                                 // apply to element
-                                cal.placeComponent(idcal, component);
+                                cal.placeComponent(idcal, uid);
                             }
                         }
                     }
@@ -1014,13 +1022,7 @@ class BopCal {
                             if (!applied) {
                                 // apply to db
                                 // send function, start/stop, uid, modified
-                                socket.send({
-                                    f: 32,
-                                    s: toMYSQLDTString(component.start),
-                                    e: toMYSQLDTString(component.end),
-                                    u: component.uid,
-                                    m: component.modified,
-                                });
+                                cal.componentApplyRange(idcal, uid);
                                 applied = true;
                             }
                         },
@@ -1035,13 +1037,7 @@ class BopCal {
                             );
                             if (!applied) {
                                 // apply to db
-                                socket.send({
-                                    f: 32,
-                                    s: toMYSQLDTString(component.start),
-                                    e: toMYSQLDTString(component.end),
-                                    u: component.uid,
-                                    m: component.modified,
-                                });
+                                cal.componentApplyRange(idcal, uid);
                                 applied = true;
                             }
                         },
@@ -1051,8 +1047,8 @@ class BopCal {
                 handleEnd.addEventListener("mousedown", (e) => {
                     // on mouse drag
                     const cal = this,
-                        applied = false,
                         limit = this.bigcal.cal.getBoundingClientRect();
+                    let applied = false;
                     // on mouse drag
                     function onPointerMove(e) {
                         if (
@@ -1070,7 +1066,7 @@ class BopCal {
                                 // apply to element
                                 component.end = newDate;
                                 // apply to element
-                                cal.placeComponent(idcal, component);
+                                cal.placeComponent(idcal, uid);
                             }
                         }
                     }
@@ -1084,6 +1080,8 @@ class BopCal {
                             );
                             if (!applied) {
                                 // apply to db
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
                             }
                         },
                         { once: true }
@@ -1097,6 +1095,8 @@ class BopCal {
                             );
                             if (!applied) {
                                 // apply to db
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
                             }
                         },
                         { once: true }
@@ -1106,7 +1106,8 @@ class BopCal {
                 el.addEventListener("mousedown", (e) => {
                     if (e.target !== handleStart && e.target !== handleEnd) {
                         let cal = this,
-                            limit = this.bigcal.cal.getBoundingClientRect();
+                            limit = this.bigcal.cal.getBoundingClientRect(),
+                            applied = false;
                         const clone = el.cloneNode(),
                             duration = component.end - component.start,
                             offset = e.clientY - el.getBoundingClientRect().y;
@@ -1133,7 +1134,7 @@ class BopCal {
                                     component.end = new Date(
                                         component.start.valueOf() + duration
                                     );
-                                    cal.placeComponent(idcal, component);
+                                    cal.placeComponent(idcal, uid);
                                 }
                             }
 
@@ -1145,7 +1146,8 @@ class BopCal {
                         const release = () => {
                             el.classList.remove("dragging");
                             clone?.remove();
-                            // update db
+                            if (!applied) cal.componentApplyRange(idcal, uid);
+                            applied = true;
                         };
                         document.addEventListener("pointermove", onPointerMove);
                         // on mouseup, remove clone, move original to pointer.target date pointerY time.
@@ -1187,17 +1189,6 @@ class BopCal {
                 : el.classList.remove("end");
         }
     }
-    componentFocus(el) {
-        if (this.focus && this.focus === el) {
-            delete this.focus;
-            el.classList.remove("focus");
-            return;
-        } else {
-            if (this.focus) this.focus.classList.remove("focus");
-            el.classList.add("focus");
-            this.focus = el;
-        }
-    }
     setActiveCal(idcal) {
         if (this.active === idcal) return;
         console.log(`Active cal set to cal#${idcal}`);
@@ -1228,61 +1219,61 @@ class BopCal {
         // set visible = show to user_has_calendar;
         socket.send({ f: 31, c: idcal, v: visible ? 1 : 0 });
     }
-    addFullCalEvent() {
-        // manage batch rendering ?
-        // fullcal event :
-        // id
-        // start
-        // end
-        // rrule
-        // all day
-        // title
-        // url
-        // extendedProps {}
-    }
-    addCalendarEvent() {
-        // VEVENT
-        // UID
-        // CREATED: UTC
-        // LAST-MODIFIED: UTC
-        // DTSTAMP: UTC (set by caldav server when adding event?)
-        // DTSTART: TZ or UTC
-        // DTEND OR DURATION
-        // TRANSP: OPAQUE OR TRANSPARENT (for busy time searches, not style related!)
-        // SUMMARY: text
-        // CATEGORIES: ~ tags/groups, e.g. CATEGORIES:ANNIVERSARY,PERSONAL,SPECIAL OCCASION
-        // CLASS: related to securing access to event, allows non standard values, must be completed by calendar agent logic, does nothing alone. e.g. PUBLIC (default value), PRIVATE, CONFIDENTIAL...
-        // ORGANIZER: CN (display name), MAILTO (email address). e.g. ORGANIZER;CN=John Smith:MAILTO:jsmith@host.com
-        // ATTENDEE: CN=, MAILTO:, MEMBER=, DELEGATED-TO=, DELEGATED-FROM=,CUTYPE=
-        // RELATED-TO: to figure out how it works.
-        //
-        // VALARM (nested in VEVENT or VTODO)
-        // UID
-        // ACTION: AUDIO, DISPLAY, EMAIL, PROCEDURE
-        // TRIGGER: DURATION, UTC, START (requires DTSTART), END (requires DTEND, DTSTART & DURATION, or DUE in case of VTODO). e.g. -PT15M (15 min before), -P7W (7 weeks before)
-        // ATTACH: audio component (unique), message attachments, local procedure (unique).
-        // DESCRIPTION: display content, email body.
-        // SUMMARY: email subject
-        // ATTENDEE: email address (one per ATTENDEE property)
-        // DURATION: e.g. PT5M (5 minutes)
-        // REPEAT: integer, specifies number of times the alarm is to repeat, requires DURATION.
-        //
-        //      ; the following are optional,
-        //      ; but MUST NOT occur more than once
-        //      class / created / description / dtstart / geo /
-        //      last-mod / location / organizer / priority /
-        //      dtstamp / seq / status / summary / transp /
-        //      uid / url / recurid /
-        //      ; either 'dtend' or 'duration' may appear in
-        //      ; a 'eventprop', but 'dtend' and 'duration'
-        //      ; MUST NOT occur in the same 'eventprop'
-        //      dtend / duration /
-        //      ; the following are optional,
-        //      ; and MAY occur more than once
-        //      attach / attendee / categories / comment /
-        //      contact / exdate / exrule / rstatus / related /
-        //      resources / rdate / rrule / x-prop
-    }
+    // addFullCalEvent() {
+    //     // manage batch rendering ?
+    //     // fullcal event :
+    //     // id
+    //     // start
+    //     // end
+    //     // rrule
+    //     // all day
+    //     // title
+    //     // url
+    //     // extendedProps {}
+    // }
+    // addCalendarEvent() {
+    //     // VEVENT
+    //     // UID
+    //     // CREATED: UTC
+    //     // LAST-MODIFIED: UTC
+    //     // DTSTAMP: UTC (set by caldav server when adding event?)
+    //     // DTSTART: TZ or UTC
+    //     // DTEND OR DURATION
+    //     // TRANSP: OPAQUE OR TRANSPARENT (for busy time searches, not style related!)
+    //     // SUMMARY: text
+    //     // CATEGORIES: ~ tags/groups, e.g. CATEGORIES:ANNIVERSARY,PERSONAL,SPECIAL OCCASION
+    //     // CLASS: related to securing access to event, allows non standard values, must be completed by calendar agent logic, does nothing alone. e.g. PUBLIC (default value), PRIVATE, CONFIDENTIAL...
+    //     // ORGANIZER: CN (display name), MAILTO (email address). e.g. ORGANIZER;CN=John Smith:MAILTO:jsmith@host.com
+    //     // ATTENDEE: CN=, MAILTO:, MEMBER=, DELEGATED-TO=, DELEGATED-FROM=,CUTYPE=
+    //     // RELATED-TO: to figure out how it works.
+    //     //
+    //     // VALARM (nested in VEVENT or VTODO)
+    //     // UID
+    //     // ACTION: AUDIO, DISPLAY, EMAIL, PROCEDURE
+    //     // TRIGGER: DURATION, UTC, START (requires DTSTART), END (requires DTEND, DTSTART & DURATION, or DUE in case of VTODO). e.g. -PT15M (15 min before), -P7W (7 weeks before)
+    //     // ATTACH: audio component (unique), message attachments, local procedure (unique).
+    //     // DESCRIPTION: display content, email body.
+    //     // SUMMARY: email subject
+    //     // ATTENDEE: email address (one per ATTENDEE property)
+    //     // DURATION: e.g. PT5M (5 minutes)
+    //     // REPEAT: integer, specifies number of times the alarm is to repeat, requires DURATION.
+    //     //
+    //     //      ; the following are optional,
+    //     //      ; but MUST NOT occur more than once
+    //     //      class / created / description / dtstart / geo /
+    //     //      last-mod / location / organizer / priority /
+    //     //      dtstamp / seq / status / summary / transp /
+    //     //      uid / url / recurid /
+    //     //      ; either 'dtend' or 'duration' may appear in
+    //     //      ; a 'eventprop', but 'dtend' and 'duration'
+    //     //      ; MUST NOT occur in the same 'eventprop'
+    //     //      dtend / duration /
+    //     //      ; the following are optional,
+    //     //      ; and MAY occur more than once
+    //     //      attach / attendee / categories / comment /
+    //     //      contact / exdate / exrule / rstatus / related /
+    //     //      resources / rdate / rrule / x-prop
+    // }
 }
 
 // big-cal on click:

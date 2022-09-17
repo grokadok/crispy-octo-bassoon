@@ -2259,8 +2259,21 @@ class FWServer
 
             if ($f === 32) {
                 // if modified === db modified
-                // if start, update start
-                // if end, update end
+                if ($this->calFileCheckModified($task['u'], $task['m'])) {
+                    // if start, update start
+                    if (!empty($task['s'])) $update = $this->calComponentChangeStart($task['i'], $task['s']);
+                    // if end, update end
+                    if (!empty($task['e'])) $update = $this->calComponentChangeEnd($task['i'], $task['e']);
+                    // update cal_file->modified
+                    $modified = $this->calSetFileModified($task['u']);
+                    // get users from cal
+                    $this->calGetConnectUsers($modified[0], $update[0], $update[1]);
+                    // send 'em updated data.
+                    $message = json_encode(['f' => 32, 'c' => $modified[0], 'm' => $modified[1], 'u' => $task['u'], 's' => $update[0], 'e' => $update[1]]);
+                    foreach ($this->calGetConnectUsers($modified[0], $update[0], $update[1]) as $user)
+                        $this->serv->push($fd, $message);
+                    return;
+                } else return ['fail' => 'cal_component modified value not in sync.'];
             }
 
             /////////////////////////////////////////////////////
