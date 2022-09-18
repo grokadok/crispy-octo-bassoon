@@ -22,6 +22,7 @@ services:
             - ./public:/var/www/public
             - ./ressources/js:/var/www/public/assets/js
             - ./ressources/vendor:/var/www/public/assets/vendor
+            - ./ressources/fonts:/var/www/public/assets/fonts
         ports:
             - 8080:8080
 

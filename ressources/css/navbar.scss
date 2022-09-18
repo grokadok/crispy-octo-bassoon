@@ -150,11 +150,12 @@
             background: var(--title-gradient);
             background-size: 200% auto;
             background-clip: text;
+            color: transparent;
             font-size: 4rem;
             font-weight: bold;
             text-align: center;
             text-transform: uppercase;
-            color: transparent;
+            scale: 1.1 1;
             animation: shine 15s linear infinite;
         }
         & .waves {

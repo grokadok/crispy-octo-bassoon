@@ -904,6 +904,8 @@ class FWServer
             "jpg" => "image/jpg",
             "jpeg" => "image/jpg",
             "mp4" => "video/mp4",
+            "woff" => "font/woff",
+            "woff2" => "font/woff2",
         ];
 
         if (isset($static[$type])) {
