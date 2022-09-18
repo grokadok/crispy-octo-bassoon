@@ -6,5 +6,6 @@ RUN mkdir public &&\
 COPY /server/server.php ./
 COPY /public ./public
 COPY /app ./app
+COPY /ressources/fonts ./public/assets/fonts
 
 CMD [ "php", "server.php"]
