@@ -128,7 +128,6 @@ class Field {
                 break;
             }
             case "event_date": {
-                console.log(params);
                 let summary = document.createElement("span"),
                     allday = new Field({
                         compact: true,
@@ -476,7 +475,6 @@ class Field {
                         }
                         span.setAttribute("tabindex", "0");
                         span.addEventListener("click", () => {
-                            console.log(this.selected);
                             this.selected.items.splice(
                                 this.selected.items[index],
                                 1
@@ -642,7 +640,6 @@ class Field {
      * Requests field data to server.
      */
     fetchData() {
-        console.log(Field.fields);
         socket.send({
             f: 7,
             s: this.task,

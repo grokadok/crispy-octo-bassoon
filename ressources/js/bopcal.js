@@ -134,34 +134,34 @@ class BopCal {
     /**
      * Adds event to calendar from object data.
      */
-    addComponent(idcal, event) {
+    addComponent(idcal, component) {
         if (!this.calendars[idcal].components)
             this.calendars[idcal].components = {};
-        this.calendars[idcal].components[event.uid] = {
-            id: event.idcal_component,
-            modified: event.modified,
-            start: new Date(`${event.start.replace(" ", "T")}Z`),
-            end: new Date(`${event.end.replace(" ", "T")}Z`),
-            allday: event.allday,
+        this.calendars[idcal].components[component.uid] = {
+            id: component.idcal_component,
+            modified: component.modified,
+            start: new Date(`${component.start.replace(" ", "T")}Z`),
+            end: new Date(`${component.end.replace(" ", "T")}Z`),
+            allday: component.allday,
             elements: {},
-            summary: event.summary,
-            type: event.type,
-            transparency: event.transparency,
-            sequence: event.sequence,
-            rrule: event.rrule,
-            rdates: event.rdates,
+            summary: component.summary,
+            type: component.type,
+            transparency: component.transparency,
+            sequence: component.sequence,
+            rrule: component.rrule,
+            rdates: component.rdates,
             r_id:
-                event.rrule || event.rdates?.length
-                    ? event.recur_id
+                component.rrule || component.rdates?.length
+                    ? component.recur_id
                     : undefined,
             thisandfuture:
-                event.rrule || event.rdates?.length
-                    ? event.thisandfuture
+                component.rrule || component.rdates?.length
+                    ? component.thisandfuture
                     : undefined,
-            exceptions: event.exceptions,
-            alarms: event.alarms,
+            exceptions: component.exceptions,
+            alarms: component.alarms,
         };
-        this.placeComponent(idcal, event.uid);
+        this.placeComponent(idcal, component.uid);
     }
     /**
      * Add month to calendars.
@@ -439,8 +439,15 @@ class BopCal {
             x: color,
         });
     }
-    componentEditor(component) {
-        new Modal({
+    /**
+     *
+     * @param {Number} idcal
+     * @param {String} uid
+     */
+    componentEditor(idcal, uid) {
+        // let cal = this;
+        const component = this.calendars[idcal].components[uid];
+        this.modal = new Modal({
             buttons: [
                 {},
                 { text: "valider", requireValid: true },
@@ -454,7 +461,9 @@ class BopCal {
                                 "Confirmez vous la suppression de cet événement ?",
                             style: "danger",
                             btn1text: "supprimer",
-                            btn1listener: () => {},
+                            btn1listener: () => {
+                                this.componentRemove(idcal, uid);
+                            },
                         });
                     },
                 },
@@ -535,6 +544,14 @@ class BopCal {
             el.classList.add("focus");
             this.focus = el;
         }
+    }
+    componentRemove(idcal, uid) {
+        socket.send({
+            c: idcal,
+            f: 33,
+            i: this.calendars[idcal].components[uid].id,
+            u: uid,
+        });
     }
     destroy() {
         this.minical.observer?.disconnect();
@@ -857,13 +874,28 @@ class BopCal {
                     cal.calRemove(data.c);
                 }
                 break;
-            case 32:
+            case 32: {
                 let component = cal.calendars[data.c].components[data.u];
                 component.modified = data.m;
                 component.start = new Date(`${data.s.replace(" ", "T")}Z`);
                 component.end = new Date(`${data.e.replace(" ", "T")}Z`);
                 cal.placeComponent(data.c, data.u);
                 break;
+            }
+            case 33: {
+                const component = cal.calendars[data.c].components[data.u];
+                for (let element of Object.values(component.elements))
+                    element.remove();
+                delete cal.calendars[data.c].components[data.u];
+                cal.modal.close();
+                msg.close();
+                msg.new({
+                    content: "L'évenement à été supprimé.",
+                    type: "success",
+                });
+
+                break;
+            }
         }
     }
     /**
@@ -874,12 +906,13 @@ class BopCal {
     componentApplyRange(idcal, uid) {
         const component = this.calendars[idcal].components[uid];
         socket.send({
-            f: 32,
-            s: toMYSQLDTString(component.start),
+            c: idcal,
             e: toMYSQLDTString(component.end),
-            u: uid,
+            f: 32,
             i: component.id,
             m: component.modified,
+            s: toMYSQLDTString(component.start),
+            u: uid,
         });
     }
     /**
@@ -988,7 +1021,8 @@ class BopCal {
                 }
                 handleStart.addEventListener("mousedown", (e) => {
                     const cal = this,
-                        limit = this.bigcal.cal.getBoundingClientRect();
+                        limit = this.bigcal.cal.getBoundingClientRect(),
+                        origin = [component.start, component.end];
                     let applied = false;
                     // on mouse drag
                     function onPointerMove(e) {
@@ -1019,7 +1053,13 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
-                            if (!applied) {
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
                                 // apply to db
                                 // send function, start/stop, uid, modified
                                 cal.componentApplyRange(idcal, uid);
@@ -1035,7 +1075,13 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
-                            if (!applied) {
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
                                 // apply to db
                                 cal.componentApplyRange(idcal, uid);
                                 applied = true;
@@ -1047,7 +1093,8 @@ class BopCal {
                 handleEnd.addEventListener("mousedown", (e) => {
                     // on mouse drag
                     const cal = this,
-                        limit = this.bigcal.cal.getBoundingClientRect();
+                        limit = this.bigcal.cal.getBoundingClientRect(),
+                        origin = [component.start, component.end];
                     let applied = false;
                     // on mouse drag
                     function onPointerMove(e) {
@@ -1078,7 +1125,13 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
-                            if (!applied) {
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
                                 // apply to db
                                 cal.componentApplyRange(idcal, uid);
                                 applied = true;
@@ -1093,7 +1146,13 @@ class BopCal {
                                 "pointermove",
                                 onPointerMove
                             );
-                            if (!applied) {
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
                                 // apply to db
                                 cal.componentApplyRange(idcal, uid);
                                 applied = true;
@@ -1107,7 +1166,8 @@ class BopCal {
                     if (e.target !== handleStart && e.target !== handleEnd) {
                         let cal = this,
                             limit = this.bigcal.cal.getBoundingClientRect(),
-                            applied = false;
+                            applied = false,
+                            origin = [component.start, component.end];
                         const clone = el.cloneNode(),
                             duration = component.end - component.start,
                             offset = e.clientY - el.getBoundingClientRect().y;
@@ -1146,7 +1206,14 @@ class BopCal {
                         const release = () => {
                             el.classList.remove("dragging");
                             clone?.remove();
-                            if (!applied) cal.componentApplyRange(idcal, uid);
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            )
+                                cal.componentApplyRange(idcal, uid);
                             applied = true;
                         };
                         document.addEventListener("pointermove", onPointerMove);
@@ -1169,7 +1236,6 @@ class BopCal {
                                     "pointermove",
                                     onPointerMove
                                 );
-                                release();
                             },
                             { once: true }
                         );
@@ -1178,7 +1244,7 @@ class BopCal {
                 });
                 el.addEventListener("dblclick", (e) => {
                     // open event editor
-                    this.componentEditor(component);
+                    this.componentEditor(idcal, uid);
                 });
             }
             component.start >= day

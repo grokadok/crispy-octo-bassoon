@@ -133,11 +133,12 @@
     }
     & .nav-logo {
         display: flex;
+        align-items: center;
+        justify-content: center;
         position: relative;
         height: 5rem;
         width: 5rem;
         border-radius: 50%;
-        align-items: center;
         background-color: rgba(0, 0, 0, 0.7);
         overflow: hidden;
         transform: scale(1);
@@ -146,14 +147,12 @@
             transform var(--transition-global);
         z-index: 11;
         & span {
-            margin: auto;
             background: var(--title-gradient);
             background-size: 200% auto;
             background-clip: text;
             color: transparent;
             font-size: 4rem;
             font-weight: bold;
-            text-align: center;
             text-transform: uppercase;
             scale: 1.1 1;
             animation: shine 15s linear infinite;

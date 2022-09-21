@@ -113,14 +113,8 @@ trait BopCal
     }
     private function calAddEvent(int $iduser, int $cal_folder, array $event)
     {
-        print("bla bla pouet" . PHP_EOL);
-        $test = $this->calCheckUserWriteAccess($iduser, $cal_folder);
-        var_dump($test);
         if ($this->calCheckUserWriteAccess($iduser, $cal_folder) === false) return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
-        print("bla bla POUET" . PHP_EOL);
-
         $uid = $event['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
-        var_dump($uid);
         $request = [
             'into' => '',
             'values' => '',
@@ -1207,10 +1201,16 @@ trait BopCal
     private function calGetEventLightData(int $idcomponent)
     {
         $event = $this->db->request([
-            'query' => "SELECT BIN_TO_UUID(uid,1) as uid,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
+            'query' => "SELECT idcal_component,BIN_TO_UUID(uid,1) as uid,type,summary,start,end,all_day,transparency,sequence,rrule,rdate,recur_id,thisandfuture FROM cal_component WHERE idcal_component = ? LIMIT 1;",
             'type' => 'i',
             'content' => [$idcomponent],
         ])[0];
+        $event['modified'] = $this->db->request([
+            'query' => 'SELECT modified FROM cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'type' => 's',
+            'content' => [$event['uid']],
+            'array' => true,
+        ])[0][0];
         // if rrule, get rrule
         if (!empty($event['rrule'])) $event['rrule'] = $this->calGetEventRRule($event['idcal_component']);
         // if rdate, get rdate
@@ -1490,64 +1490,62 @@ trait BopCal
     {
         // tag
         $this->db->request([
-            'query' => 'DELETE cal_comp_has_tag WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_comp_has_tag WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // attachment
         $this->db->request([
-            'query' => 'DELETE cal_attachment WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_attachment WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // rrule
         $this->db->request([
-            'query' => 'DELETE cal_rrule WHERE idcal_component = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // rdate
         $this->db->request([
-            'query' => 'DELETE cal_rdate WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_rdate WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // exception
         $this->db->request([
-            'query' => 'DELETE cal_exception WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_exception WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // alarm
-        $alarms = $this->db->request([
-            'query' => 'SELECT idcal_alarm FROM cal_comp_has_alarm WHERE idcal_component = ?;',
+        $this->db->request([
+            'query' => 'DELETE FROM cal_alarm WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
-            'array' => true,
         ]);
-        foreach ($alarms as $alarm) $this->componentRemoveAlarm($idcomponent, $alarm[0]);
         // attendee
-        $attendees = $this->db->request([
-            'query' => 'SELECT cal_attendee WHERE idcal_component = ?;',
-            'type' => 'i',
-            'content' => [$idcomponent],
-            'array' => true,
-        ]);
+        // $attendees = $this->db->request([
+        //     'query' => 'SELECT idcal_attendee FROM cal_attendee WHERE idcal_component = ?;',
+        //     'type' => 'i',
+        //     'content' => [$idcomponent],
+        //     'array' => true,
+        // ]);
         // if attendee with status confirmed, ask user if he wants to send them intel that event is aborted.
         // There will be notification anyway.
         $this->db->request([
-            'query' => 'DELETE cal_attendee WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_attendee WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // component
         $component = $this->db->request([
-            'query' => 'SELECT BIN_TO_UUID(uid,1) AS uuid,location,description FROM cal_component WHERE idcal_component = ? LIMIT 1;',
+            'query' => 'SELECT BIN_TO_UUID(uid,1) AS uuid,location,description,start,end FROM cal_component WHERE idcal_component = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idcomponent],
-        ]);
+        ])[0];
         $this->db->request([
-            'query' => 'DELETE cal_component WHERE idcal_component = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_component WHERE idcal_component = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
@@ -1562,12 +1560,15 @@ trait BopCal
             'content' => [$component['uuid']],
             'array' => true,
         ]))) $this->db->request([
-            'query' => 'DELETE cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'query' => 'DELETE FROM cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
             'type' => 's',
             'content' => [$component['uuid']],
         ]);
 
         // send intel to users having access to calendar of this new turn of events.
+
+        // return start/end of deleted component
+        return [$component['start'], $component['end']];
     }
     private function calRemoveFile(string $uid)
     {
@@ -1582,7 +1583,7 @@ trait BopCal
             foreach ($components as $component) $this->removeComponent($component[0]);
         // else remove file
         else $this->db->request([
-            'query' => 'DELETE cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
+            'query' => 'DELETE FROM cal_file WHERE uid = UUID_TO_BIN(?,1) LIMIT 1;',
             'type' => 's',
             'content' => [$uid],
         ]);

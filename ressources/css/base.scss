@@ -559,7 +559,7 @@ input {
         } */
         &:focus-within::after {
             opacity: 1;
-            transform: scaleY(1);
+            transform: scaleY(0.95);
         }
     }
     &:focus-within {

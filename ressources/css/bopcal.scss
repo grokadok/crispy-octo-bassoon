@@ -4,7 +4,6 @@
     --cal-width: 20rem;
     position: fixed;
     inset: auto auto 0 0;
-    /* height: 20rem; */
     width: var(--cal-width);
     display: flex;
     flex-direction: column;
@@ -73,7 +72,7 @@
         }
         /* mini cal */
         &:nth-of-type(2),
-        /* big cal */
+        /* big cal calendar */
         &:last-of-type > div:last-of-type {
             height: 14rem;
             overflow-y: scroll;
@@ -196,7 +195,7 @@
             transition: opacity var(--transition-global),
                 width var(--transition-global), height var(--transition-global);
             pointer-events: none;
-            /* Layout */
+            /* layout */
             & > div:first-of-type {
                 position: absolute;
                 inset: calc(var(--info-height) + var(--allday-height)) 0 0 0;
@@ -323,6 +322,7 @@
                         &.clone {
                             background: transparent;
                             outline: dashed 0.4rem;
+                            pointer-events: none; /* otherwise prevents dblclick event */
                         }
                         &.hide {
                             display: none;
@@ -333,48 +333,53 @@
             &.year {
             }
             &.month {
-                height: calc(100vh - 5rem);
+                height: var(--bigcal-height);
                 /* layout */
                 & > div:first-of-type {
+                    display: none;
+                }
+                /* week info */
+                & > div:nth-of-type(2) {
                     display: none;
                 }
                 /* calendar */
                 & > div:last-of-type {
                     height: 100%;
                     flex-direction: column;
-                }
-                /* month */
-                & [data-month] {
-                    height: calc(100vh - 5rem);
-                    &::after {
-                        padding: 1rem;
-                        pointer-events: none;
-                        transform: rotate(0deg);
-                        writing-mode: unset;
-                        z-index: 1;
+                    /* month */
+                    & [data-month] {
+                        height: var(--bigcal-height);
+                        /* height: calc(100vh - 5rem); */
+                        &::after {
+                            padding: 1rem;
+                            pointer-events: none;
+                            transform: rotate(0deg);
+                            writing-mode: unset;
+                            z-index: 1;
+                        }
                     }
-                }
-                /* week */
-                & [data-week] {
-                    width: 100%;
-                    flex: 1;
-                    justify-content: space-around;
-                    &::after {
-                        display: none;
+                    /* week */
+                    & [data-week] {
+                        width: 100%;
+                        flex: 1;
+                        justify-content: space-around;
+                        &::after {
+                            display: none;
+                        }
                     }
-                }
-                /* day */
-                & [data-date] {
-                    flex-direction: column;
-                    justify-content: space-around;
-                    overflow: auto;
-                    height: 100%;
-                    border: inset var(--text-placeholder) 1px;
-                    /* regular event */
-                    & > div:nth-of-type(2) > div {
-                        position: static;
-                        width: 5rem;
-                        height: 1rem;
+                    /* day */
+                    & [data-date] {
+                        flex-direction: column;
+                        justify-content: space-around;
+                        overflow: auto;
+                        height: 100%;
+                        border: inset var(--text-placeholder) 1px;
+                        /* regular event */
+                        & > div:nth-of-type(2) > div {
+                            position: static;
+                            width: 5rem;
+                            height: 1rem;
+                        }
                     }
                 }
             }
@@ -408,11 +413,14 @@
                     }
                     /* day */
                     & [data-date] {
-                        /* width: clamp(
+                        width: clamp(
                             100px,
-                            calc((100vw - var(--cal-width)) / 7),
+                            calc(
+                                (100vw - var(--info-width) - var(--cal-width)) /
+                                    7
+                            ),
                             20rem
-                        ); */
+                        );
                         height: auto;
                         display: flex;
                         flex-direction: column;
@@ -429,12 +437,14 @@
                                 justify-content: center;
                                 align-items: center;
                                 border-bottom: inset;
+                                border-color: var(--accent-secondary);
                                 color: var(--accent-secondary);
                                 cursor: pointer;
                                 & > span {
                                     font-weight: bolder;
+                                    letter-spacing: 0.3rem;
                                     scale: 1;
-                                    text-transform: full-width capitalize;
+                                    text-transform: capitalize;
                                     transition: scale var(--transition-global);
                                 }
                                 &:hover > span {
@@ -498,15 +508,15 @@
                 }
             }
             /* day */
-            &.week [data-date] {
+            /* &.week [data-date] {
                 width: clamp(
                     100px,
                     calc((100vw - var(--cal-width)) / 7),
                     20rem
                 );
-            }
+            } */
             /* day */
-            &.day [data-date] {
+            &.day > div:last-of-type [data-date] {
                 width: calc(100vw - var(--cal-width) - 4rem);
             }
             &.locked {

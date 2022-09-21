@@ -74,8 +74,7 @@ class Modal {
                 },
             ];
             // store buttons data into object
-            if (options.buttons) {
-                console.log(options.buttons);
+            if (options.buttons)
                 for (const [key, value] of options.buttons.entries()) {
                     if (!this.buttons[key]) this.buttons[key] = {};
                     if (!objIsEmpty(value)) {
@@ -87,7 +86,6 @@ class Modal {
                             this.buttons[key].requireValid = value.requireValid;
                     }
                 }
-            }
             // for each stored button, generate element
             for (const [key, value] of this.buttons.entries()) {
                 let button = document.createElement("button");
