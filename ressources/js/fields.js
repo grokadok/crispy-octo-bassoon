@@ -120,7 +120,9 @@ class Field {
             case "datepicker": {
                 let fieldElement = document.createElement("input");
                 fieldElement.type = "datetime-local";
-                fieldElement.valueAsDate = params.value ?? new Date();
+                fieldElement.value = toHTMLInputDateValue(
+                    params.value ?? new Date()
+                );
                 if (params.min) fieldElement.min = params.min;
                 if (params.max) fieldElement.max = params.max;
                 this.input.push(fieldElement);
@@ -129,14 +131,12 @@ class Field {
             }
             case "event_date": {
                 let summary = document.createElement("span"),
-                    allday = new Field({
-                        compact: true,
-                        name: "all-day",
-                        type: "checkbox",
-                    }),
+                    allday = document.createElement("div"),
+                    alldaySpan = document.createElement("span"),
+                    alldayInput = document.createElement("input"),
                     start = new Field({
                         compact: true,
-                        max: params.value.end.toISOString().substr(0, 16),
+                        max: toHTMLInputDateValue(params.value.end),
                         name: "Start",
                         required: true,
                         type: "datepicker",
@@ -144,7 +144,7 @@ class Field {
                     }),
                     end = new Field({
                         compact: true,
-                        min: params.value.start.toISOString().substr(0, 16),
+                        min: toHTMLInputDateValue(params.value.start),
                         name: "End",
                         required: true,
                         type: "datepicker",
@@ -176,13 +176,19 @@ class Field {
                     ])
                         element.classList.remove("hide");
                 });
+
+                // allday
+                alldaySpan.textContent = "All day:";
+                alldayInput.type = "checkbox";
+                allday.className = "allday";
+                allday.append(alldaySpan, alldayInput);
                 // start event listener :
                 // on date change, set min to end
                 // end event listener :
                 // on date change, set max to start
                 this.wrapper.append(
                     summary,
-                    allday.wrapper,
+                    allday,
                     start.wrapper,
                     end.wrapper,
                     repeat

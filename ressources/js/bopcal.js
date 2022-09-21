@@ -444,6 +444,89 @@ class BopCal {
      * @param {Number} idcal
      * @param {String} uid
      */
+    componentEditor2(idcal, uid) {
+        // menu on bigcal, appearing on request on dblclick on an event, to edit it's values.
+        // on disapear, if modifications, send them to server for validation.
+
+        this.editor = {
+            wrapper: document.createElement("div"),
+            focus: "", // component id ? uid ? idcal ?
+            position: [x, y],
+        };
+
+        let summary = document.createElement("span"),
+            allday = document.createElement("div"),
+            alldaySpan = document.createElement("span"),
+            alldayInput = document.createElement("input"),
+            start = new Field({
+                compact: true,
+                max: toHTMLInputDateValue(params.value.end),
+                name: "Start",
+                required: true,
+                type: "datepicker",
+                value: params.value.start,
+            }),
+            end = new Field({
+                compact: true,
+                min: toHTMLInputDateValue(params.value.start),
+                name: "End",
+                required: true,
+                type: "datepicker",
+                value: params.value.end,
+            }),
+            repeat = document.createElement("div");
+        // busy = new Field({
+        //     compact: true,
+        //     type: "checkbox",
+        //     name: "Busy",
+        //     value: params.value.busy
+        // });
+        summary.textContent = new Intl.DateTimeFormat("fr", {
+            year: "2-digit",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+        }).formatRange(params.value.start, params.value.end);
+        summary.addEventListener("click", () => {
+            // hide summary, show other elements > set class to wrapper
+            summary.classList.add("hide");
+            for (const element of [
+                allday.wrapper,
+                start.wrapper,
+                end.wrapper,
+                repeat,
+                // busy.wrapper,
+            ])
+                element.classList.remove("hide");
+        });
+
+        // allday
+        alldaySpan.textContent = "All day:";
+        alldayInput.type = "checkbox";
+        allday.className = "allday";
+        allday.append(alldaySpan, alldayInput);
+        alldayInput.addEventListener("change", (e) => {
+            e.target.checked;
+        });
+        // start event listener :
+        // on date change, set min to end
+        // end event listener :
+        // on date change, set max to start
+        this.wrapper.append(
+            summary,
+            allday,
+            start.wrapper,
+            end.wrapper,
+            repeat
+            // busy.wrapper
+        );
+    }
+    /**
+     *
+     * @param {Number} idcal
+     * @param {String} uid
+     */
     componentEditor(idcal, uid) {
         // let cal = this;
         const component = this.calendars[idcal].components[uid];
@@ -763,12 +846,14 @@ class BopCal {
      * @param {Date} date
      */
     minicalFocus(date) {
+        console.log(date);
         const month =
                 this.minical.years[date.getFullYear()].months[
                     date.getMonth() - 1
                 ],
             x = month.offsetLeft,
             y = month.offsetTop;
+        console.log(month);
         this.minical.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
     }
     newCalendar() {

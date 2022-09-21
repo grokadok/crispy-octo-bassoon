@@ -909,6 +909,15 @@ function toCalDAVString(date) {
     }
 }
 /**
+ *  Returns valid string to use as datetime-local input's value.
+ * @param {Date} date
+ */
+function toHTMLInputDateValue(date) {
+    let tempDate = new Date(date);
+    tempDate.setMinutes(tempDate.getMinutes() - tempDate.getTimezoneOffset());
+    return tempDate.toISOString().substr(0, 16);
+}
+/**
  * Convert compact ISO8601 string to extended for fullcalendar.
  * @param {String} date
  */
