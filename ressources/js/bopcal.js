@@ -66,6 +66,16 @@ class BopCal {
             this.bigcal.layout.firstElementChild.style.top = `-${this.bigcal.cal.scrollTop}px`;
         });
         this.bigcal.cal.addEventListener("click", (e) => {
+            // if target is an event
+            if (e.target.closest("[data-uid]")) {
+                // const component = e.target.closest("[data-uid]");
+                // if target has focus, open editor
+                // if (component === this.focus) this.editor.focus(component);
+
+                return;
+            }
+            this.focus?.classList.remove("focus");
+            delete this.focus;
             // if number (day, week, month), set view to corresponding date.
             // if event, set focus to it
         });
@@ -98,14 +108,255 @@ class BopCal {
                     });
             }
         });
+        this.bigcal.cal.addEventListener("pointerdown", (e) => {
+            // if target is event and event not focus, focus it
+            if (e.target.closest("[data-uid]")) {
+                const componentElement = e.target.closest("[data-uid]"),
+                    idcal = componentElement.getAttribute("data-cal"),
+                    uid = componentElement.getAttribute("data-uid"),
+                    component = this.calendars[idcal].components[uid],
+                    handleStart =
+                        componentElement.getElementsByTagName("div")[0],
+                    handleEnd = componentElement.getElementsByTagName("div")[1];
+                if (this.focus && this.focus !== componentElement)
+                    this.focus.classList.remove("focus");
+                componentElement.classList.add("focus");
+                this.focus = componentElement;
+                // move editor towards componentElement;
+                this.editor.focus(componentElement);
+
+                if (e.target === handleStart) {
+                    const cal = this,
+                        limit = this.bigcal.cal.getBoundingClientRect(),
+                        origin = [component.start, component.end];
+                    let applied = false;
+                    // on mouse drag
+                    function onPointerMove(e) {
+                        if (
+                            e.clientX > limit.left &&
+                            e.clientX < limit.right &&
+                            e.clientY > limit.top &&
+                            e.clientY < limit.bottom
+                        ) {
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e)
+                            );
+                            // if cursor date < end date
+                            if (newDate < component.end) {
+                                // set start date to cursor date
+                                // apply to object
+                                component.start = newDate;
+                                // apply to element
+                                cal.placeComponent(idcal, uid);
+                            }
+                        }
+                    }
+                    document.addEventListener("pointermove", onPointerMove);
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
+                                // apply to db
+                                // send function, start/stop, uid, modified
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
+                            }
+                        },
+                        { once: true }
+                    );
+                    document.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
+                                // apply to db
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
+                            }
+                        },
+                        { once: true }
+                    );
+                } else if (e.target === handleEnd) {
+                    // on mouse drag
+                    const cal = this,
+                        limit = this.bigcal.cal.getBoundingClientRect(),
+                        origin = [component.start, component.end];
+                    let applied = false;
+                    // on mouse drag
+                    function onPointerMove(e) {
+                        if (
+                            e.clientX > limit.left &&
+                            e.clientX < limit.right &&
+                            e.clientY > limit.top &&
+                            e.clientY < limit.bottom
+                        ) {
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e)
+                            );
+                            // if cursor date > start date
+                            if (newDate > component.start) {
+                                // set end date to cursor date
+                                // apply to element
+                                component.end = newDate;
+                                // apply to element
+                                cal.placeComponent(idcal, uid);
+                            }
+                        }
+                    }
+                    document.addEventListener("pointermove", onPointerMove);
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
+                                // apply to db
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
+                            }
+                        },
+                        { once: true }
+                    );
+                    document.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            if (
+                                !applied &&
+                                (component.start.valueOf() !==
+                                    origin[0].valueOf() ||
+                                    component.end.valueOf() !==
+                                        origin[1].valueOf())
+                            ) {
+                                // apply to db
+                                cal.componentApplyRange(idcal, uid);
+                                applied = true;
+                            }
+                        },
+                        { once: true }
+                    );
+                } else {
+                    let cal = this,
+                        limit = this.bigcal.cal.getBoundingClientRect(),
+                        applied = false,
+                        origin = [component.start, component.end];
+                    const clone = componentElement.cloneNode(),
+                        duration = component.end - component.start,
+                        offset =
+                            e.clientY -
+                            componentElement.getBoundingClientRect().y;
+                    componentElement.classList.add("dragging"); // transparent element
+                    clone.classList.add("clone", "hidden");
+                    clone.style.outlineColor = clone.style.backgroundColor;
+                    clone.style.backgroundColor = "";
+                    componentElement.parentNode.append(clone);
+                    // clone element, append to date above original element
+                    // on pointer move, append clone to date under pointer, at closest time
+                    function onPointerMove(e) {
+                        clone.classList.remove("hidden");
+                        e.preventDefault();
+                        if (
+                            e.clientX > limit.left &&
+                            e.clientX < limit.right &&
+                            e.clientY > limit.top &&
+                            e.clientY < limit.bottom
+                        ) {
+                            const newDate = dateGetClosestQuarter(
+                                cal.getCursorDate(e, offset)
+                            );
+                            if (newDate !== component.start) {
+                                component.start = newDate;
+                                component.end = new Date(
+                                    component.start.valueOf() + duration
+                                );
+                                cal.placeComponent(idcal, uid, newDate);
+                            }
+                        }
+
+                        // get Y to set hour if !=
+                        // get target to set date if !=
+                        // set component's new dates (new start + duration)
+                        // place component accordingly
+                    }
+                    const release = () => {
+                        componentElement.classList.remove("dragging");
+                        clone?.remove();
+                        if (
+                            !applied &&
+                            (component.start.valueOf() !==
+                                origin[0].valueOf() ||
+                                component.end.valueOf() !== origin[1].valueOf())
+                        )
+                            cal.componentApplyRange(idcal, uid);
+                        applied = true;
+                    };
+                    document.addEventListener("pointermove", onPointerMove);
+                    // on mouseup, remove clone, move original to pointer.target date pointerY time.
+                    document.addEventListener(
+                        "pointerup",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                            release();
+                        },
+                        { once: true }
+                    );
+                    document.body.addEventListener(
+                        "pointerleave",
+                        () => {
+                            document.removeEventListener(
+                                "pointermove",
+                                onPointerMove
+                            );
+                        },
+                        { once: true }
+                    );
+                }
+            }
+        });
 
         // event editor
         this.editor = {
             wrapper: document.createElement("div"),
             apply: () => {
-                this.placeComponent(...this.editor.focus);
+                this.placeComponent();
             },
-            focus: [],
+            focus: (el) => {
+                // this.editor.target = el;
+                console.log(el);
+            },
         };
         this.editor.wrapper.className = "editor";
         let summary = document.createElement("input"),
@@ -627,17 +878,17 @@ class BopCal {
             title: component.summary,
         });
     }
-    componentFocus(el) {
-        if (this.focus && this.focus === el) {
-            delete this.focus;
-            el.classList.remove("focus");
-            return;
-        } else {
-            if (this.focus) this.focus.classList.remove("focus");
-            el.classList.add("focus");
-            this.focus = el;
-        }
-    }
+    // componentFocus(el) {
+    //     if (this.focus && this.focus === el) {
+    //         delete this.focus;
+    //         el.classList.remove("focus");
+    //         return;
+    //     } else {
+    //         if (this.focus) this.focus.classList.remove("focus");
+    //         el.classList.add("focus");
+    //         this.focus = el;
+    //     }
+    // }
     componentRemove(idcal, uid) {
         socket.send({
             c: idcal,
@@ -1014,8 +1265,9 @@ class BopCal {
      * Places/updates component in bigcal according to component's data.
      * @param {Number} idcal
      * @param {String} uid - Component object stored in bigcal.
+     * @param {Date} [move] - If set, adds .focus to component at date.
      */
-    placeComponent(idcal, uid) {
+    placeComponent(idcal, uid, move) {
         let component = this.calendars[idcal].components[uid];
         // get dates between start & end
         const dates = getDaysBetweenDates(component.start, component.end),
@@ -1099,6 +1351,10 @@ class BopCal {
                     timeStyle: "short",
                 }).format(component.start);
                 summary.textContent = component.summary ?? "New event";
+                setElementAttributes(el, [
+                    ["data-cal", idcal],
+                    ["data-uid", uid],
+                ]);
                 el.style.setProperty(
                     "--event-color",
                     this.calendars[idcal].color
@@ -1113,234 +1369,8 @@ class BopCal {
                     el.style.top = top;
                     el.style.height = height;
                 }
-                handleStart.addEventListener("mousedown", (e) => {
-                    const cal = this,
-                        limit = this.bigcal.cal.getBoundingClientRect(),
-                        origin = [component.start, component.end];
-                    let applied = false;
-                    // on mouse drag
-                    function onPointerMove(e) {
-                        if (
-                            e.clientX > limit.left &&
-                            e.clientX < limit.right &&
-                            e.clientY > limit.top &&
-                            e.clientY < limit.bottom
-                        ) {
-                            const newDate = dateGetClosestQuarter(
-                                cal.getCursorDate(e)
-                            );
-                            // if cursor date < end date
-                            if (newDate < component.end) {
-                                // set start date to cursor date
-                                // apply to object
-                                component.start = newDate;
-                                // apply to element
-                                cal.placeComponent(idcal, uid);
-                            }
-                        }
-                    }
-                    document.addEventListener("pointermove", onPointerMove);
-                    document.addEventListener(
-                        "pointerup",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            if (
-                                !applied &&
-                                (component.start.valueOf() !==
-                                    origin[0].valueOf() ||
-                                    component.end.valueOf() !==
-                                        origin[1].valueOf())
-                            ) {
-                                // apply to db
-                                // send function, start/stop, uid, modified
-                                cal.componentApplyRange(idcal, uid);
-                                applied = true;
-                            }
-                        },
-                        { once: true }
-                    );
-                    document.addEventListener(
-                        "pointerleave",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            if (
-                                !applied &&
-                                (component.start.valueOf() !==
-                                    origin[0].valueOf() ||
-                                    component.end.valueOf() !==
-                                        origin[1].valueOf())
-                            ) {
-                                // apply to db
-                                cal.componentApplyRange(idcal, uid);
-                                applied = true;
-                            }
-                        },
-                        { once: true }
-                    );
-                });
-                handleEnd.addEventListener("mousedown", (e) => {
-                    // on mouse drag
-                    const cal = this,
-                        limit = this.bigcal.cal.getBoundingClientRect(),
-                        origin = [component.start, component.end];
-                    let applied = false;
-                    // on mouse drag
-                    function onPointerMove(e) {
-                        if (
-                            e.clientX > limit.left &&
-                            e.clientX < limit.right &&
-                            e.clientY > limit.top &&
-                            e.clientY < limit.bottom
-                        ) {
-                            const newDate = dateGetClosestQuarter(
-                                cal.getCursorDate(e)
-                            );
-                            // if cursor date > start date
-                            if (newDate > component.start) {
-                                // set end date to cursor date
-                                // apply to element
-                                component.end = newDate;
-                                // apply to element
-                                cal.placeComponent(idcal, uid);
-                            }
-                        }
-                    }
-                    document.addEventListener("pointermove", onPointerMove);
-                    document.addEventListener(
-                        "pointerup",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            if (
-                                !applied &&
-                                (component.start.valueOf() !==
-                                    origin[0].valueOf() ||
-                                    component.end.valueOf() !==
-                                        origin[1].valueOf())
-                            ) {
-                                // apply to db
-                                cal.componentApplyRange(idcal, uid);
-                                applied = true;
-                            }
-                        },
-                        { once: true }
-                    );
-                    document.addEventListener(
-                        "pointerleave",
-                        () => {
-                            document.removeEventListener(
-                                "pointermove",
-                                onPointerMove
-                            );
-                            if (
-                                !applied &&
-                                (component.start.valueOf() !==
-                                    origin[0].valueOf() ||
-                                    component.end.valueOf() !==
-                                        origin[1].valueOf())
-                            ) {
-                                // apply to db
-                                cal.componentApplyRange(idcal, uid);
-                                applied = true;
-                            }
-                        },
-                        { once: true }
-                    );
-                });
-                el.addEventListener("click", () => this.componentFocus(el));
-                el.addEventListener("mousedown", (e) => {
-                    if (e.target !== handleStart && e.target !== handleEnd) {
-                        let cal = this,
-                            limit = this.bigcal.cal.getBoundingClientRect(),
-                            applied = false,
-                            origin = [component.start, component.end];
-                        const clone = el.cloneNode(),
-                            duration = component.end - component.start,
-                            offset = e.clientY - el.getBoundingClientRect().y;
-                        el.classList.add("dragging"); // transparent element
-                        clone.classList.add("clone");
-                        clone.style.outlineColor = clone.style.backgroundColor;
-                        clone.style.backgroundColor = "";
-                        el.parentNode.append(clone);
-                        // clone element, append to date above original element
-                        // on pointer move, append clone to date under pointer, at closest time
-                        function onPointerMove(e) {
-                            e.preventDefault();
-                            if (
-                                e.clientX > limit.left &&
-                                e.clientX < limit.right &&
-                                e.clientY > limit.top &&
-                                e.clientY < limit.bottom
-                            ) {
-                                const newDate = dateGetClosestQuarter(
-                                    cal.getCursorDate(e, offset)
-                                );
-                                if (newDate !== component.start) {
-                                    component.start = newDate;
-                                    component.end = new Date(
-                                        component.start.valueOf() + duration
-                                    );
-                                    cal.placeComponent(idcal, uid);
-                                }
-                            }
-
-                            // get Y to set hour if !=
-                            // get target to set date if !=
-                            // set component's new dates (new start + duration)
-                            // place component accordingly
-                        }
-                        const release = () => {
-                            el.classList.remove("dragging");
-                            clone?.remove();
-                            if (
-                                !applied &&
-                                (component.start.valueOf() !==
-                                    origin[0].valueOf() ||
-                                    component.end.valueOf() !==
-                                        origin[1].valueOf())
-                            )
-                                cal.componentApplyRange(idcal, uid);
-                            applied = true;
-                        };
-                        document.addEventListener("pointermove", onPointerMove);
-                        // on mouseup, remove clone, move original to pointer.target date pointerY time.
-                        document.addEventListener(
-                            "pointerup",
-                            () => {
-                                document.removeEventListener(
-                                    "pointermove",
-                                    onPointerMove
-                                );
-                                release();
-                            },
-                            { once: true }
-                        );
-                        document.body.addEventListener(
-                            "pointerleave",
-                            () => {
-                                document.removeEventListener(
-                                    "pointermove",
-                                    onPointerMove
-                                );
-                            },
-                            { once: true }
-                        );
-                        // set new eventlistener if necessary
-                    }
-                });
-                el.addEventListener("dblclick", (e) => {
-                    // open event editor
-                    this.componentEditor(idcal, uid);
-                });
             }
+            if (move?.valueOf() === day.valueOf()) el.classList.add("focus");
             component.start >= day
                 ? el.classList.add("start")
                 : el.classList.remove("start");

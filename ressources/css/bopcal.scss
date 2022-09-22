@@ -349,8 +349,15 @@
                     }
                     &.clone {
                         background: transparent;
-                        outline: dashed 0.4rem;
+                        outline: dashed 0.2rem var(--event-color);
                         pointer-events: none; /* otherwise prevents dblclick event */
+                        &::before,
+                        &::after {
+                            display: none;
+                        }
+                        &.hidden {
+                            display: none;
+                        }
                     }
                     &.hide {
                         display: none;
