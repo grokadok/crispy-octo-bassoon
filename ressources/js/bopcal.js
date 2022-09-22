@@ -64,20 +64,43 @@ class BopCal {
         }
         this.bigcal.cal.addEventListener("scroll", (e) => {
             this.bigcal.layout.firstElementChild.style.top = `-${this.bigcal.cal.scrollTop}px`;
+            this.editorHide();
         });
-        this.bigcal.cal.addEventListener("click", (e) => {
-            // if target is an event
-            if (e.target.closest("[data-uid]")) {
-                // const component = e.target.closest("[data-uid]");
-                // if target has focus, open editor
-                // if (component === this.focus) this.editor.focus(component);
+        // this.bigcal.cal.addEventListener("click", (e) => {
+        document.addEventListener("click", (e) => {
+            if (this.bigcal.cal.contains(e.target)) {
+                // if target is an event
+                if (e.target.closest("[data-uid]")) {
+                    const componentElement = e.target.closest("[data-uid]"),
+                        idcal = componentElement.getAttribute("data-cal"),
+                        uid = componentElement.getAttribute("data-uid"),
+                        component = this.calendars[idcal].components[uid];
+                    // if target has focus, open editor
+                    if (component === this.focus) this.editorShow();
+                    return;
+                }
 
+                // if number (day, week, month), set view to corresponding date.
+                // if event, set focus to it
+            }
+            if (e.target.closest(".editor")) {
+                // if target = datesummary
+                if (this.editor.dateSummary.contains(e.target))
+                    this.editor.wrapper.classList.add("date-edition");
+                // else if date-edition and target not in date editor
+                else if (
+                    this.editor.wrapper.classList.contains("date-edition") &&
+                    !this.editor.dateEdition.contains(e.target)
+                )
+                    this.editor.wrapper.classList.remove("date-edition");
                 return;
             }
-            this.focus?.classList.remove("focus");
+            this.editorHide();
+            if (this.focus)
+                Object.values(this.focus.elements).forEach((x) =>
+                    x.classList.remove("focus")
+                );
             delete this.focus;
-            // if number (day, week, month), set view to corresponding date.
-            // if event, set focus to it
         });
         this.bigcal.cal.addEventListener("dblclick", (e) => {
             // if day, create event on day, at time if view = week or day, else allday if month
@@ -118,12 +141,19 @@ class BopCal {
                     handleStart =
                         componentElement.getElementsByTagName("div")[0],
                     handleEnd = componentElement.getElementsByTagName("div")[1];
-                if (this.focus && this.focus !== componentElement)
-                    this.focus.classList.remove("focus");
-                componentElement.classList.add("focus");
-                this.focus = componentElement;
-                // move editor towards componentElement;
-                this.editor.focus(componentElement);
+                if (this.focus && this.focus !== component) {
+                    Object.values(this.focus.elements).forEach((x) =>
+                        x.classList.remove("focus")
+                    );
+                    // this.focus.classList.remove("focus");
+                }
+                // componentElement.classList.add("focus");
+                this.focus = component;
+                Object.values(this.focus.elements).forEach((x) =>
+                    x.classList.add("focus")
+                );
+                // move editor towards componentElement and fill with component's data;
+                this.editorFocus(idcal, uid, componentElement);
 
                 if (e.target === handleStart) {
                     const cal = this,
@@ -280,10 +310,11 @@ class BopCal {
                     clone.style.outlineColor = clone.style.backgroundColor;
                     clone.style.backgroundColor = "";
                     componentElement.parentNode.append(clone);
-                    // clone element, append to date above original element
-                    // on pointer move, append clone to date under pointer, at closest time
                     function onPointerMove(e) {
-                        clone.classList.remove("hidden");
+                        // to avoid event start to jump to cursor
+                        // change to add/remove time on Y
+                        // change to add/remove day on X
+
                         e.preventDefault();
                         if (
                             e.clientX > limit.left &&
@@ -294,11 +325,15 @@ class BopCal {
                             const newDate = dateGetClosestQuarter(
                                 cal.getCursorDate(e, offset)
                             );
-                            if (newDate !== component.start) {
+                            if (
+                                newDate.valueOf() !== component.start.valueOf()
+                            ) {
                                 component.start = newDate;
                                 component.end = new Date(
                                     component.start.valueOf() + duration
                                 );
+                                clone.classList.remove("hidden");
+                                cal.editorHide();
                                 cal.placeComponent(idcal, uid, newDate);
                             }
                         }
@@ -350,73 +385,60 @@ class BopCal {
         // event editor
         this.editor = {
             wrapper: document.createElement("div"),
-            apply: () => {
-                this.placeComponent();
+            // summary
+            summary: document.createElement("input"),
+            // dateSummary
+            dateSummary: document.createElement("span"),
+            // date edition
+            dateEdition: document.createElement("div"),
+            // date all-day
+            allday: {
+                wrapper: document.createElement("div"),
+                input: document.createElement("input"),
             },
-            focus: (el) => {
-                // this.editor.target = el;
-                console.log(el);
-            },
-        };
-        this.editor.wrapper.className = "editor";
-        let summary = document.createElement("input"),
-            dateSummary = document.createElement("span"),
-            allday = document.createElement("div"),
-            alldayInput = document.createElement("input"),
-            start = new Field({
+            // date start
+            start: new Field({
                 compact: true,
                 name: "Start",
                 required: true,
                 type: "datepicker",
             }),
-            end = new Field({
+            // date end
+            end: new Field({
                 compact: true,
                 name: "End",
                 required: true,
                 type: "datepicker",
             }),
-            repeat = document.createElement("div");
+            // date repeat
+            repeat: document.createElement("div"),
+            busy: {
+                wrapper: document.createElement("div"),
+                input: document.createElement("input"),
+            },
+        };
+        this.editor.wrapper.className = "editor";
+        this.editor.dateEdition.append(
+            this.editor.allday.wrapper,
+            this.editor.start.wrapper,
+            this.editor.end.wrapper,
+            this.editor.repeat
+        );
 
-        // busy = new Field({
-        //     compact: true,
-        //     type: "checkbox",
-        //     name: "Busy",
-        //     value: params.value.busy
-        // });
-        // dateSummary.textContent = new Intl.DateTimeFormat("fr", {
-        //     year: "numeric",
-        //     month: "short",
-        //     day: "numeric",
-        //     hour: "numeric",
-        //     minute: "numeric",
-        // }).formatRange(params.value.start, params.value.end);
-        for (const element of [
-            allday,
-            start.wrapper,
-            end.wrapper,
-            repeat,
-            // busy.wrapper,
-        ])
-            element.classList.add("hide");
-        dateSummary.addEventListener("click", () => {
-            // hide dateSummary, show other elements > set class to wrapper
-            dateSummary.classList.add("hide");
-            for (const element of [
-                allday,
-                start.wrapper,
-                end.wrapper,
-                repeat,
-                // busy.wrapper,
-            ])
-                element.classList.remove("hide");
-        });
+        this.editor.summary.placeholder = "New event";
+        // hide dateSummary, show other elements > set class to wrapper
         // on click on anywhere else than inside date elements, reverse hide.
 
         // allday
-        allday.className = "allday";
-        alldayInput.type = "checkbox";
-        allday.append(alldayInput);
-        alldayInput.addEventListener("change", (e) => {
+        this.editor.allday.input.type = "checkbox";
+        this.editor.allday.wrapper.append(this.editor.allday.input);
+        this.editor.allday.input.addEventListener("change", (e) => {
+            console.log(e.target.checked);
+        });
+        // busy
+        this.editor.busy.input.type = "checkbox";
+        this.editor.busy.wrapper.append(this.editor.busy.input);
+        this.editor.busy.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
         });
         // start event listener :
@@ -424,13 +446,10 @@ class BopCal {
         // end event listener :
         // on date change, set max to start
         this.editor.wrapper.append(
-            summary,
-            dateSummary,
-            allday,
-            start.wrapper,
-            end.wrapper,
-            repeat
-            // busy.wrapper
+            this.editor.summary,
+            this.editor.dateSummary,
+            this.editor.dateEdition,
+            this.editor.busy.wrapper
         );
 
         // minicalendar menu
@@ -653,12 +672,6 @@ class BopCal {
                 break;
             case "week":
             case "day":
-                console.log(date);
-                console.warn(
-                    `[data-week="${getWeekNumber(
-                        date
-                    )}"] [data-date="${date.getDate()}"]`
-                );
                 const infoWidth = convertRemToPixels(
                     parseFloat(
                         window
@@ -905,6 +918,67 @@ class BopCal {
     }
     static destroyAll() {
         for (let cal of BopCal.bopcals) cal.destroy();
+    }
+    editorFocus(idcal, uid, element) {
+        const component = this.calendars[idcal].components[uid],
+            targetX =
+                element.getBoundingClientRect().x -
+                this.editor.wrapper.offsetParent.offsetLeft -
+                this.editor.wrapper.offsetWidth -
+                convertRemToPixels(1),
+            targetY =
+                element.getBoundingClientRect().y +
+                element.offsetHeight / 2 -
+                this.editor.wrapper.offsetParent.offsetTop -
+                this.editor.wrapper.offsetHeight / 2,
+            lowLimitX = -this.wrapper.offsetLeft,
+            highLimitX =
+                document.body.offsetWidth -
+                this.wrapper.offsetLeft -
+                this.editor.wrapper.offsetWidth,
+            lowLimitY = -this.wrapper.offsetTop,
+            highLimitY =
+                document.body.offsetHeight -
+                this.wrapper.offsetTop -
+                this.editor.wrapper.offsetHeight;
+        // move editor towards component element
+        if (targetX >= lowLimitX && targetX <= highLimitX)
+            this.editor.wrapper.style.left = `${targetX}px`;
+        if (targetX < lowLimitX)
+            this.editor.wrapper.style.left = `${lowLimitX}px`;
+        if (targetX > highLimitX)
+            this.editor.wrapper.style.left = `${highLimitX}px`;
+        if (targetY >= lowLimitY && targetY <= highLimitY)
+            this.editor.wrapper.style.top = `${targetY}px`;
+        if (targetY < lowLimitY)
+            this.editor.wrapper.style.top = `${lowLimitY}px`;
+        if (targetY > highLimitY)
+            this.editor.wrapper.style.top = `${highLimitY}px`;
+
+        // populate editor with component's data
+        this.editor.summary.value = component.summary;
+        this.editor.dateSummary.textContent = new Intl.DateTimeFormat("fr", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+        }).formatRange(component.start, component.end);
+        this.editor.start.input[0].value = toHTMLInputDateValue(
+            component.start
+        );
+        this.editor.end.input[0].value = toHTMLInputDateValue(component.end);
+
+        this.editor.wrapper.style.setProperty(
+            "--editor-color",
+            element.style.getPropertyValue("--event-color")
+        );
+    }
+    editorHide() {
+        this.editor.wrapper.classList.remove("show", "date-edition");
+    }
+    editorShow() {
+        this.editor.wrapper.classList.add("show");
     }
     getCalendars() {
         socket.send({
@@ -1265,7 +1339,7 @@ class BopCal {
      * Places/updates component in bigcal according to component's data.
      * @param {Number} idcal
      * @param {String} uid - Component object stored in bigcal.
-     * @param {Date} [move] - If set, adds .focus to component at date.
+     * @param {Boolean} [move] - If set, adds .focus to component at date.
      */
     placeComponent(idcal, uid, move) {
         let component = this.calendars[idcal].components[uid];
@@ -1370,7 +1444,7 @@ class BopCal {
                     el.style.height = height;
                 }
             }
-            if (move?.valueOf() === day.valueOf()) el.classList.add("focus");
+            if (move) el.classList.add("focus");
             component.start >= day
                 ? el.classList.add("start")
                 : el.classList.remove("start");

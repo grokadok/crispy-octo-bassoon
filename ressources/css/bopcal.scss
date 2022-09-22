@@ -70,8 +70,33 @@
         }
     }
     & .editor {
+        --editor-color: var(--accent-secondary);
         position: absolute;
-        inset: -15rem auto 0 auto;
+        /* inset: -15rem auto auto 0; */
+        border: 1px var(--editor-color) solid;
+        border-radius: 9px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: transparent;
+        overflow: hidden;
+        scale: 0;
+        transform-origin: top;
+        transition: scale var(--transition-bounce), top var(--transition-bounce),
+            left var(--transition-bounce), border var(--transition-global);
+        z-index: 10;
+        &.show {
+            scale: 1;
+        }
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-color: var(--editor-color);
+            filter: brightness(0.3);
+            transition: background-color var(--transition-global);
+            z-index: -1;
+        }
     }
     & .mini,
     & .bigcal > div:last-of-type {
@@ -269,7 +294,7 @@
                     position: sticky;
                     top: 0;
                     background-color: var(--bg-chat);
-                    z-index: 1;
+                    z-index: 2;
                 }
                 /* all day */
                 &:nth-of-type(2) {
@@ -316,8 +341,9 @@
                         /* hour */
                         &:first-of-type {
                             position: absolute;
-                            inset: 0 auto auto 5px;
+                            inset: 0 auto auto 0.5rem;
                             display: none;
+                            pointer-events: none;
                         }
                         &:last-of-type {
                             font-variant: small-caps;
