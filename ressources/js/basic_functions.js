@@ -132,6 +132,11 @@ function convertHexToRGB(hex) {
         css = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
     return css;
 }
+/**
+ * Converts rem value into pixel value.
+ * @param {Number} rem
+ * @returns
+ */
 function convertRemToPixels(rem) {
     return (
         rem * parseFloat(getComputedStyle(document.documentElement).fontSize)

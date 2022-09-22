@@ -19,6 +19,7 @@ class BopCal {
         this.wrapper = element;
         this.wrapper.classList.add("bopcal");
         this.menu = document.createElement("div");
+        this.menu.className = "menu";
         this.minical = { cal: document.createElement("div"), years: {} };
         this.minical.cal.className = "mini";
         this.bigcal = {
@@ -28,6 +29,7 @@ class BopCal {
             years: {},
             info: document.createElement("div"),
         };
+        this.bigcal.wrapper.className = "bigcal";
         this.bigcal.info.append(document.createElement("span"));
         this.bigcal.info.firstElementChild.textContent = "W##";
         this.bigcal.layout.append(document.createElement("div"));
@@ -97,6 +99,89 @@ class BopCal {
             }
         });
 
+        // event editor
+        this.editor = {
+            wrapper: document.createElement("div"),
+            apply: () => {
+                this.placeComponent(...this.editor.focus);
+            },
+            focus: [],
+        };
+        this.editor.wrapper.className = "editor";
+        let summary = document.createElement("input"),
+            dateSummary = document.createElement("span"),
+            allday = document.createElement("div"),
+            alldayInput = document.createElement("input"),
+            start = new Field({
+                compact: true,
+                name: "Start",
+                required: true,
+                type: "datepicker",
+            }),
+            end = new Field({
+                compact: true,
+                name: "End",
+                required: true,
+                type: "datepicker",
+            }),
+            repeat = document.createElement("div");
+
+        // busy = new Field({
+        //     compact: true,
+        //     type: "checkbox",
+        //     name: "Busy",
+        //     value: params.value.busy
+        // });
+        // dateSummary.textContent = new Intl.DateTimeFormat("fr", {
+        //     year: "numeric",
+        //     month: "short",
+        //     day: "numeric",
+        //     hour: "numeric",
+        //     minute: "numeric",
+        // }).formatRange(params.value.start, params.value.end);
+        for (const element of [
+            allday,
+            start.wrapper,
+            end.wrapper,
+            repeat,
+            // busy.wrapper,
+        ])
+            element.classList.add("hide");
+        dateSummary.addEventListener("click", () => {
+            // hide dateSummary, show other elements > set class to wrapper
+            dateSummary.classList.add("hide");
+            for (const element of [
+                allday,
+                start.wrapper,
+                end.wrapper,
+                repeat,
+                // busy.wrapper,
+            ])
+                element.classList.remove("hide");
+        });
+        // on click on anywhere else than inside date elements, reverse hide.
+
+        // allday
+        allday.className = "allday";
+        alldayInput.type = "checkbox";
+        allday.append(alldayInput);
+        alldayInput.addEventListener("change", (e) => {
+            console.log(e.target.checked);
+        });
+        // start event listener :
+        // on date change, set min to end
+        // end event listener :
+        // on date change, set max to start
+        this.editor.wrapper.append(
+            summary,
+            dateSummary,
+            allday,
+            start.wrapper,
+            end.wrapper,
+            repeat
+            // busy.wrapper
+        );
+
         // minicalendar menu
         let todayButton = document.createElement("button"),
             calAdd = document.createElement("button");
@@ -114,6 +199,7 @@ class BopCal {
         this.wrapper.append(
             this.toggle,
             this.menu,
+            this.editor.wrapper,
             this.minical.cal,
             this.bigcal.wrapper
         );
@@ -316,7 +402,19 @@ class BopCal {
                 break;
             case "week":
             case "day":
-                // issue when days from previous or next month...
+                console.log(date);
+                console.warn(
+                    `[data-week="${getWeekNumber(
+                        date
+                    )}"] [data-date="${date.getDate()}"]`
+                );
+                const infoWidth = convertRemToPixels(
+                    parseFloat(
+                        window
+                            .getComputedStyle(this.bigcal.wrapper)
+                            .getPropertyValue("--info-width")
+                    )
+                );
                 target = this.bigcal.years[date.getFullYear()].months[
                     date.getMonth()
                 ].querySelector(
@@ -327,7 +425,8 @@ class BopCal {
                 x =
                     target.offsetLeft +
                     target.offsetParent.offsetLeft +
-                    target.offsetParent.offsetParent.offsetLeft;
+                    target.offsetParent.offsetParent.offsetLeft -
+                    infoWidth;
                 break;
         }
         this.bigcal.cal.scrollTo({ top: y, left: x, behavior: "auto" });
@@ -423,14 +522,8 @@ class BopCal {
             for (const component of Object.values(
                 this.calendars[idcal].components
             )) {
-                for (const element of Object.values(component.elements)) {
-                    element.style.backgroundColor = convertHexToRGB(
-                        color
-                    ).replace(")", ", .3)");
-                    Array.from(element.getElementsByTagName("span")).forEach(
-                        (x) => (x.style.color = color)
-                    );
-                }
+                for (const element of Object.values(component.elements))
+                    element.style.setProperty("--event-color", color);
             }
         // update calendar color in db
         socket.send({
@@ -438,89 +531,6 @@ class BopCal {
             c: idcal,
             x: color,
         });
-    }
-    /**
-     *
-     * @param {Number} idcal
-     * @param {String} uid
-     */
-    componentEditor2(idcal, uid) {
-        // menu on bigcal, appearing on request on dblclick on an event, to edit it's values.
-        // on disapear, if modifications, send them to server for validation.
-
-        this.editor = {
-            wrapper: document.createElement("div"),
-            focus: "", // component id ? uid ? idcal ?
-            position: [x, y],
-        };
-
-        let summary = document.createElement("span"),
-            allday = document.createElement("div"),
-            alldaySpan = document.createElement("span"),
-            alldayInput = document.createElement("input"),
-            start = new Field({
-                compact: true,
-                max: toHTMLInputDateValue(params.value.end),
-                name: "Start",
-                required: true,
-                type: "datepicker",
-                value: params.value.start,
-            }),
-            end = new Field({
-                compact: true,
-                min: toHTMLInputDateValue(params.value.start),
-                name: "End",
-                required: true,
-                type: "datepicker",
-                value: params.value.end,
-            }),
-            repeat = document.createElement("div");
-        // busy = new Field({
-        //     compact: true,
-        //     type: "checkbox",
-        //     name: "Busy",
-        //     value: params.value.busy
-        // });
-        summary.textContent = new Intl.DateTimeFormat("fr", {
-            year: "2-digit",
-            month: "numeric",
-            day: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-        }).formatRange(params.value.start, params.value.end);
-        summary.addEventListener("click", () => {
-            // hide summary, show other elements > set class to wrapper
-            summary.classList.add("hide");
-            for (const element of [
-                allday.wrapper,
-                start.wrapper,
-                end.wrapper,
-                repeat,
-                // busy.wrapper,
-            ])
-                element.classList.remove("hide");
-        });
-
-        // allday
-        alldaySpan.textContent = "All day:";
-        alldayInput.type = "checkbox";
-        allday.className = "allday";
-        allday.append(alldaySpan, alldayInput);
-        alldayInput.addEventListener("change", (e) => {
-            e.target.checked;
-        });
-        // start event listener :
-        // on date change, set min to end
-        // end event listener :
-        // on date change, set max to start
-        this.wrapper.append(
-            summary,
-            allday,
-            start.wrapper,
-            end.wrapper,
-            repeat
-            // busy.wrapper
-        );
     }
     /**
      *
@@ -1089,11 +1099,10 @@ class BopCal {
                     timeStyle: "short",
                 }).format(component.start);
                 summary.textContent = component.summary ?? "New event";
-                el.style.backgroundColor = convertHexToRGB(
+                el.style.setProperty(
+                    "--event-color",
                     this.calendars[idcal].color
-                ).replace(")", ", .3)");
-                hour.style.color = this.calendars[idcal].color;
-                summary.style.color = this.calendars[idcal].color;
+                );
                 el.append(handleStart, hour, summary, handleEnd);
                 component.elements[dateString] = el;
                 if (component.allday) {
