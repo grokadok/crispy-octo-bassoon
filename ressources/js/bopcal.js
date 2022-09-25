@@ -1381,7 +1381,7 @@ class BopCal {
         const month =
                 this.minical.years[date.getFullYear()].months[date.getMonth()],
             x = month.offsetLeft,
-            y = month.offsetTop;
+            y = month.offsetTop - this.minical.cal.offsetTop;
         console.log(month);
         this.minical.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
     }

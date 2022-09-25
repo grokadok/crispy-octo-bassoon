@@ -416,16 +416,19 @@
                         filter: brightness(0.3);
                     }
                     &::after {
-                        scale: 0.05 1;
+                        /* scale: 0.05 1;
                         transform-origin: left;
-                        transition: scale 0.2s ease;
+                        transition: scale 0.2s ease; */
+                        transition: translate 0.2s ease;
+                        translate: calc(-100% + 5px);
                     }
                     &.focus {
                         & span {
                             filter: brightness(10);
                         }
                         &::after {
-                            scale: 1 1;
+                            /* scale: 1 1; */
+                            translate: 0;
                         }
                     }
                     &.clone {
