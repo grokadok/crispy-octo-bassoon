@@ -492,46 +492,100 @@ class BopCal {
 
         // event editor
         this.editor = {
+            modified: false,
             wrapper: document.createElement("div"),
-            // summary
+
+            // input summary
             summary: document.createElement("input"),
-            // dateSummary
-            dateSummary: document.createElement("span"),
-            // date edition
+
+            // date :
             dateEdition: document.createElement("div"),
-            // date all-day
+            // span summary
+            dateSummary: document.createElement("span"),
+            // checkbox allday
             allday: {
                 wrapper: document.createElement("div"),
                 input: document.createElement("input"),
             },
-            // date start
+            // checkbox show busy
+            busy: {
+                wrapper: document.createElement("div"),
+                input: document.createElement("input"),
+            },
+            // checkbox transparency
+            transparency: {
+                wrapper: document.createElement("div"),
+                input: document.createElement("input"),
+            },
+            // input start
             start: new Field({
                 compact: true,
                 name: "Start",
                 required: true,
                 type: "datepicker",
             }),
-            // date end
+            // input end
             end: new Field({
                 compact: true,
                 name: "End",
                 required: true,
                 type: "datepicker",
             }),
-            // date repeat
-            repeat: document.createElement("div"),
-            busy: {
-                wrapper: document.createElement("div"),
-                input: document.createElement("input"),
-            },
-            modified: false,
+
+            // repeat :
+            // span summary
+            // select interval (select custom opens custom repeat menu)
+
+            // custom repeat menu
+            // select frequency
+            // dayly :
+            // input every x days
+            // weekly :
+            // input every x weeks
+            // toggle on week days
+            // monthly :
+            // input every x months
+            // toggle each date
+            // on the
+            // select first, second, third, fourth, fifth, last
+            // select day, weekend day, monday, ..., sunday
+            // yearly :
+            // input every x years
+            // toggle months
+            // on the
+            // select first, second, third, fourth, fifth, last
+            // select day, weekend day, monday, ..., sunday
+
+            // end repeat :
+            // span summary
+            // select type
+            // select times
+            // select date
+
+            // alerts :
+            // select time, custom opens menu, none value removes line if other alert line present
+            // button + to add line
+            // alert custom menu :
+            // select type
+            // input x select time before/after, on date value changes input into datetime-local
+
+            // selectize invitee
+            // span invitee's name, hover color: red, click remove
+            // select role (client, ...)
+            // select status
+            // button send email
+
+            // textarea||quill description
+            // add attachement with select who can access (role, user,...)
+
+            // select appointment type
+            // span datetime of next available
         };
         this.editor.wrapper.className = "editor";
         this.editor.dateEdition.append(
             this.editor.allday.wrapper,
             this.editor.start.wrapper,
-            this.editor.end.wrapper,
-            this.editor.repeat
+            this.editor.end.wrapper
         );
 
         this.editor.summary.placeholder = "New event";

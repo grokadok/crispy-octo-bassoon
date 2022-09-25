@@ -312,17 +312,21 @@
             justify-content: center;
             align-items: center;
             background-color: var(--accent-secondary);
+            color: black;
             cursor: pointer;
             z-index: 3;
+            transition: color 0.5s ease;
             & > span {
-                color: var(--text);
                 font-size: 1.3rem;
-                font-weight: lighter;
                 scale: 1;
                 transition: scale var(--transition-pages);
             }
-            &:hover > span {
-                scale: 1.1;
+            &:hover {
+                color: var(--text);
+                transition: color 0.2s linear;
+                & > span {
+                    scale: 1.1;
+                }
             }
         }
         /* calendar */
@@ -558,6 +562,7 @@
                             border-color: var(--accent-secondary);
                             color: var(--accent-secondary);
                             cursor: pointer;
+                            transition: background-color 1s ease, color 1s ease;
                             & > span {
                                 font-weight: bolder;
                                 letter-spacing: 0.3rem;
@@ -565,8 +570,14 @@
                                 text-transform: capitalize;
                                 transition: scale var(--transition-global);
                             }
-                            &:hover > span {
-                                scale: 1.05;
+                            &:hover {
+                                background-color: var(--accent-secondary);
+                                color: var(--text);
+                                transition: background-color 0.2s linear,
+                                    color 0.2s linear;
+                                & > span {
+                                    scale: 1.05;
+                                }
                             }
                             /* &::after {
                                     content: "";
