@@ -62,12 +62,39 @@ class BopCal {
             hour.setAttribute("data-hour", convertIntToHour(i));
             this.bigcal.layout.firstElementChild.append(hour);
         }
+        let isScrolling;
+        const stopScrolling = () => {
+            const x =
+                    this.bigcal.info.offsetWidth +
+                    this.bigcal.wrapper.offsetLeft,
+                y = this.bigcal.wrapper.offsetTop + this.wrapper.offsetTop;
+            const element = document
+                .elementFromPoint(x + 1, y + 1)
+                .closest("[data-date]");
+            if (element) {
+                // set week number
+                this.bigcal.info.firstElementChild.textContent = `W${element
+                    .closest("[data-week]")
+                    .getAttribute("data-week")}`;
+            }
+        };
         this.bigcal.cal.addEventListener("scroll", (e) => {
             this.bigcal.layout.firstElementChild.style.top = `-${this.bigcal.cal.scrollTop}px`;
             this.editorHide();
+            if (typeof this.bigcal.focus !== "undefined")
+                delete this.bigcal.focus;
+            // set timeout
+            clearTimeout(isScrolling);
+            isScrolling = setTimeout(() => {
+                stopScrolling(
+                    this.bigcal.cal.scrollLeft,
+                    this.bigcal.cal.scrollTop
+                );
+            }, 100);
         });
         // this.bigcal.cal.addEventListener("click", (e) => {
         document.addEventListener("click", (e) => {
+            // if target is in bigcal calendar
             if (this.bigcal.cal.contains(e.target)) {
                 // if target is an event
                 if (e.target.closest("[data-uid]")) {
@@ -109,6 +136,31 @@ class BopCal {
 
                 // if number (day, week, month), set view to corresponding date.
                 // if event, set focus to it
+            }
+            // if target is in bigcal week info
+            if (
+                this.bigcal.info.contains(e.target) &&
+                this.bigcal.info.firstElementChild.textContent !== "W##"
+            ) {
+                const weekElement = this.bigcal.cal.querySelector(
+                    `[data-week="${this.bigcal.info.firstElementChild.textContent.slice(
+                        1
+                    )}"`
+                );
+                let weekDate = new Date(
+                    parseInt(
+                        weekElement
+                            .closest("[data-month]")
+                            .getAttribute("data-value")
+                    )
+                );
+                weekDate.setDate(
+                    weekElement
+                        .querySelector("[data-date]:not(.fade)")
+                        .getAttribute("data-date")
+                );
+                weekDate = getFirstDayOfWeek(weekDate);
+                this.bigcalFocus(weekDate, "week", true);
             }
             if (e.target.closest(".editor")) {
                 // date edition
@@ -409,6 +461,34 @@ class BopCal {
                 }
             }
         });
+
+        // const observerOptions = {
+        //         root: this.bigcal.cal,
+        //         rootMargin: "0px",
+        //         threshold: 0,
+        //     },
+        //     calIntersect = (entries, observer) => {
+        //         const bigcalLeft = this.bigcal.wrapper.offsetLeft;
+        //         entries.forEach((entry) => {
+        //             if (
+        //                 this.bigcal.wrapper.classList.contains("week") ||
+        //                 this.bigcal.wrapper.classList.contains("day")
+        //             ) {
+        //                 if (
+        //                     entry.isIntersecting &&
+        //                     entry.intersectionRect.left === bigcalLeft
+        //                 ) {
+        //                     entry.target.style.borderColor = "lime";
+        //                 } else {
+        //                     entry.target.style.borderColor = "blue";
+        //                 }
+        //             }
+        //         });
+        //     };
+        // this.bigcal.observer = new IntersectionObserver(
+        //     calIntersect,
+        //     observerOptions
+        // );
 
         // event editor
         this.editor = {
@@ -1094,37 +1174,6 @@ class BopCal {
         this.editor.wrapper.classList.add("show");
         this.editor.summary.focus();
     }
-    getCalendars() {
-        socket.send({
-            f: 21,
-        });
-    }
-    /**
-     *
-     * @param {PointerEvent} e
-     * @param {Number} [offset=0]
-     */
-    getCursorDate(e, offset = 0) {
-        // if e.target = allday ...
-        // else
-        const monthEl = e.target.closest("[data-month]"),
-            day = e.target.closest("[data-date]"),
-            regular = day.lastElementChild,
-            // const monthEl = e.target.parentNode.parentNode,
-            //     day = e.target.getAttribute("data-date"),
-            hours =
-                (e.clientY - offset - regular.getBoundingClientRect().y) /
-                (regular.offsetHeight / 24);
-        let date = new Date(parseInt(monthEl.getAttribute("data-value")));
-        // if element classlist contains fade. day belongs to previous/next month
-        if (day.classList.contains("fade"))
-            day.parentNode === monthEl.firstElementChild
-                ? date.setMonth(date.getMonth() - 1)
-                : date.setMonth(date.getMonth() + 1);
-        date.setDate(day.getAttribute("data-date"));
-        date.setTime(date.getTime() + hours * 60 * 60 * 1000);
-        return date;
-    }
     /**
      * First load of calendar.
      * @param {Date} [date]
@@ -1141,6 +1190,7 @@ class BopCal {
             this.addMonth(month);
 
         // set up intersectionObservers on mini and big cal to load months with scroll.
+
         // note for self: intersectionObserver works whatever way an element enters its root, vertical or horizontal scroll, or anything else.
         const observerOptions = {
                 root: this.wrapper,
@@ -1163,6 +1213,7 @@ class BopCal {
                 }
                 return last;
             },
+            action = () => {},
             calIntersect = (entries, observer) => {
                 entries.forEach((entry) => {
                     if (entry.target === this.minical.bottomMonth) {
@@ -1235,6 +1286,37 @@ class BopCal {
         // same for week number
         // same for year ?
     }
+    getCalendars() {
+        socket.send({
+            f: 21,
+        });
+    }
+    /**
+     *
+     * @param {PointerEvent} e
+     * @param {Number} [offset=0]
+     */
+    getCursorDate(e, offset = 0) {
+        // if e.target = allday ...
+        // else
+        const monthEl = e.target.closest("[data-month]"),
+            day = e.target.closest("[data-date]"),
+            regular = day.lastElementChild,
+            // const monthEl = e.target.parentNode.parentNode,
+            //     day = e.target.getAttribute("data-date"),
+            hours =
+                (e.clientY - offset - regular.getBoundingClientRect().y) /
+                (regular.offsetHeight / 24);
+        let date = new Date(parseInt(monthEl.getAttribute("data-value")));
+        // if element classlist contains fade. day belongs to previous/next month
+        if (day.classList.contains("fade"))
+            day.parentNode === monthEl.firstElementChild
+                ? date.setMonth(date.getMonth() - 1)
+                : date.setMonth(date.getMonth() + 1);
+        date.setDate(day.getAttribute("data-date"));
+        date.setTime(date.getTime() + hours * 60 * 60 * 1000);
+        return date;
+    }
     static getComponents(idcal, start, end) {
         // check if asked range in stored range, else fetch.
         // foreach day of range, check if data in cache, else fetch.
@@ -1297,9 +1379,7 @@ class BopCal {
     minicalFocus(date) {
         console.log(date);
         const month =
-                this.minical.years[date.getFullYear()].months[
-                    date.getMonth() - 1
-                ],
+                this.minical.years[date.getFullYear()].months[date.getMonth()],
             x = month.offsetLeft,
             y = month.offsetTop;
         console.log(month);
