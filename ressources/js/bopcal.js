@@ -79,20 +79,48 @@ class BopCal {
                     if (component === this.focus) this.editorShow();
                     return;
                 }
+                // if target is a day
+                if (e.target.closest("[data-date")) {
+                    const dayDate = new Date(
+                        parseInt(
+                            e.target
+                                .closest("[data-month]")
+                                .getAttribute("data-value")
+                        )
+                    );
+                    dayDate.setDate(
+                        parseInt(
+                            e.target
+                                .closest("[data-date]")
+                                .getAttribute("data-date")
+                        )
+                    );
+                    // if target is info
+                    if (
+                        e.target
+                            .closest("[data-date]")
+                            .getElementsByTagName("div")[0]
+                            .contains(e.target)
+                    ) {
+                        // bigcal focus day
+                        this.bigcalFocus(dayDate, "day", true);
+                    }
+                }
 
                 // if number (day, week, month), set view to corresponding date.
                 // if event, set focus to it
             }
             if (e.target.closest(".editor")) {
+                // date edition
                 // if target = datesummary
-                if (this.editor.dateSummary.contains(e.target))
-                    this.editor.wrapper.classList.add("date-edition");
-                // else if date-edition and target not in date editor
-                else if (
-                    this.editor.wrapper.classList.contains("date-edition") &&
-                    !this.editor.dateEdition.contains(e.target)
-                )
-                    this.editor.wrapper.classList.remove("date-edition");
+                // if (this.editor.dateSummary.contains(e.target))
+                //     this.editor.wrapper.classList.add("date-edition");
+                // // else if date-edition and target not in date editor
+                // else if (
+                //     this.editor.wrapper.classList.contains("date-edition") &&
+                //     !this.editor.dateEdition.contains(e.target)
+                // )
+                //     this.editor.wrapper.classList.remove("date-edition");
                 return;
             }
             this.editorHide();
@@ -416,6 +444,7 @@ class BopCal {
                 wrapper: document.createElement("div"),
                 input: document.createElement("input"),
             },
+            modified: false,
         };
         this.editor.wrapper.className = "editor";
         this.editor.dateEdition.append(
@@ -426,6 +455,16 @@ class BopCal {
         );
 
         this.editor.summary.placeholder = "New event";
+        this.editor.summary.addEventListener("input", () => {
+            if (this.focus) {
+                // update component.summary
+                this.focus.summary = this.editor.summary.value;
+                // for each element, change summary
+                for (const element of Object.values(this.focus.elements))
+                    element.getElementsByTagName("span")[1].textContent =
+                        this.editor.summary.value;
+            }
+        });
         // hide dateSummary, show other elements > set class to wrapper
         // on click on anywhere else than inside date elements, reverse hide.
 
@@ -447,8 +486,11 @@ class BopCal {
         // on date change, set max to start
         this.editor.wrapper.append(
             this.editor.summary,
+            document.createElement("hr"),
             this.editor.dateSummary,
+            document.createElement("hr"),
             this.editor.dateEdition,
+            document.createElement("hr"),
             this.editor.busy.wrapper
         );
 
@@ -797,6 +839,23 @@ class BopCal {
         });
     }
     /**
+     * Applys new range to component in db.
+     * @param {Number} idcal
+     * @param {String} uid
+     */
+    componentApplyRange(idcal, uid) {
+        const component = this.calendars[idcal].components[uid];
+        socket.send({
+            c: idcal,
+            e: toMYSQLDTString(component.end),
+            f: 32,
+            i: component.id,
+            m: component.modified,
+            s: toMYSQLDTString(component.start),
+            u: uid,
+        });
+    }
+    /**
      *
      * @param {Number} idcal
      * @param {String} uid
@@ -910,6 +969,13 @@ class BopCal {
             u: uid,
         });
     }
+    componentUpdate(data) {
+        const component = cal.calendars[data.c].components[data.u];
+        // apply component update
+        // place component
+
+        // for (let element of Object.values(component.elements)) element.classList.remove('applying');
+    }
     destroy() {
         this.minical.observer?.disconnect();
         this.wrapper.innerHTML = "";
@@ -919,7 +985,48 @@ class BopCal {
     static destroyAll() {
         for (let cal of BopCal.bopcals) cal.destroy();
     }
+    editorApply(idcal, uid) {
+        const component = this.calendars[idcal].components[uid],
+            elements = Object.values(component.elements);
+        // apply loading to component's elements
+        for (const element of elements) element.classList.add("applying");
+        this.editor.changed = false;
+        // send modifications to db
+        socket.send({
+            f: 34,
+            c: idcal,
+            e: {
+                id: component.id,
+                start: toMYSQLDTString(component.start),
+                end: toMYSQLDTString(component.end),
+                allday: component.allday ?? undefined,
+                type: component.type,
+                description: component.description ?? undefined,
+                class: component.class !== 1 ? component.class : undefined,
+                location: component.location ?? undefined,
+                priority:
+                    component.priority !== 2 ? component.priority : undefined,
+                status: component.status !== 1 ? component.status : undefined,
+                transparency:
+                    component.transparency !== 0
+                        ? component.transparency
+                        : undefined,
+                rrule: component.rrule !== 0 ? component.rrule : undefined,
+                rdates: component.rdates ?? undefined,
+                exceptions: component.exceptions ?? undefined,
+                tags: component.tags ?? undefined,
+                invitees: component.invitees ?? undefined,
+                alarms: component.alarms ?? undefined,
+            },
+            m: component.modified,
+            u: uid,
+        });
+    }
     editorFocus(idcal, uid, element) {
+        if (this.editor.changed)
+            this.editorApply(this.editor.idcal, this.editor.uid);
+        this.editor.idcal = idcal;
+        this.editor.uid = uid;
         const component = this.calendars[idcal].components[uid],
             targetX =
                 element.getBoundingClientRect().x -
@@ -957,6 +1064,7 @@ class BopCal {
 
         // populate editor with component's data
         this.editor.summary.value = component.summary;
+
         this.editor.dateSummary.textContent = new Intl.DateTimeFormat("fr", {
             year: "numeric",
             month: "short",
@@ -976,9 +1084,15 @@ class BopCal {
     }
     editorHide() {
         this.editor.wrapper.classList.remove("show", "date-edition");
+        // if modifications
+        if (this.editor.changed)
+            this.editorApply(this.editor.idcal, this.editor.uid);
+        delete this.editor.idcal;
+        delete this.editor.uid;
     }
     editorShow() {
         this.editor.wrapper.classList.add("show");
+        this.editor.summary.focus();
     }
     getCalendars() {
         socket.send({
@@ -1313,27 +1427,12 @@ class BopCal {
                     content: "L'évenement à été supprimé.",
                     type: "success",
                 });
-
                 break;
             }
+            case 34:
+                cal.componentUpdate(data);
+                break;
         }
-    }
-    /**
-     * Applys new range to component in db.
-     * @param {Number} idcal
-     * @param {String} uid
-     */
-    componentApplyRange(idcal, uid) {
-        const component = this.calendars[idcal].components[uid];
-        socket.send({
-            c: idcal,
-            e: toMYSQLDTString(component.end),
-            f: 32,
-            i: component.id,
-            m: component.modified,
-            s: toMYSQLDTString(component.start),
-            u: uid,
-        });
     }
     /**
      * Places/updates component in bigcal according to component's data.
@@ -1451,6 +1550,11 @@ class BopCal {
             component.end < nextDay
                 ? el.classList.add("end")
                 : el.classList.remove("end");
+            // display time if element's duration > 30min
+            el.getElementsByTagName("span")[0].style.display =
+                getMinutesBetweenDates(component.start, component.end) <= 30
+                    ? "none"
+                    : "";
         }
     }
     setActiveCal(idcal) {

@@ -55,7 +55,7 @@ trait BopCal
             $request['into'] .= ',description';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $this->addDescription($alarm['description']);
+            $request['content'][] = $this->calAddDescription($alarm['description']);
         }
         // repeat
         if (isset($alarm['repeat'])) {
@@ -111,10 +111,10 @@ trait BopCal
             'array' => true,
         ])[0][0];
     }
-    private function calAddEvent(int $iduser, int $cal_folder, array $event)
+    private function calAddComponent(int $iduser, int $cal_folder, array $component)
     {
         if ($this->calCheckUserWriteAccess($iduser, $cal_folder) === false) return print("Write failure: user $iduser has no write access to cal_folder $cal_folder." . PHP_EOL);
-        $uid = $event['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
+        $uid = $component['uid'] ?? $this->calNewCalFile($iduser, $cal_folder);
         $request = [
             'into' => '',
             'values' => '',
@@ -123,100 +123,76 @@ trait BopCal
         ];
 
         // type
-        if (isset($event['type'])) {
+        if (isset($component['type'])) {
             $request['into'] .= ',type';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['type'];
+            $request['content'][] = $component['type'];
         }
         // description
-        if (isset($event['description'])) {
+        if (isset($component['description'])) {
             $request['into'] .= ',description';
             $request['values'] .= ',?';
-            $request['type'] .= 's';
-            $request['content'][] = $this->addDescription($event['description']);
-        }
-        // timezone
-        if (isset($event['timezone'])) {
-            $request['into'] .= ',timezone';
-            $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $this->db->request([
-                'query' => 'SELECT idtimezone FROM timezone WHERE name = ? LIMIT 1;',
-                'type' => 's',
-                'content' => [$event['timezone']],
-                'array' => true,
-            ])[0][0];
+            $request['content'][] = $this->calAddDescription($component['description']);
         }
-        // end or duration
-        // if (isset($event['end'])) {
-        //     $request['into'] .= ',end';
-        //     $request['values'] .= ',?';
-        //     $request['type'] .= 's';
-        //     $request['content'][] = $event['end'];
-        // } else if (isset($event['duration'])) {
-        //     $request['into'] .= ',duration';
-        //     $request['values'] .= ',?';
-        //     $request['type'] .= 's';
-        //     $request['content'][] = $event['duration'];
-        // }
         // all_day
-        if (isset($event['all_day'])) {
+        if (isset($component['all_day'])) {
             $request['into'] .= ',all_day';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['all_day'];
+            $request['content'][] = $component['all_day'];
         }
         // class
-        if (isset($event['class'])) {
+        if (isset($component['class'])) {
             $request['into'] .= ',class';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['class'];
+            $request['content'][] = $component['class'];
         }
         // location
-        if (isset($event['location'])) {
+        if (isset($component['location'])) {
             $request['into'] .= ',location';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][]  = $this->addLocation($event['location']);
+            $request['content'][]  = $this->calAddLocation($component['location']);
         }
         // priority
-        if (isset($event['priority'])) {
+        if (isset($component['priority'])) {
             $request['into'] .= ',priority';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['priority'];
+            $request['content'][] = $component['priority'];
         }
         // status
-        if (isset($event['status'])) {
+        if (isset($component['status'])) {
             $request['into'] .= ',status';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['status'];
+            $request['content'][] = $component['status'];
         }
         // transparency
-        if (isset($event['transparency'])) {
+        if (isset($component['transparency'])) {
             $request['into'] .= ',transparency';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
-            $request['content'][] = $event['transparency'];
+            $request['content'][] = $component['transparency'];
         }
 
         $this->db->request([
             'query' => 'INSERT INTO cal_component (uid, created, summary, organizer, start, end' . $request['into'] . ') VALUES (UUID_TO_BIN(?,1), ?, ?, ?, ?, ?' . $request['values'] . ');',
             'type' => 'sssiss' . $request['type'],
-            'content' => [$uid, $event['created'], $event['summary'], $iduser, $event['start'], $event['end'], ...$request['content']],
+            'content' => [$uid, $component['created'], $component['summary'], $iduser, $component['start'], $component['end'], ...$request['content']],
         ]);
         $idcomponent = $this->db->request([
             'query' => 'SELECT MAX(idcal_component) FROM cal_component WHERE uid = (SELECT UUID_TO_BIN(?,1)) AND created = ? LIMIT 1;',
             'type' => 'ss',
-            'content' => [$uid, $event['created']],
+            'content' => [$uid, $component['created']],
             'array' => true,
         ])[0][0];
 
         // recurrence
-        if (isset($event['rrule'])) {
+        if (isset($component['rrule'])) {
             // update component
             $this->db->request([
                 'query' => 'UPDATE cal_component SET rrule = 1 WHERE idcal_component = ? LIMIT 1;',
@@ -224,16 +200,16 @@ trait BopCal
                 'content' => [$idcomponent],
             ]);
             // insert rrule
-            $this->componentSetRRUle($idcomponent, $event['rrule']);
+            $this->calComponentSetRRUle($idcomponent, $component['rrule']);
         }
-        if (isset($event['rdate'])) {
+        if (isset($component['rdate'])) {
             $this->db->request([
                 'query' => 'UPDATE cal_component SET rdate = 1 WHERE idcal_component = ? LIMIT 1;',
                 'type' => 'i',
                 'content' => [$idcomponent],
             ]);
             // insert rdates
-            foreach ($event['rdate'] as $date) {
+            foreach ($component['rdate'] as $date) {
                 $this->db->request([
                     'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?, ?);',
                     'type' => 'is',
@@ -241,8 +217,8 @@ trait BopCal
                 ]);
             }
         }
-        if (isset($event['tag'])) {
-            foreach ($event['tag'] as $tag) {
+        if (isset($component['tag'])) {
+            foreach ($component['tag'] as $tag) {
                 $this->db->request([
                     'query' => 'INSERT INTO cal_comp_has_tag (idcal_component,idtag) VALUES (?,?);',
                     'type' => 'ii',
@@ -372,7 +348,7 @@ trait BopCal
         }
         // description - action=EMAIL: body, action=DISPLAY: text content.
         if (isset($alarm['description'])) {
-            $iddescription = $this->addDescription($alarm['description']);
+            $iddescription = $this->calAddDescription($alarm['description']);
             $request['into'] .= ',description';
             $request['values'] .= ',?';
             $request['type'] .= 'i';
@@ -486,7 +462,7 @@ trait BopCal
         // $this->db->request([
         //     'query' => 'UPDATE cal_component SET description = ? WHERE idcal_component = ? LIMIT 1;',
         //     'type' => 'ii',
-        //     'content' => [$this->addDescription($description), $idcomponent],
+        //     'content' => [$this->calAddDescription($description), $idcomponent],
         // ]);
     }
     private function calComponentAddException(int $idcomponent, array $exception)
@@ -515,7 +491,7 @@ trait BopCal
         $this->db->request([
             'query' => 'UPDATE cal_component SET location = ? WHERE idcal_location = ? LIMIT 1;',
             'type' => 'ii',
-            'content' => [$this->addLocation($location), $idcomponent],
+            'content' => [$this->calAddLocation($location), $idcomponent],
         ]);
     }
     private function calComponentAddRDate(int $idcomponent, string $date)
@@ -589,7 +565,7 @@ trait BopCal
                 'content' => [$idalarm],
                 'array' => true,
             ])[0][0];
-            $newiddescription = $this->addDescription($alarm['description']);
+            $newiddescription = $this->calAddDescription($alarm['description']);
             $this->db->request([
                 'query' => 'UPDATE cal_alarm SET description = ? WHERE idcal_alarm = ? LIMIT 1;',
                 'type' => 'ii',
@@ -700,7 +676,7 @@ trait BopCal
         $this->db->request([
             'query' => 'UPDATE cal_component SET description = ? WHERE idcal_component = ? LIMIT 1;',
             'type' => 'si',
-            'content' => [$this->addDescription($description), $idcomponent],
+            'content' => [$this->calAddDescription($description), $idcomponent],
         ]);
         if (!empty($iddescription)) $this->removeUnusedDescription($iddescription);
     }
@@ -753,7 +729,7 @@ trait BopCal
             'content' => [$priority, $idcomponent],
         ]);
     }
-    private function calComponentChangeRRUle(int $idcomponent, array $rule)
+    private function calComponentChangeRRule(int $idcomponent, array $rule)
     {
         $request = [
             'set' => [],
@@ -890,12 +866,14 @@ trait BopCal
             'content' => [$idcomponent],
             'array' => true,
         ])[0][0];
-        $this->db->request([
-            'query' => 'UPDATE cal_component SET description = NULL WHERE idcal_component = ? LIMIT 1;',
-            'type' => 'i',
-            'content' => [$idcomponent],
-        ]);
-        $this->removeUnusedDescription($iddescription);
+        if (!empty($iddescription)) {
+            $this->db->request([
+                'query' => 'UPDATE cal_component SET description = NULL WHERE idcal_component = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]);
+            $this->removeUnusedDescription($iddescription);
+        }
     }
     private function calComponentRemoveException(int $idcomponent, string $exception)
     {
@@ -913,12 +891,14 @@ trait BopCal
             'content' => [$idcomponent],
             'array' => true,
         ])[0][0];
-        $this->db->request([
-            'query' => 'UPDATE cal_component SET location = NULL WHERE idcal_component = ? LIMIT 1;',
-            'type' => 'i',
-            'content' => [$idcomponent],
-        ]);
-        $this->removeUnusedLocation($idlocation);
+        if (!empty($idlocation)) {
+            $this->db->request([
+                'query' => 'UPDATE cal_component SET location = NULL WHERE idcal_component = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]);
+            $this->removeUnusedLocation($idlocation);
+        }
     }
     private function calComponentRemoveRDate(int $idcomponent, string $date)
     {
@@ -952,17 +932,17 @@ trait BopCal
             'content' => [$idcomponent],
         ]);
         // increment sequence & set rrule = 0
-        $sequence = $this->db->request([
-            'query' => 'SELECT sequence FROM cal_component WHERE idcal_component = ? LIMIT 1;',
-            'type' => 'i',
-            'content' => [$idcomponent],
-            'array' => true,
-        ])[0][0];
-        $this->db->request([
-            'query' => 'UPDATE cal_component SET rrule = 0, sequence = ? WHERE idcal_component = ?;',
-            'type' => 'ii',
-            'content' => [++$sequence, $idcomponent],
-        ]);
+        // $sequence = $this->db->request([
+        //     'query' => 'SELECT sequence FROM cal_component WHERE idcal_component = ? LIMIT 1;',
+        //     'type' => 'i',
+        //     'content' => [$idcomponent],
+        //     'array' => true,
+        // ])[0][0];
+        // $this->db->request([
+        //     'query' => 'UPDATE cal_component SET rrule = 0, sequence = ? WHERE idcal_component = ?;',
+        //     'type' => 'ii',
+        //     'content' => [++$sequence, $idcomponent],
+        // ]);
     }
     private function calComponentRemoveTag(int $idcomponent, int $tag)
     {
@@ -973,12 +953,13 @@ trait BopCal
         ]);
     }
     /**
-     * Adds recurrence rule to component.
+     * Sets or update recurrence rule to component.
      * @param int $idcomponent
      * @param array $rule
      */
     private function calComponentSetRRUle(int $idcomponent, array $rule)
     {
+
         $request = [
             'into' => '',
             'values' => '',
@@ -1048,12 +1029,119 @@ trait BopCal
             $request['type'] .= 'i';
             $request['content'][] = $rule['by_setpos'];
         }
-
-        $this->db->request([
+        return $this->db->request([
             'query' => 'INSERT INTO cal_rrule (idcal_component, ' . $request['into'] . ') VALUES (?, ' . $request['values'] . ');',
             'type' => 'i' . $request['type'],
             'content' => [$idcomponent, ...$request['content']],
         ]);
+    }
+    private function calComponentUpdate(int $cal_folder, array $component)
+    {
+        $request = [
+            'set' => [],
+            'type' => '',
+            'content' => [],
+        ];
+        // type
+        $request['set'][] = 'type = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['type'] ?? 0;
+        // description
+        if (!empty($component['description'])) {
+            $request['set'][] = 'description = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $this->calAddDescription($component['description']);
+        } else $this->calComponentRemoveDescription($component['id']);
+        // all_day
+        $request['set'][] = 'all_day = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['all_day'] ?? 0;
+        // class
+        $request['set'][] = 'class = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['class'] ?? 1;
+        // location
+        if (!empty($component['location'])) {
+            $request['set'][] = 'location = ?';
+            $request['type'] .= 'i';
+            $request['content'][]  = $this->calAddLocation($component['location']);
+        } else $this->calComponentRemoveLocation($component['id']);
+        // priority
+        $request['set'][] = 'priority = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['priority'] ?? 2;
+        // status
+        $request['set'][] = 'status = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['status'] ?? 1;
+        // transparency
+        $request['set'][] = 'transparency = ?';
+        $request['type'] .= 'i';
+        $request['content'][] = $component['transparency'] ?? 0;
+        // recurrence
+        $request['set'][] = 'rrule = ?';
+        $request['type'] .= 'i';
+        $rruleSet = !empty($this->db->request([
+            'query' => 'SELECT NULL FROM cal_rrule WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$component['id']],
+        ]));
+        if (!empty($component['rrule'])) {
+            $request['content'][] = 1;
+            // insert/update rrule
+            $rruleSet ? $this->calComponentChangeRRule($component['id'], $component['rrule']) :
+                $this->calComponentSetRRUle($component['id'], $component['rrule']);
+        } else {
+            $request['content'][] = 0;
+            // delete rrule
+            if ($rruleSet)
+                $this->calComponentRemoveRRUle($component['id']);
+        }
+        $request['set'][] = 'rdate = ?';
+        $request['type'] .= 'i';
+        // remove rdates
+        $this->db->request([
+            'query' => 'DELETE FROM cal_rdate WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$component['id']],
+        ]);
+        if (!empty($component['rdate'])) {
+            $request['content'][] = 1;
+            // insert rdates
+            foreach ($component['rdate'] as $date) {
+                $this->db->request([
+                    'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?, ?);',
+                    'type' => 'is',
+                    'content' => [$component['id'], $date],
+                ]);
+            }
+        } else {
+            $request['content'][] = 0;
+        }
+
+        $set = implode(',', $request['set']);
+        $this->db->request([
+            'query' => "UPDATE cal_component SET summary = ?, start = ?, end = ?, $set WHERE idcal_component = ?;",
+            'type' => 'sss' . $request['type'] . 'i',
+            'content' => [$component['summary'], $component['start'], $component['end'], ...$request['content'], $component['id']],
+        ]);
+
+        $this->db->request([
+            'query' => 'DELETE FROM cal_comp_has_tag WHERE idcal_component = ?;',
+            'type' => 'i',
+            'content' => [$component['id']],
+        ]);
+        if (isset($component['tag'])) {
+            foreach ($component['tag'] as $tag) {
+                $this->db->request([
+                    'query' => 'INSERT INTO cal_comp_has_tag (idcal_component,idtag) VALUES (?,?);',
+                    'type' => 'ii',
+                    'content' => [$component['id'], $tag],
+                ]);
+            }
+        }
+        // retrieve & return light info about updated event
+        return ['event' => $this->calGetEventLightData($component['id']), 'users' => $this->calGetConnectUsers($cal_folder)];
     }
     private function calFileCheckModified(string $uid, string $modified)
     {

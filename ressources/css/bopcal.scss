@@ -78,6 +78,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        padding: 0.5rem 0.2rem;
         background-color: transparent;
         overflow: hidden;
         scale: 0;
@@ -85,9 +86,56 @@
         transition: scale var(--transition-bounce), top var(--transition-bounce),
             left var(--transition-bounce), border var(--transition-global);
         z-index: 10;
+        & hr {
+            width: 80%;
+            margin: 0.3rem;
+            border: solid 0.5px var(--editor-color);
+        }
+        & .field {
+            width: auto;
+        }
+        & input {
+            font-size: 1rem;
+            padding: 0;
+            caret-color: var(--editor-color);
+            text-align: center;
+            &[type="checkbox"],
+            &[type="datetime-local"] {
+                font-family: inherit;
+                font-weight: 400;
+                cursor: pointer;
+            }
+            &:not([type="checkbox"]):focus {
+                box-shadow: none;
+                outline: none;
+            }
+        }
+        & > span:first-of-type {
+            height: 1rem;
+            font-weight: 300;
+            cursor: default;
+            /* overflow: hidden;
+            transition: height var(--transition-global); */
+        }
+        & > div:first-of-type {
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* overflow: hidden; */
+            /* transition: height var(--transition-global); */
+        }
         &.show {
             scale: 1;
         }
+        /* &.date-edition {
+            & > span:first-of-type {
+                height: 0;
+            }
+            & > div:first-of-type {
+                height: 7rem;
+            }
+        } */
         &::before {
             content: "";
             position: absolute;
@@ -294,26 +342,29 @@
                     position: sticky;
                     top: 0;
                     background-color: var(--bg-chat);
-                    z-index: 2;
+                    z-index: 3;
                 }
                 /* all day */
                 &:nth-of-type(2) {
                     position: sticky;
                     top: var(--info-height);
                     background-color: var(--bg-chat);
+                    z-index: 3;
                 }
                 /* regular event */
                 &:last-of-type > div {
                     --event-color: var(--accent-secondary);
                     position: absolute;
-                    width: 100%;
+                    width: calc(100% - 0.4rem);
                     border-radius: 5px;
+                    padding-left: 0.4rem;
                     display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    align-items: flex-start;
+                    flex-direction: column;
+                    justify-content: flex-start;
                     background-color: transparent;
                     cursor: pointer;
-                    overflow: scroll;
+                    overflow: hidden;
                     user-select: none;
                     /* handles */
                     & > div {
@@ -323,7 +374,7 @@
                         width: 100%;
                         cursor: row-resize;
                         opacity: 0;
-                        z-index: 1;
+                        z-index: 2;
                         /* top handle */
                         &:first-of-type {
                             top: 0;
@@ -336,17 +387,21 @@
                     & > span {
                         color: var(--event-color);
                         filter: brightness(1.5);
-                        z-index: 1;
+                        line-height: 1rem;
                         transition: color 0.2s linear;
+                        user-select: none;
+                        z-index: 1;
                         /* hour */
                         &:first-of-type {
-                            position: absolute;
-                            inset: 0 auto auto 0.5rem;
                             display: none;
-                            pointer-events: none;
                         }
+                        /* summary */
                         &:last-of-type {
+                            max-height: 100%;
+                            max-width: 90%;
                             font-variant: small-caps;
+                            hyphens: auto;
+                            overflow: scroll;
                         }
                     }
                     &::before,

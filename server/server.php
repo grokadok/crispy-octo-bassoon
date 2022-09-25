@@ -2195,7 +2195,7 @@ class FWServer
             /////////////////////////////////////////////////////
 
             if ($f === 25 && isset($task['c']) && isset($task['e'])) {
-                $newEvent = $this->calAddEvent($iduser, $task['c'], $task['e']);
+                $newEvent = $this->calAddComponent($iduser, $task['c'], $task['e']);
                 // for each connected client linked to calendar
                 // if in range, send light event
                 // send notification anyway
@@ -2273,7 +2273,7 @@ class FWServer
                 // send 'em updated data.
                 $message = json_encode(['f' => 32, 'c' => $modified[0], 'm' => $modified[1], 'u' => $task['u'], 's' => $update[0], 'e' => $update[1]]);
                 foreach ($this->calGetConnectUsers($modified[0], $update[0], $update[1]) as $user)
-                    $this->serv->push($fd, $message);
+                    $this->serv->push($user['fd'], $message);
                 return;
             }
 
@@ -2288,7 +2288,27 @@ class FWServer
                 $removed = $this->calRemoveComponent($task['i']);
                 $message = json_encode(['f' => 33, 'c' => $task['c'], 'i' => $task['i'], 'u' => $task['u']]);
                 foreach ($this->calGetConnectUsers($task['i'], $removed[0], $removed[1]) as $user)
-                    $this->serv->push($fd, $message);
+                    $this->serv->push($user['fd'], $message);
+                return;
+            }
+
+            /////////////////////////////////////////////////////
+            // UPDATE COMPONENT (34)
+            /////////////////////////////////////////////////////
+
+            if ($f === 34 && isset($task['c']) && isset($task['e']) && isset($task['u']) && isset($task['m'])) {
+                // check user write access
+                if (!$this->calCheckUserWriteAccess($iduser, $task['c'])) return ['fail' => 'user has no write access.'];
+                // check modified === db modified
+                if (!$this->calFileCheckModified($task['u'], $task['m'])) return ['fail' => 'cal_component modified value not in sync.'];
+                // update cal_component according to provided data and return light event data
+                $updated = $this->calComponentUpdate($task['c'], $task['e']);
+                // update cal_file->modified
+                $modified = $this->calSetFileModified($task['u']);
+                // send 'em updated data.
+                $message = json_encode(['f' => 34, 'c' => $modified[0], 'm' => $modified[1], 'u' => $task['u'], 'e' => $updated]);
+                foreach ($this->calGetConnectUsers($modified[0], $updated['start'], $updated['end']) as $user)
+                    $this->serv->push($user['fd'], $message);
                 return;
             }
 
