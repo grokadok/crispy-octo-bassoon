@@ -499,14 +499,117 @@ class BopCal {
             summary: document.createElement("input"),
 
             // date :
-            dateEdition: document.createElement("div"),
-            // span summary
-            dateSummary: document.createElement("span"),
-            // checkbox allday
-            allday: {
+            date: {
                 wrapper: document.createElement("div"),
-                input: document.createElement("input"),
+                // span summary
+                summary: document.createElement("span"),
+                // checkbox allday
+                allday: {
+                    wrapper: document.createElement("div"),
+                    input: document.createElement("input"),
+                },
+                // input start
+                start: new Field({
+                    compact: true,
+                    name: "Start",
+                    required: true,
+                    type: "datepicker",
+                }),
+                // input end
+                end: new Field({
+                    compact: true,
+                    name: "End",
+                    required: true,
+                    type: "datepicker",
+                }),
             },
+
+            // repeat :
+            repeat: {
+                wrapper: document.createElement("div"),
+                // span summary
+                summary: document.createElement("span"),
+                // select interval (select custom opens custom repeat menu)
+                interval: new Field({}),
+
+                // custom repeat menu
+                menu: {
+                    wrapper: document.createElement("div"),
+                    // select frequency
+                    frequency: new Field({}),
+                    // dayly :
+                    // input every x days
+                    every: {
+                        // use same for weeks, months, years
+                        wrapper: document.createElement("div"),
+                        span: document.createElement("span"),
+                        input: document.createElement("input"),
+                        value: document.createElement("span"),
+                    },
+                    // weekly :
+                    // input every x weeks
+                    // toggle on week days
+                    picker: document.createElement("div"), // use same picker for weekdays, dates, months
+                    // monthly :
+                    // input every x months
+                    // toggle each date
+                    // on the
+                    onThe: {
+                        wrapper: document.createElement("div"),
+                        span: document.createElement("span"),
+                        // select first, second, third, fourth, fifth, last
+                        which: new Field({}),
+                        // select day, weekend day, monday, ..., sunday
+                        what: new Field({}),
+                    },
+                    // yearly :
+                    // input every x years
+                    // toggle months
+                    // on the
+                    // select first, second, third, fourth, fifth, last
+                    // select day, weekend day, monday, ..., sunday
+                },
+            },
+
+            // end repeat :
+            endRepeat: {
+                // span summary
+                summary: document.createElement("span"),
+                // select type (after, on date)
+                type: new Field({}),
+                // select times (number." time(s)")
+                times: new Field({}),
+                // select date
+                date: new Field({}),
+            },
+
+            // alerts :
+            alerts: {
+                // select time, custom opens menu, none value removes line if other alert line present
+                time: new Field({}),
+                // button + to add line
+                // alert custom menu :
+                // select type
+                // input x select time before/after, on date value changes input into datetime-local
+            },
+
+            invitees: {
+                // selectize invitee
+                selectize: new Field({}), // select creates line with fields below
+                // span invitee's name, hover color: red, click remove
+                // select role (client, ...)
+                // select status
+                // button send email
+            },
+
+            // textarea||quill description
+            description: new Field({}),
+            // add attachement with select who can access (role, user,...)
+
+            // select appointment type
+            type: new Field({}),
+            // span datetime of next available
+            nextAppointment: document.createElement("span"),
             // checkbox show busy
             busy: {
                 wrapper: document.createElement("div"),
@@ -517,69 +620,6 @@ class BopCal {
                 wrapper: document.createElement("div"),
                 input: document.createElement("input"),
             },
-            // input start
-            start: new Field({
-                compact: true,
-                name: "Start",
-                required: true,
-                type: "datepicker",
-            }),
-            // input end
-            end: new Field({
-                compact: true,
-                name: "End",
-                required: true,
-                type: "datepicker",
-            }),
-
-            // repeat :
-            // span summary
-            // select interval (select custom opens custom repeat menu)
-
-            // custom repeat menu
-            // select frequency
-            // dayly :
-            // input every x days
-            // weekly :
-            // input every x weeks
-            // toggle on week days
-            // monthly :
-            // input every x months
-            // toggle each date
-            // on the
-            // select first, second, third, fourth, fifth, last
-            // select day, weekend day, monday, ..., sunday
-            // yearly :
-            // input every x years
-            // toggle months
-            // on the
-            // select first, second, third, fourth, fifth, last
-            // select day, weekend day, monday, ..., sunday
-
-            // end repeat :
-            // span summary
-            // select type
-            // select times
-            // select date
-
-            // alerts :
-            // select time, custom opens menu, none value removes line if other alert line present
-            // button + to add line
-            // alert custom menu :
-            // select type
-            // input x select time before/after, on date value changes input into datetime-local
-
-            // selectize invitee
-            // span invitee's name, hover color: red, click remove
-            // select role (client, ...)
-            // select status
-            // button send email
-
-            // textarea||quill description
-            // add attachement with select who can access (role, user,...)
-
-            // select appointment type
-            // span datetime of next available
         };
         this.editor.wrapper.className = "editor";
         this.editor.dateEdition.append(
@@ -987,101 +1027,6 @@ class BopCal {
             m: component.modified,
             s: toMYSQLDTString(component.start),
             u: uid,
-        });
-    }
-    /**
-     *
-     * @param {Number} idcal
-     * @param {String} uid
-     */
-    componentEditor(idcal, uid) {
-        // let cal = this;
-        const component = this.calendars[idcal].components[uid];
-        this.modal = new Modal({
-            buttons: [
-                {},
-                { text: "valider", requireValid: true },
-                {
-                    text: "supprimer",
-                    style: "warning",
-                    listener: () => {
-                        // prendre en compte la récurrence et la suppression de l'occurence ou de tous le cal_file.
-                        msg.new({
-                            content:
-                                "Confirmez vous la suppression de cet événement ?",
-                            style: "danger",
-                            btn1text: "supprimer",
-                            btn1listener: () => {
-                                this.componentRemove(idcal, uid);
-                            },
-                        });
-                    },
-                },
-            ],
-            fields: [
-                // title
-                {
-                    compact: true,
-                    name: "Titre",
-                    placeholder: "Titre",
-                    required: true,
-                    type: "input_string",
-                    value: component.summary,
-                },
-                // date
-                {
-                    // new field: event date
-                    // one line summary (js generated from Intl.DateTimeFormat.prototype.formatRange() ?)
-                    // on click, expands to 5 fields :
-                    // - allday
-                    // - start
-                    // - end
-                    // - repeat (which expands to select: none, every day, every week, every month, every year, custom...)
-                    // - busy/free
-                    compact: true,
-                    type: "event_date",
-                    name: "date",
-                    required: true,
-                    value: {
-                        start: component.start,
-                        end: component.end,
-                        rrule: component.rrule,
-                        rdates: component.rdates,
-                        exceptions: component.exceptions,
-                    },
-                },
-                // alarms
-                // attendees
-                {
-                    // need more complex ui to set attendee role and other stuff
-                    add: (el) => {
-                        const modal = Modal.find(el),
-                            field = modal.fields.indexOf(Field.find(el));
-                        loadNewContact({
-                            childOf: modal,
-                            name: el.value,
-                            parentId: field,
-                        });
-                    },
-                    compact: true,
-                    multi: true,
-                    placeholder: "Invités",
-                    type: "selectize",
-                    task: 0,
-                    name: "attendees",
-                },
-                // notes (description)
-                {
-                    compact: true,
-                    type: "quill", // add quill simple without editing tools, but same style.
-                    name: "notes",
-                    value: component.description,
-                },
-            ],
-            // btn1listener: () => {
-            //     // send updated component to server. <- may not be needed.
-            // },
-            title: component.summary,
         });
     }
     // componentFocus(el) {

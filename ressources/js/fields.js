@@ -83,7 +83,6 @@ class Field {
                 this.data = {};
                 this.calendar = new FullCalendar.Calendar(fieldElement, {
                     events: function (info, successCallback, failureCallback) {
-                        // console.warn(toCalDAVString(info.start.valueOf()));
                         socket.send({
                             f: 21,
                             start: toCalDAVString(info.start.valueOf()),
@@ -127,73 +126,6 @@ class Field {
                 if (params.max) fieldElement.max = params.max;
                 this.input.push(fieldElement);
                 this.wrapper.append(fieldElement);
-                break;
-            }
-            case "event_date": {
-                let summary = document.createElement("span"),
-                    allday = document.createElement("div"),
-                    alldaySpan = document.createElement("span"),
-                    alldayInput = document.createElement("input"),
-                    start = new Field({
-                        compact: true,
-                        max: toHTMLInputDateValue(params.value.end),
-                        name: "Start",
-                        required: true,
-                        type: "datepicker",
-                        value: params.value.start,
-                    }),
-                    end = new Field({
-                        compact: true,
-                        min: toHTMLInputDateValue(params.value.start),
-                        name: "End",
-                        required: true,
-                        type: "datepicker",
-                        value: params.value.end,
-                    }),
-                    repeat = document.createElement("div");
-                // busy = new Field({
-                //     compact: true,
-                //     type: "checkbox",
-                //     name: "Busy",
-                //     value: params.value.busy
-                // });
-                summary.textContent = new Intl.DateTimeFormat("fr", {
-                    year: "2-digit",
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "numeric",
-                }).formatRange(params.value.start, params.value.end);
-                summary.addEventListener("click", () => {
-                    // hide summary, show other elements > set class to wrapper
-                    summary.classList.add("hide");
-                    for (const element of [
-                        allday.wrapper,
-                        start.wrapper,
-                        end.wrapper,
-                        repeat,
-                        // busy.wrapper,
-                    ])
-                        element.classList.remove("hide");
-                });
-
-                // allday
-                alldaySpan.textContent = "All day:";
-                alldayInput.type = "checkbox";
-                allday.className = "allday";
-                allday.append(alldaySpan, alldayInput);
-                // start event listener :
-                // on date change, set min to end
-                // end event listener :
-                // on date change, set max to start
-                this.wrapper.append(
-                    summary,
-                    allday,
-                    start.wrapper,
-                    end.wrapper,
-                    repeat
-                    // busy.wrapper
-                );
                 break;
             }
             case "email": {
