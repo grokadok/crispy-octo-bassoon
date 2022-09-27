@@ -27,6 +27,7 @@ class Field {
         // this.modal = params.modal ?? false; <- nope ?
         this.multi = params.multi;
         this.name = params.name;
+        this.options = params.options;
         this.task = params.task ?? undefined;
         this.type = params.type;
         this.required = params.required ?? false;
@@ -316,10 +317,68 @@ class Field {
                     fieldElement = document.createElement("div");
                 this.ul = document.createElement("ul");
                 this.ul.className = "fadeout";
-                socket.send({
-                    f: 7,
-                    s: this.task,
-                });
+                if (this.task) {
+                    socket.send({
+                        f: 7,
+                        s: this.task,
+                    });
+                } else {
+                    console.log(this.options);
+                    // populate from this.options{number id, string content}
+                    const loadingValue = this.value ?? "",
+                        switchSelect = (el) => {
+                            this.input[0].textContent =
+                                el.getElementsByTagName("span")[0].textContent;
+                            this.input[0].classList.remove("empty");
+                            for (let child of el.parentNode.children) {
+                                child === el
+                                    ? (child.className = "selected")
+                                    : (child.className = "");
+                            }
+                            this.selected = el.getAttribute("data-select");
+                            fadeOut(this.ul);
+                        };
+                    for (const [id, content] of Object.entries(this.options)) {
+                        let li = document.createElement("li"),
+                            span = document.createElement("span");
+                        setElementAttributes(li, [
+                            ["data-select", id],
+                            ["tabindex", "0"],
+                        ]);
+                        span.textContent = content;
+                        if (loadingValue && loadingValue === id) {
+                            field.input[0].textContent = content;
+                            field.input[0].classList.remove("empty");
+                            li.className = "selected";
+                        }
+                        li.append(span);
+                        li.addEventListener("click", function () {
+                            switchSelect(li);
+                        });
+                        li.addEventListener("keydown", (e) => {
+                            switch (e.code) {
+                                case "Enter":
+                                case "Space":
+                                    switchSelect(li);
+                                    break;
+                                case "ArrowUp":
+                                    e.preventDefault();
+                                    if (li !== ul.firstChild)
+                                        li.previousElementSibling.focus();
+                                    else field.input[0].focus();
+                                    break;
+                                case "ArrowDown":
+                                    e.preventDefault();
+                                    if (li !== ul.lastChild)
+                                        li.nextElementSibling.focus();
+                                    break;
+                                case "Tab":
+                                    fadeOut(ul);
+                            }
+                        });
+                        this.ul.append(li);
+                    }
+                }
                 // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
                 setElementAttributes(fieldElement, [
@@ -336,7 +395,6 @@ class Field {
                 container.append(fieldElement, this.ul);
                 this.wrapper.append(container);
                 const ulToggle = () => {
-                    console.log("ulToggle");
                     if (this.ul.classList.contains("fadeout")) {
                         this.ul.classList.remove("fadeout");
                         hideOnClickOutside(this.ul, container);
@@ -707,20 +765,20 @@ class Field {
                     const field = Field.fields[data.x],
                         input = field.input[0],
                         ul = field.ul;
-                    if (data.response[0]?.fail) {
+                    if (data.response?.fail) {
                         msg.new({
-                            content: data.response[0].fail,
+                            content: data.response.fail,
                             btn0listener: () => input.focus(),
                         });
                         input.value = input.value.trim();
-                    } else if (data.response[0]?.content) {
+                    } else if (data.response.content.length) {
                         let ulList = [];
                         for (const item of field.selected.items) {
                             ulList.push(item.id);
                         }
 
                         removeChildren(ul, true);
-                        for (const obj of data.response) {
+                        for (const obj of data.response.content) {
                             if (
                                 obj.id !== null &&
                                 !ulList.includes(`${obj.id}`)
@@ -792,7 +850,7 @@ class Field {
                     // else fadeOut(ul);
 
                     // else fadeOut(ul);
-                } else if (data.response[0]?.content) {
+                } else if (data.response?.content) {
                     // for selects
                     let fields = Field.find({
                         type: "select",
@@ -819,7 +877,7 @@ class Field {
                             field.selected = el.getAttribute("data-select");
                             fadeOut(ul);
                         }
-                        for (const obj of data.response) {
+                        for (const obj of data.response.content) {
                             let li = document.createElement("li"),
                                 span = document.createElement("span");
                             setElementAttributes(li, [

@@ -413,14 +413,12 @@ function getWeekNumber(date) {
  * @param {HTMLElement} [anc] - Optional ancestor, defaults to el itself.
  */
 function hideOnClickOutside(el, anc) {
-    console.log(`hideonclick ${el} from ${anc ?? el}`);
     const ancestor = anc ?? el,
         outsideClickListener = (event) => {
             if (
                 !ancestor.contains(event.target) &&
                 !el.classList.contains("fadeout")
             ) {
-                console.warn("hide");
                 fadeOut(el);
                 removeClickListener();
             }

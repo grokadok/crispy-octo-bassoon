@@ -128,10 +128,9 @@ class BopCal {
                             .closest("[data-date]")
                             .getElementsByTagName("div")[0]
                             .contains(e.target)
-                    ) {
+                    )
                         // bigcal focus day
                         this.bigcalFocus(dayDate, "day", true);
-                    }
                 }
 
                 // if number (day, week, month), set view to corresponding date.
@@ -163,9 +162,35 @@ class BopCal {
                 this.bigcalFocus(weekDate, "week", true);
             }
             if (e.target.closest(".editor")) {
+                this.editor.date.wrapper.contains(e.target)
+                    ? this.editor.date.wrapper.classList.add("expanded")
+                    : this.editor.date.wrapper.classList.remove("expanded");
+                this.editor.repeat.wrapper.contains(e.target)
+                    ? this.editor.repeat.wrapper.classList.add("expanded")
+                    : this.editor.repeat.wrapper.classList.remove("expanded");
+                this.editor.endRepeat.wrapper.contains(e.target)
+                    ? this.editor.endRepeat.wrapper.classList.add("expanded")
+                    : this.editor.endRepeat.wrapper.classList.remove(
+                          "expanded"
+                      );
+                this.editor.alerts.wrapper.contains(e.target)
+                    ? this.editor.alerts.wrapper.classList.add("expanded")
+                    : this.editor.alerts.wrapper.classList.remove("expanded");
+                this.editor.invitees.wrapper.contains(e.target)
+                    ? this.editor.invitees.wrapper.classList.add("expanded")
+                    : this.editor.invitees.wrapper.classList.remove("expanded");
+                this.editor.appointment.wrapper.contains(e.target)
+                    ? this.editor.appointment.wrapper.classList.add("expanded")
+                    : this.editor.appointment.wrapper.classList.remove(
+                          "expanded"
+                      );
+                this.editor.options.wrapper.contains(e.target)
+                    ? this.editor.options.wrapper.classList.add("expanded")
+                    : this.editor.options.wrapper.classList.remove("expanded");
+
                 // date edition
                 // if target = datesummary
-                // if (this.editor.dateSummary.contains(e.target))
+                // if (this.editor.date.summary.contains(e.target))
                 //     this.editor.wrapper.classList.add("date-edition");
                 // // else if date-edition and target not in date editor
                 // else if (
@@ -174,8 +199,7 @@ class BopCal {
                 // )
                 //     this.editor.wrapper.classList.remove("date-edition");
                 return;
-            }
-            this.editorHide();
+            } else this.editorHide();
             if (this.focus)
                 Object.values(this.focus.elements).forEach((x) =>
                     x.classList.remove("focus")
@@ -506,6 +530,7 @@ class BopCal {
                 // checkbox allday
                 allday: {
                     wrapper: document.createElement("div"),
+                    span: document.createElement("span"),
                     input: document.createElement("input"),
                 },
                 // input start
@@ -530,20 +555,43 @@ class BopCal {
                 // span summary
                 summary: document.createElement("span"),
                 // select interval (select custom opens custom repeat menu)
-                interval: new Field({}),
+                interval: new Field({
+                    compact: true,
+                    name: "interval",
+                    type: "select",
+                    options: {
+                        0: "none",
+                        1: "every day",
+                        2: "every week",
+                        3: "every month",
+                        4: "every year",
+                        5: "custom",
+                    },
+                }),
 
                 // custom repeat menu
                 menu: {
                     wrapper: document.createElement("div"),
                     // select frequency
-                    frequency: new Field({}),
+                    frequency: new Field({
+                        compact: true,
+                        name: "frequency",
+                        type: "select",
+                        options: {
+                            0: "daily",
+                            1: "weekly",
+                            2: "monthly",
+                            3: "yearly",
+                            4: "custom",
+                        },
+                    }),
                     // dayly :
                     // input every x days
                     every: {
                         // use same for weeks, months, years
                         wrapper: document.createElement("div"),
                         span: document.createElement("span"),
-                        input: document.createElement("input"),
+                        input: document.createElement("input"), // type number
                         value: document.createElement("span"),
                     },
                     // weekly :
@@ -558,9 +606,37 @@ class BopCal {
                         wrapper: document.createElement("div"),
                         span: document.createElement("span"),
                         // select first, second, third, fourth, fifth, last
-                        which: new Field({}),
+                        which: new Field({
+                            compact: true,
+                            name: "which",
+                            type: "select",
+                            options: {
+                                0: "first",
+                                1: "second",
+                                2: "third",
+                                3: "fourth",
+                                4: "fifth",
+                                5: "last",
+                            },
+                        }),
                         // select day, weekend day, monday, ..., sunday
-                        what: new Field({}),
+                        what: new Field({
+                            compact: true,
+                            name: "what",
+                            type: "select",
+                            options: {
+                                0: "day",
+                                1: "week day",
+                                2: "weekend day",
+                                3: "monday",
+                                4: "tuesday",
+                                5: "wednesday",
+                                6: "thursday",
+                                7: "friday",
+                                8: "saturday",
+                                9: "sunday",
+                            },
+                        }),
                     },
                     // yearly :
                     // input every x years
@@ -573,64 +649,148 @@ class BopCal {
 
             // end repeat :
             endRepeat: {
+                wrapper: document.createElement("div"),
                 // span summary
                 summary: document.createElement("span"),
                 // select type (after, on date)
-                type: new Field({}),
+                type: new Field({
+                    compact: true,
+                    name: "type",
+                    type: "select",
+                    options: { 0: "never", 1: "after", 2: "on date" },
+                }),
                 // select times (number." time(s)")
-                times: new Field({}),
+                times: document.createElement("input"), // type number, max 9999, min 1
                 // select date
-                date: new Field({}),
+                date: new Field({
+                    compact: true,
+                    name: "date",
+                    type: "datepicker",
+                }),
             },
 
             // alerts :
             alerts: {
+                wrapper: document.createElement("div"),
                 // select time, custom opens menu, none value removes line if other alert line present
-                time: new Field({}),
+                time: new Field({
+                    compact: true,
+                    name: "time",
+                    type: "select",
+                    options: {
+                        0: "15 minutes before (default)",
+                        1: "none",
+                        2: "5 minutes before",
+                        3: "10 minutes before",
+                        4: "30 minutes before",
+                        5: "1 hour before",
+                        6: "2 hours before",
+                        7: "1 day before",
+                        8: "2 days before",
+                        9: "custom",
+                    },
+                }),
                 // button + to add line
                 // alert custom menu :
-                // select type
-                // input x select time before/after, on date value changes input into datetime-local
+                menu: {
+                    wrapper: document.createElement("div"),
+                    // select type
+                    type: new Field({
+                        compact: true,
+                        name: "type",
+                        type: "select",
+                        options: { 0: "notification", 1: "Email", 2: "Sms" },
+                    }),
+                    // input x select time before/after, on date value changes input into datetime-local
+                    times: document.createElement("input"), // type number, min: 1, max: 9999
+                    value: new Field({
+                        compact: true,
+                        name: "value",
+                        type: "select",
+                        options: {
+                            0: "At time of event",
+                            1: "minutes before",
+                            2: "hours before",
+                            3: "days before",
+                            4: "minutes after",
+                            5: "hours after",
+                            6: "days after",
+                            7: "on date",
+                        },
+                    }), // at time of event hides times input, on date hides times input shows date picker
+                    date: new Field({
+                        compact: true,
+                        name: "date",
+                        type: "datepicker",
+                    }),
+                },
             },
 
             invitees: {
+                wrapper: document.createElement("div"),
                 // selectize invitee
-                selectize: new Field({}), // select creates line with fields below
+                selectize: new Field({
+                    compact: true,
+                    name: "invitees",
+                    type: "selectize",
+                    task: 0,
+                    multi: true,
+                    placeholder: "invitees...",
+                }), // select creates line with fields below
                 // span invitee's name, hover color: red, click remove
                 // select role (client, ...)
                 // select status
                 // button send email
             },
 
-            // textarea||quill description
-            description: new Field({}),
             // add attachement with select who can access (role, user,...)
 
-            // select appointment type
-            type: new Field({}),
-            // span datetime of next available
-            nextAppointment: document.createElement("span"),
-            // checkbox show busy
-            busy: {
+            // appointment
+            appointment: {
                 wrapper: document.createElement("div"),
-                input: document.createElement("input"),
+                // select appointment type
+                type: new Field({
+                    compact: true,
+                    name: "appointment type",
+                    type: "select",
+                    options: { 0: "" },
+                }), // select populated with preconfigured appointment types for calendar's client/owner
+                // span datetime of next available
+                next: document.createElement("span"),
             },
-            // checkbox transparency
-            transparency: {
+
+            // options
+            options: {
                 wrapper: document.createElement("div"),
-                input: document.createElement("input"),
+                // textarea||quill description
+                description: new Field({
+                    compact: true,
+                    name: "description",
+                    placeholder: "description...",
+                    type: "quill",
+                }),
+                // checkbox show busy
+                busy: {
+                    wrapper: document.createElement("div"),
+                    span: document.createElement("span"),
+                    input: document.createElement("input"),
+                },
+                // checkbox transparency
+                transparency: {
+                    wrapper: document.createElement("div"),
+                    span: document.createElement("span"),
+                    input: document.createElement("input"),
+                },
             },
         };
-        this.editor.wrapper.className = "editor";
-        this.editor.dateEdition.append(
-            this.editor.allday.wrapper,
-            this.editor.start.wrapper,
-            this.editor.end.wrapper
-        );
 
+        this.editor.wrapper.className = "editor";
+
+        // summary
         this.editor.summary.placeholder = "New event";
         this.editor.summary.addEventListener("input", () => {
             if (this.focus) {
+                this.editor.modified = true;
                 // update component.summary
                 this.focus.summary = this.editor.summary.value;
                 // for each element, change summary
@@ -639,33 +799,126 @@ class BopCal {
                         this.editor.summary.value;
             }
         });
+
+        //date
+        this.editor.date.wrapper.append(
+            this.editor.date.summary,
+            this.editor.date.allday.wrapper,
+            this.editor.date.start.wrapper,
+            this.editor.date.end.wrapper
+        );
+        // summary
+
         // hide dateSummary, show other elements > set class to wrapper
         // on click on anywhere else than inside date elements, reverse hide.
 
         // allday
-        this.editor.allday.input.type = "checkbox";
-        this.editor.allday.wrapper.append(this.editor.allday.input);
-        this.editor.allday.input.addEventListener("change", (e) => {
-            console.log(e.target.checked);
-        });
-        // busy
-        this.editor.busy.input.type = "checkbox";
-        this.editor.busy.wrapper.append(this.editor.busy.input);
-        this.editor.busy.input.addEventListener("change", (e) => {
+        this.editor.date.allday.input.type = "checkbox";
+        this.editor.date.allday.wrapper.append(this.editor.date.allday.input);
+        this.editor.date.allday.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
         });
         // start event listener :
         // on date change, set min to end
         // end event listener :
         // on date change, set max to start
+
+        // repeat
+        this.editor.repeat.wrapper.append(
+            this.editor.repeat.summary,
+            this.editor.repeat.interval.wrapper,
+            this.editor.repeat.menu.wrapper
+        );
+        // repeat menu
+        this.editor.repeat.menu.wrapper.append(
+            this.editor.repeat.menu.frequency.wrapper,
+            this.editor.repeat.menu.every.wrapper,
+            this.editor.repeat.menu.picker,
+            this.editor.repeat.menu.onThe.wrapper
+        );
+        // repeat menu every
+        this.editor.repeat.menu.every.wrapper.append(
+            this.editor.repeat.menu.every.span,
+            this.editor.repeat.menu.every.input,
+            this.editor.repeat.menu.every.value
+        );
+        // repeat menu onThe
+        this.editor.repeat.menu.onThe.wrapper.append(
+            this.editor.repeat.menu.onThe.span,
+            this.editor.repeat.menu.onThe.which.wrapper,
+            this.editor.repeat.menu.onThe.what.wrapper
+        );
+
+        // end repeat
+        this.editor.endRepeat.wrapper.append(
+            this.editor.endRepeat.summary,
+            this.editor.endRepeat.type.wrapper,
+            this.editor.endRepeat.times,
+            this.editor.endRepeat.date.wrapper
+        );
+
+        // alerts
+        this.editor.alerts.wrapper.append(
+            this.editor.alerts.time.wrapper,
+            this.editor.alerts.menu.wrapper
+        );
+        // alerts menu
+        this.editor.alerts.menu.wrapper.append(
+            this.editor.alerts.menu.type.wrapper,
+            this.editor.alerts.menu.times,
+            this.editor.alerts.menu.value.wrapper,
+            this.editor.alerts.menu.date.wrapper
+        );
+
+        //invitees
+        this.editor.invitees.wrapper.append(
+            this.editor.invitees.selectize.wrapper
+        );
+
+        // appointment
+        this.editor.appointment.wrapper.append(
+            this.editor.appointment.type.wrapper,
+            this.editor.appointment.next
+        );
+
+        // options
+        this.editor.options.wrapper.append(
+            this.editor.options.description.wrapper,
+            this.editor.options.busy.wrapper,
+            this.editor.options.transparency.wrapper
+        );
+
+        // busy
+        this.editor.options.busy.input.type = "checkbox";
+        this.editor.options.busy.wrapper.append(this.editor.options.busy.input);
+        this.editor.options.busy.input.addEventListener("change", (e) => {
+            console.log(e.target.checked);
+        });
+        // transparency
+        this.editor.options.transparency.input.type = "checkbox";
+        this.editor.options.transparency.wrapper.append(
+            this.editor.options.transparency.input
+        );
+        this.editor.options.transparency.input.addEventListener(
+            "change",
+            (e) => {
+                console.log(e.target.checked);
+            }
+        );
+
         this.editor.wrapper.append(
             this.editor.summary,
             document.createElement("hr"),
-            this.editor.dateSummary,
+            this.editor.date.wrapper,
+            this.editor.repeat.wrapper,
+            this.editor.endRepeat.wrapper,
+            this.editor.alerts.wrapper,
             document.createElement("hr"),
-            this.editor.dateEdition,
+            this.editor.invitees.wrapper,
             document.createElement("hr"),
-            this.editor.busy.wrapper
+            this.editor.appointment.wrapper,
+            document.createElement("hr"),
+            this.editor.options.wrapper
         );
 
         // minicalendar menu
@@ -1069,7 +1322,7 @@ class BopCal {
             elements = Object.values(component.elements);
         // apply loading to component's elements
         for (const element of elements) element.classList.add("applying");
-        this.editor.changed = false;
+        this.editor.modified = false;
         // send modifications to db
         socket.send({
             f: 34,
@@ -1102,7 +1355,7 @@ class BopCal {
         });
     }
     editorFocus(idcal, uid, element) {
-        if (this.editor.changed)
+        if (this.editor.modified)
             this.editorApply(this.editor.idcal, this.editor.uid);
         this.editor.idcal = idcal;
         this.editor.uid = uid;
@@ -1144,17 +1397,19 @@ class BopCal {
         // populate editor with component's data
         this.editor.summary.value = component.summary;
 
-        this.editor.dateSummary.textContent = new Intl.DateTimeFormat("fr", {
+        this.editor.date.summary.textContent = new Intl.DateTimeFormat("fr", {
             year: "numeric",
             month: "short",
             day: "numeric",
             hour: "numeric",
             minute: "numeric",
         }).formatRange(component.start, component.end);
-        this.editor.start.input[0].value = toHTMLInputDateValue(
+        this.editor.date.start.input[0].value = toHTMLInputDateValue(
             component.start
         );
-        this.editor.end.input[0].value = toHTMLInputDateValue(component.end);
+        this.editor.date.end.input[0].value = toHTMLInputDateValue(
+            component.end
+        );
 
         this.editor.wrapper.style.setProperty(
             "--editor-color",
@@ -1163,8 +1418,11 @@ class BopCal {
     }
     editorHide() {
         this.editor.wrapper.classList.remove("show", "date-edition");
+        this.editor.wrapper
+            .querySelector(".expanded")
+            ?.classList.remove("expanded");
         // if modifications
-        if (this.editor.changed)
+        if (this.editor.modified)
             this.editorApply(this.editor.idcal, this.editor.uid);
         delete this.editor.idcal;
         delete this.editor.uid;

@@ -1387,11 +1387,11 @@ class FWServer
                         "type" => $type,
                         "content" => $content,
                     ];
+                } elseif (intval($task['s'] === 9) && $task['u']) {
+                    // appointment types from client
                 }
-                $res = $this->db->request($request);
-                return count($res) > 0
-                    ? $res
-                    : ["content" => []];
+                // $res = $this->db->request($request);
+                return ['content' => $this->db->request($request)];
             }
 
             /////////////////////////////////////////////////////
