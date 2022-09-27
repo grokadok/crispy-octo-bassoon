@@ -413,6 +413,7 @@ class WSConnection {
             // }
             BopChat.destroyAll();
             BopTable.destroyAll();
+            BopCal.destroyAll();
             Modal.destroy();
             if (ClassMain.el) {
                 ClassMain.destroy();

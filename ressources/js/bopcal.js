@@ -13,15 +13,19 @@ class BopCal {
     constructor(element) {
         BopCal.bopcals.push(this);
         this.id = BopCal.bopcals.indexOf(this);
-        this.now = new Date();
-        this.years = {};
-        this.months = {};
+        this.controller = new AbortController();
         this.wrapper = element;
         this.wrapper.classList.add("bopcal");
         this.menu = document.createElement("div");
         this.menu.className = "menu";
-        this.minical = { cal: document.createElement("div"), years: {} };
+        this.minical = {
+            cal: document.createElement("div"),
+            years: {},
+            cursor: document.createElement("div"),
+        };
         this.minical.cal.className = "mini";
+        this.minical.cursor.className = "cursor";
+        this.minical.cal.append(this.minical.cursor);
         this.bigcal = {
             cal: document.createElement("div"),
             layout: document.createElement("div"),
@@ -76,6 +80,20 @@ class BopCal {
                 this.bigcal.info.firstElementChild.textContent = `W${element
                     .closest("[data-week]")
                     .getAttribute("data-week")}`;
+                let date = new Date(
+                    parseInt(
+                        element
+                            .closest("[data-month]")
+                            .getAttribute("data-value")
+                    )
+                );
+                date.setDate(element.getAttribute("data-date"));
+                if (element.classList.contains("fade")) {
+                    element.getAttribute("data-date") > 15
+                        ? date.setMonth(date.getMonth() - 1)
+                        : date.setMonth(date.getMonth() + 1);
+                }
+                this.minicalFocus(date);
             }
         };
         this.bigcal.cal.addEventListener("scroll", (e) => {
@@ -92,119 +110,8 @@ class BopCal {
                 );
             }, 100);
         });
-        // this.bigcal.cal.addEventListener("click", (e) => {
-        document.addEventListener("click", (e) => {
-            // if target is in bigcal calendar
-            if (this.bigcal.cal.contains(e.target)) {
-                // if target is an event
-                if (e.target.closest("[data-uid]")) {
-                    const componentElement = e.target.closest("[data-uid]"),
-                        idcal = componentElement.getAttribute("data-cal"),
-                        uid = componentElement.getAttribute("data-uid"),
-                        component = this.calendars[idcal].components[uid];
-                    // if target has focus, open editor
-                    if (component === this.focus) this.editorShow();
-                    return;
-                }
-                // if target is a day
-                if (e.target.closest("[data-date")) {
-                    const dayDate = new Date(
-                        parseInt(
-                            e.target
-                                .closest("[data-month]")
-                                .getAttribute("data-value")
-                        )
-                    );
-                    dayDate.setDate(
-                        parseInt(
-                            e.target
-                                .closest("[data-date]")
-                                .getAttribute("data-date")
-                        )
-                    );
-                    // if target is info
-                    if (
-                        e.target
-                            .closest("[data-date]")
-                            .getElementsByTagName("div")[0]
-                            .contains(e.target)
-                    )
-                        // bigcal focus day
-                        this.bigcalFocus(dayDate, "day", true);
-                }
-
-                // if number (day, week, month), set view to corresponding date.
-                // if event, set focus to it
-            }
-            // if target is in bigcal week info
-            if (
-                this.bigcal.info.contains(e.target) &&
-                this.bigcal.info.firstElementChild.textContent !== "W##"
-            ) {
-                const weekElement = this.bigcal.cal.querySelector(
-                    `[data-week="${this.bigcal.info.firstElementChild.textContent.slice(
-                        1
-                    )}"`
-                );
-                let weekDate = new Date(
-                    parseInt(
-                        weekElement
-                            .closest("[data-month]")
-                            .getAttribute("data-value")
-                    )
-                );
-                weekDate.setDate(
-                    weekElement
-                        .querySelector("[data-date]:not(.fade)")
-                        .getAttribute("data-date")
-                );
-                weekDate = getFirstDayOfWeek(weekDate);
-                this.bigcalFocus(weekDate, "week", true);
-            }
-            if (e.target.closest(".editor")) {
-                this.editor.date.wrapper.contains(e.target)
-                    ? this.editor.date.wrapper.classList.add("expanded")
-                    : this.editor.date.wrapper.classList.remove("expanded");
-                this.editor.repeat.wrapper.contains(e.target)
-                    ? this.editor.repeat.wrapper.classList.add("expanded")
-                    : this.editor.repeat.wrapper.classList.remove("expanded");
-                this.editor.endRepeat.wrapper.contains(e.target)
-                    ? this.editor.endRepeat.wrapper.classList.add("expanded")
-                    : this.editor.endRepeat.wrapper.classList.remove(
-                          "expanded"
-                      );
-                this.editor.alerts.wrapper.contains(e.target)
-                    ? this.editor.alerts.wrapper.classList.add("expanded")
-                    : this.editor.alerts.wrapper.classList.remove("expanded");
-                this.editor.invitees.wrapper.contains(e.target)
-                    ? this.editor.invitees.wrapper.classList.add("expanded")
-                    : this.editor.invitees.wrapper.classList.remove("expanded");
-                this.editor.appointment.wrapper.contains(e.target)
-                    ? this.editor.appointment.wrapper.classList.add("expanded")
-                    : this.editor.appointment.wrapper.classList.remove(
-                          "expanded"
-                      );
-                this.editor.options.wrapper.contains(e.target)
-                    ? this.editor.options.wrapper.classList.add("expanded")
-                    : this.editor.options.wrapper.classList.remove("expanded");
-
-                // date edition
-                // if target = datesummary
-                // if (this.editor.date.summary.contains(e.target))
-                //     this.editor.wrapper.classList.add("date-edition");
-                // // else if date-edition and target not in date editor
-                // else if (
-                //     this.editor.wrapper.classList.contains("date-edition") &&
-                //     !this.editor.dateEdition.contains(e.target)
-                // )
-                //     this.editor.wrapper.classList.remove("date-edition");
-                return;
-            } else this.editorHide();
-            if (this.focus)
-                Object.values(this.focus.elements).forEach((x) =>
-                    x.classList.remove("focus")
-                );
-            delete this.focus;
+        document.addEventListener("click", (e) => this.clickEvents(e), {
+            signal: this.controller.signal,
         });
         this.bigcal.cal.addEventListener("dblclick", (e) => {
             // if day, create event on day, at time if view = week or day, else allday if month
@@ -485,34 +392,6 @@ class BopCal {
                 }
             }
         });
-
-        // const observerOptions = {
-        //         root: this.bigcal.cal,
-        //         rootMargin: "0px",
-        //         threshold: 0,
-        //     },
-        //     calIntersect = (entries, observer) => {
-        //         const bigcalLeft = this.bigcal.wrapper.offsetLeft;
-        //         entries.forEach((entry) => {
-        //             if (
-        //                 this.bigcal.wrapper.classList.contains("week") ||
-        //                 this.bigcal.wrapper.classList.contains("day")
-        //             ) {
-        //                 if (
-        //                     entry.isIntersecting &&
-        //                     entry.intersectionRect.left === bigcalLeft
-        //                 ) {
-        //                     entry.target.style.borderColor = "lime";
-        //                 } else {
-        //                     entry.target.style.borderColor = "blue";
-        //                 }
-        //             }
-        //         });
-        //     };
-        // this.bigcal.observer = new IntersectionObserver(
-        //     calIntersect,
-        //     observerOptions
-        // );
 
         // event editor
         this.editor = {
@@ -1265,6 +1144,115 @@ class BopCal {
             x: color,
         });
     }
+    clickEvents(e) {
+        // if target is in bigcal calendar
+        if (this.bigcal.cal.contains(e.target)) {
+            // if target is an event
+            if (e.target.closest("[data-uid]")) {
+                const componentElement = e.target.closest("[data-uid]"),
+                    idcal = componentElement.getAttribute("data-cal"),
+                    uid = componentElement.getAttribute("data-uid"),
+                    component = this.calendars[idcal].components[uid];
+                // if target has focus, open editor
+                if (component === this.focus) this.editorShow();
+                return;
+            }
+            // if target is a day
+            if (e.target.closest("[data-date")) {
+                const dayDate = new Date(
+                    parseInt(
+                        e.target
+                            .closest("[data-month]")
+                            .getAttribute("data-value")
+                    )
+                );
+                dayDate.setDate(
+                    parseInt(
+                        e.target
+                            .closest("[data-date]")
+                            .getAttribute("data-date")
+                    )
+                );
+                // if target is info
+                if (
+                    e.target
+                        .closest("[data-date]")
+                        .getElementsByTagName("div")[0]
+                        .contains(e.target)
+                )
+                    // bigcal focus day
+                    this.bigcalFocus(dayDate, "day", true);
+            }
+
+            // if number (day, week, month), set view to corresponding date.
+            // if event, set focus to it
+        }
+        // if target is in bigcal week info
+        if (
+            this.bigcal.info.contains(e.target) &&
+            this.bigcal.info.firstElementChild.textContent !== "W##"
+        ) {
+            const weekElement = this.bigcal.cal.querySelector(
+                `[data-week="${this.bigcal.info.firstElementChild.textContent.slice(
+                    1
+                )}"`
+            );
+            let weekDate = new Date(
+                parseInt(
+                    weekElement
+                        .closest("[data-month]")
+                        .getAttribute("data-value")
+                )
+            );
+            weekDate.setDate(
+                weekElement
+                    .querySelector("[data-date]:not(.fade)")
+                    .getAttribute("data-date")
+            );
+            weekDate = getFirstDayOfWeek(weekDate);
+            this.bigcalFocus(weekDate, "week", true);
+        }
+        if (e.target.closest(".editor")) {
+            this.editor.date.wrapper.contains(e.target)
+                ? this.editor.date.wrapper.classList.add("expanded")
+                : this.editor.date.wrapper.classList.remove("expanded");
+            this.editor.repeat.wrapper.contains(e.target)
+                ? this.editor.repeat.wrapper.classList.add("expanded")
+                : this.editor.repeat.wrapper.classList.remove("expanded");
+            this.editor.endRepeat.wrapper.contains(e.target)
+                ? this.editor.endRepeat.wrapper.classList.add("expanded")
+                : this.editor.endRepeat.wrapper.classList.remove("expanded");
+            this.editor.alerts.wrapper.contains(e.target)
+                ? this.editor.alerts.wrapper.classList.add("expanded")
+                : this.editor.alerts.wrapper.classList.remove("expanded");
+            this.editor.invitees.wrapper.contains(e.target)
+                ? this.editor.invitees.wrapper.classList.add("expanded")
+                : this.editor.invitees.wrapper.classList.remove("expanded");
+            this.editor.appointment.wrapper.contains(e.target)
+                ? this.editor.appointment.wrapper.classList.add("expanded")
+                : this.editor.appointment.wrapper.classList.remove("expanded");
+            this.editor.options.wrapper.contains(e.target)
+                ? this.editor.options.wrapper.classList.add("expanded")
+                : this.editor.options.wrapper.classList.remove("expanded");
+
+            // date edition
+            // if target = datesummary
+            // if (this.editor.date.summary.contains(e.target))
+            //     this.editor.wrapper.classList.add("date-edition");
+            // // else if date-edition and target not in date editor
+            // else if (
+            //     this.editor.wrapper.classList.contains("date-edition") &&
+            //     !this.editor.dateEdition.contains(e.target)
+            // )
+            //     this.editor.wrapper.classList.remove("date-edition");
+            return;
+        } else this.editorHide();
+        if (this.focus)
+            Object.values(this.focus.elements).forEach((x) =>
+                x.classList.remove("focus")
+            );
+        delete this.focus;
+    }
     /**
      * Applys new range to component in db.
      * @param {Number} idcal
@@ -1315,7 +1303,10 @@ class BopCal {
         BopCal.bopcals.splice(this.id, 1);
     }
     static destroyAll() {
-        for (let cal of BopCal.bopcals) cal.destroy();
+        for (let cal of BopCal.bopcals) {
+            cal.controller.abort();
+            cal.destroy();
+        }
     }
     editorApply(idcal, uid) {
         const component = this.calendars[idcal].components[uid],
@@ -1435,7 +1426,7 @@ class BopCal {
      * First load of calendar.
      * @param {Date} [date]
      */
-    generateCalendar(date = this.now) {
+    generateCalendar(date = new Date()) {
         // set base date of calendar
         this.baseDate = date;
 
@@ -1634,13 +1625,28 @@ class BopCal {
      * @param {Date} date
      */
     minicalFocus(date) {
-        console.log(date);
         const month =
                 this.minical.years[date.getFullYear()].months[date.getMonth()],
             x = month.offsetLeft,
-            y = month.offsetTop - this.minical.cal.offsetTop;
-        console.log(month);
+            y = month.offsetTop,
+            day = month.querySelector(
+                `[data-date="${date.getDate()}"]:not(.fade)`
+            );
         this.minical.cal.scrollTo({ top: y, left: x, behavior: "smooth" });
+        this.minical.cursor.style.top = `${
+            day.offsetParent.offsetTop + month.offsetTop
+        }px`;
+        this.minical.cursor.style.left = `${
+            day.offsetLeft +
+            day.offsetParent.offsetLeft +
+            month.offsetLeft +
+            day.closest("[data-year]").offsetLeft
+        }px`;
+        if (this.minical.cal.querySelector("[data-week].active"))
+            this.minical.cal
+                .querySelector("[data-week].active")
+                .classList.remove("active");
+        day.closest("[data-week]").classList.add("active");
     }
     newCalendar() {
         if (Modal.modals.filter((x) => x.task === 27).length) {

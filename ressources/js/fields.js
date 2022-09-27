@@ -323,7 +323,6 @@ class Field {
                         s: this.task,
                     });
                 } else {
-                    console.log(this.options);
                     // populate from this.options{number id, string content}
                     const loadingValue = this.value ?? "",
                         switchSelect = (el) => {
@@ -595,14 +594,15 @@ class Field {
         }
         this.selected.items.push(selected);
         this.selected.wrapper.append(span);
-        span.addEventListener("click", () => {
+        span.addEventListener("click", (e) => {
+            if (e.target.closest(".bopcal")) e.stopPropagation();
             field.selected.items.splice(
                 field.selected.items.indexOf(selected),
                 1
             );
             span.remove();
             field.isValid = field.selected.items.length > 0 ? true : false;
-            modal?.checkRequiredFields();
+            if (modal) modal.checkRequiredFields();
         });
         span.addEventListener("keydown", (e) => {
             if (e.code === "Space" || e.code === "Enter") {
@@ -612,7 +612,7 @@ class Field {
                 );
                 span.remove();
                 field.isValid = field.selected.items.length > 0 ? true : false;
-                modal?.checkRequiredFields();
+                if (modal) modal.checkRequiredFields();
             }
         });
         this.input[0].value = "";
@@ -622,7 +622,7 @@ class Field {
             field.input[0].focus();
         }, 50);
         this.isValid = true;
-        modal?.checkRequiredFields();
+        if (modal) modal.checkRequiredFields();
     }
     /**
      * Removes the field from Field.fields and DOM.
@@ -831,6 +831,8 @@ class Field {
                                 field.selectizeKeysNav(e)
                             );
                             child.addEventListener("click", (e) => {
+                                if (e.target.closest(".bopcal"))
+                                    e.stopPropagation();
                                 let arr = [];
                                 Array.from(
                                     e.currentTarget.getElementsByTagName("span")

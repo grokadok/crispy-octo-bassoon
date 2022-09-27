@@ -199,16 +199,23 @@
                 position: absolute;
                 left: -0.3rem;
                 padding: 0.2rem 0.5rem 0.2rem 14.8rem;
-                background-color: rgba(87, 140, 190, 0.322);
+                background-color: transparent;
                 border-radius: 5px;
-                color: var(--gray2);
+                color: var(--text);
                 font-weight: bold;
                 cursor: pointer;
-                opacity: 0;
-                transition: opacity var(--transition-global);
+                opacity: 0.2;
+                transition: opacity var(--transition-global),
+                    color var(--transition-global);
+            }
+            &.active::after {
+                color: var(--accent-secondary);
+                opacity: 1;
             }
             &:hover::after {
                 opacity: 1;
+                background-color: rgba(87, 140, 190, 0.322);
+                color: var(--gray2);
             }
         }
         /* day */
@@ -242,8 +249,18 @@
                 }
             }
         }
+        & .cursor {
+            position: absolute;
+            inset: 0 auto auto 0;
+            height: 2rem;
+            width: 2rem;
+            outline: dashed red;
+            transition: top var(--transition-bounce),
+                left var(--transition-bounce);
+        }
     }
     & .mini {
+        position: relative;
         /* everything in day */
         & [data-date] * {
             display: none;
