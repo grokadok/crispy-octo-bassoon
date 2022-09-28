@@ -255,8 +255,10 @@
             height: 2rem;
             width: 2rem;
             outline: dashed red;
+            pointer-events: none;
             transition: top var(--transition-bounce),
                 left var(--transition-bounce);
+            z-index: 2;
         }
     }
     & .mini {
