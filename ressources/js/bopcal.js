@@ -641,6 +641,7 @@ class BopCal {
             // options
             options: {
                 wrapper: document.createElement("div"),
+                summary: document.createElement("span"),
                 // textarea||quill description
                 description: new Field({
                     compact: true,
@@ -687,6 +688,8 @@ class BopCal {
             this.editor.date.end.wrapper
         );
         // summary
+        this.editor.date.summary.className = "summary";
+        this.editor.date.summary.textContent = "date";
 
         // hide dateSummary, show other elements > set class to wrapper
         // on click on anywhere else than inside date elements, reverse hide.
@@ -708,6 +711,9 @@ class BopCal {
             this.editor.repeat.interval.wrapper,
             this.editor.repeat.menu.wrapper
         );
+        this.editor.repeat.summary.className = "summary";
+        this.editor.repeat.summary.textContent = "repeat";
+
         // repeat menu
         this.editor.repeat.menu.wrapper.append(
             this.editor.repeat.menu.frequency.wrapper,
@@ -715,6 +721,7 @@ class BopCal {
             this.editor.repeat.menu.picker,
             this.editor.repeat.menu.onThe.wrapper
         );
+        this.editor.repeat.menu.wrapper.className = "menu";
         // repeat menu every
         this.editor.repeat.menu.every.wrapper.append(
             this.editor.repeat.menu.every.span,
@@ -735,6 +742,8 @@ class BopCal {
             this.editor.endRepeat.times,
             this.editor.endRepeat.date.wrapper
         );
+        this.editor.endRepeat.summary.className = "summary";
+        this.editor.endRepeat.summary.textContent = "end repeat";
 
         // alerts
         this.editor.alerts.wrapper.append(
@@ -748,6 +757,7 @@ class BopCal {
             this.editor.alerts.menu.value.wrapper,
             this.editor.alerts.menu.date.wrapper
         );
+        this.editor.alerts.menu.type.wrapper.className = "menu";
 
         //invitees
         this.editor.invitees.wrapper.append(
@@ -762,10 +772,13 @@ class BopCal {
 
         // options
         this.editor.options.wrapper.append(
+            this.editor.options.summary,
             this.editor.options.description.wrapper,
             this.editor.options.busy.wrapper,
             this.editor.options.transparency.wrapper
         );
+        this.editor.options.summary.className = "summary";
+        this.editor.options.summary.textContent = "options";
 
         // busy
         this.editor.options.busy.input.type = "checkbox";
@@ -1419,6 +1432,9 @@ class BopCal {
         delete this.editor.uid;
     }
     editorShow() {
+        this.editor.wrapper
+            .querySelector(".expanded")
+            ?.classList.remove("expanded");
         this.editor.wrapper.classList.add("show");
         this.editor.summary.focus();
     }

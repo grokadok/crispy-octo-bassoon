@@ -72,6 +72,7 @@
     & .editor {
         --editor-color: var(--accent-secondary);
         position: absolute;
+        width: 17rem;
         /* inset: -15rem auto auto 0; */
         border: 1px var(--editor-color) solid;
         border-radius: 9px;
@@ -117,13 +118,24 @@
             /* overflow: hidden;
             transition: height var(--transition-global); */
         }
-        & > div:first-of-type {
+        & > div {
             height: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
             /* overflow: hidden; */
             /* transition: height var(--transition-global); */
+            & > *:not(.summary) {
+                display: none;
+            }
+            &.expanded {
+                & > * {
+                    display: unset;
+                }
+                & .summary {
+                    display: none;
+                }
+            }
         }
         &.show {
             scale: 1;
