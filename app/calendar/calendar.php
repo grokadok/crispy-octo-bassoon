@@ -1300,9 +1300,9 @@ trait BopCal
             'array' => true,
         ])[0][0];
         // if rrule, get rrule
-        if (!empty($event['rrule'])) $event['rrule'] = $this->calGetEventRRule($event['idcal_component']);
+        $event['rrule'] = !empty($event['rrule']) ? $this->calGetEventRRule($event['idcal_component']) : null;
         // if rdate, get rdate
-        if (!empty($event['rdate'])) $event['rdates'] = $this->calGetEventRDate($event['idcal_component']);
+        $event['rdates'] = !empty($event['rdate']) ? $this->calGetEventRDate($event['idcal_component']) : null;
         // if exceptions, get'em
         if (!empty($event['rrule']) || !empty($event['rdate']))
             $event['exceptions'] = $this->calGetEventException($event['idcal_component']);
@@ -1361,9 +1361,9 @@ trait BopCal
             ]);
             // if rrule, get rrule
             foreach ($response[$idcal[0]] as $key => $value) {
-                if ($value['rrule']) $response[$idcal[0]][$key]['rrule'] = $this->calGetEventRRule($value['idcal_component']);
+                $response[$idcal[0]][$key]['rrule'] = $value['rrule'] ? $this->calGetEventRRule($value['idcal_component']) : null;
                 // if rdate, get rdate
-                if ($value['rdate']) $response[$idcal[0]][$key]['rdates'] = $this->calGetEventRDate($value['idcal_component']);
+                $response[$idcal[0]][$key]['rdates'] = $value['rdate'] ? $this->calGetEventRDate($value['idcal_component']) : null;
                 // if exceptions, get'em
                 if ($value['rrule'] || $value['rdate'])
                     $response[$idcal[0]][$key]['exceptions'] = $this->calGetEventException($value['idcal_component']);

@@ -428,7 +428,7 @@ input {
             list-style: none;
             overflow: auto;
             transition: opacity var(--transition-global);
-            z-index: 2;
+            z-index: 3;
             & li {
                 display: flex;
                 flex-wrap: wrap;

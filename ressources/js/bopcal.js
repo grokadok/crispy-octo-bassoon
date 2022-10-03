@@ -406,6 +406,19 @@ class BopCal {
                 wrapper: document.createElement("div"),
                 // span summary
                 summary: document.createElement("span"),
+                sumUpdate: () => {
+                    this.editor.date.summary.textContent =
+                        new Intl.DateTimeFormat("fr", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "numeric",
+                        }).formatRange(
+                            new Date(this.editor.date.start.input[0].value),
+                            new Date(this.editor.date.end.input[0].value)
+                        );
+                },
                 // checkbox allday
                 allday: {
                     wrapper: document.createElement("div"),
@@ -434,9 +447,9 @@ class BopCal {
                 // span summary
                 summary: document.createElement("span"),
                 // select interval (select custom opens custom repeat menu)
-                interval: new Field({
+                preset: new Field({
                     compact: true,
-                    name: "interval",
+                    name: "preset",
                     type: "select",
                     options: {
                         0: "none",
@@ -446,6 +459,7 @@ class BopCal {
                         4: "every year",
                         5: "custom",
                     },
+                    value: 0,
                 }),
 
                 // custom repeat menu
@@ -457,20 +471,26 @@ class BopCal {
                         name: "frequency",
                         type: "select",
                         options: {
-                            0: "daily",
-                            1: "weekly",
-                            2: "monthly",
-                            3: "yearly",
-                            4: "custom",
+                            4: "daily",
+                            5: "weekly",
+                            6: "monthly",
+                            7: "yearly",
                         },
                     }),
                     // dayly :
                     // input every x days
-                    every: {
+                    interval: {
                         // use same for weeks, months, years
                         wrapper: document.createElement("div"),
                         span: document.createElement("span"),
-                        input: document.createElement("input"), // type number
+                        input: new Field({
+                            compact: true,
+                            name: "interval",
+                            type: "input_number",
+                            min: 1,
+                            max: 9999,
+                            value: 1,
+                        }), // type number
                         value: document.createElement("span"),
                     },
                     // weekly :
@@ -537,9 +557,17 @@ class BopCal {
                     name: "type",
                     type: "select",
                     options: { 0: "never", 1: "after", 2: "on date" },
+                    value: 0,
                 }),
                 // select times (number." time(s)")
-                times: document.createElement("input"), // type number, max 9999, min 1
+                times: new Field({
+                    compact: true,
+                    name: "times",
+                    type: "input_number",
+                    min: 1,
+                    max: 9999,
+                    value: 1,
+                }), // type number, max 9999, min 1
                 // select date
                 date: new Field({
                     compact: true,
@@ -568,6 +596,7 @@ class BopCal {
                         8: "2 days before",
                         9: "custom",
                     },
+                    value: 0,
                 }),
                 // button + to add line
                 // alert custom menu :
@@ -581,7 +610,14 @@ class BopCal {
                         options: { 0: "notification", 1: "Email", 2: "Sms" },
                     }),
                     // input x select time before/after, on date value changes input into datetime-local
-                    times: document.createElement("input"), // type number, min: 1, max: 9999
+                    times: new Field({
+                        compact: true,
+                        name: "times",
+                        type: "input_number",
+                        min: 1,
+                        max: 9999,
+                        value: 1,
+                    }), // type number, min: 1, max: 9999
                     value: new Field({
                         compact: true,
                         name: "value",
@@ -696,37 +732,96 @@ class BopCal {
 
         // allday
         this.editor.date.allday.input.type = "checkbox";
-        this.editor.date.allday.wrapper.append(this.editor.date.allday.input);
+        this.editor.date.allday.input.setAttribute("aria-label", "allday");
+        this.editor.date.allday.wrapper.append(
+            document.createElement("span"),
+            this.editor.date.allday.input
+        );
+        this.editor.date.allday.wrapper.firstElementChild.textContent =
+            "All day:";
+        this.editor.date.allday.wrapper.classList.add("checkbox");
         this.editor.date.allday.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
+            // would be cool to change input type for start/end to date, with value according to datetime-local start/end
         });
+        const tempDate = new Date();
+        // start value = today 12h
+        this.editor.date.start.input[0].value = toHTMLInputDateValue(tempDate);
+        this.editor.date.end.min(tempDate);
+        // end value = today 13h
+        this.editor.date.end.input[0].value = toHTMLInputDateValue(
+            tempDate.setHours(tempDate.getHours() + 1)
+        );
+        this.editor.date.start.max(tempDate);
         // start event listener :
-        // on date change, set min to end
+        this.editor.date.start.input[0].addEventListener("change", () => {
+            this.editor.date.end.min(
+                new Date(this.editor.date.start.input[0].value)
+            );
+            this.editor.date.sumUpdate();
+        });
         // end event listener :
-        // on date change, set max to start
+        this.editor.date.end.input[0].addEventListener("change", () => {
+            this.editor.date.start.min(
+                new Date(this.editor.date.end.input[0].value)
+            );
+            this.editor.date.sumUpdate();
+        });
 
         // repeat
         this.editor.repeat.wrapper.append(
             this.editor.repeat.summary,
-            this.editor.repeat.interval.wrapper,
+            this.editor.repeat.preset.wrapper,
             this.editor.repeat.menu.wrapper
         );
         this.editor.repeat.summary.className = "summary";
         this.editor.repeat.summary.textContent = "repeat";
+        this.editor.repeat.preset.input[0].addEventListener("select", (e) => {
+            const value = parseInt(e.target.getAttribute("data-value"));
+            if (value === 0)
+                this.editor.endRepeat.wrapper.classList.add("hidden");
+            else if (value === 5) {
+                // custom
+                this.editor.endRepeat.wrapper.classList.remove("hidden");
+                // show menu
+                console.log("show menu !");
+            } else {
+                this.editor.endRepeat.wrapper.classList.remove("hidden");
+                this.editor.repeat.menu.interval.input.input[0].value = 1;
+                switch (parseInt(e.target.getAttribute("data-value"))) {
+                    case 1:
+                        // daily
+                        this.editor.repeat.menu.frequency.set(4);
+                        break;
+                    case 2:
+                        // weekly
+                        this.editor.repeat.menu.frequency.set(5);
+                        break;
+                    case 3:
+                        // monthly
+                        this.editor.repeat.menu.frequency.set(6);
+                        break;
+                    case 4:
+                        // yearly
+                        this.editor.repeat.menu.frequency.set(7);
+                        break;
+                }
+            }
+        });
 
         // repeat menu
         this.editor.repeat.menu.wrapper.append(
             this.editor.repeat.menu.frequency.wrapper,
-            this.editor.repeat.menu.every.wrapper,
+            this.editor.repeat.menu.interval.wrapper,
             this.editor.repeat.menu.picker,
             this.editor.repeat.menu.onThe.wrapper
         );
         this.editor.repeat.menu.wrapper.className = "menu";
-        // repeat menu every
-        this.editor.repeat.menu.every.wrapper.append(
-            this.editor.repeat.menu.every.span,
-            this.editor.repeat.menu.every.input,
-            this.editor.repeat.menu.every.value
+        // repeat menu interval
+        this.editor.repeat.menu.interval.wrapper.append(
+            this.editor.repeat.menu.interval.span,
+            this.editor.repeat.menu.interval.input.input[0],
+            this.editor.repeat.menu.interval.value
         );
         // repeat menu onThe
         this.editor.repeat.menu.onThe.wrapper.append(
@@ -739,11 +834,12 @@ class BopCal {
         this.editor.endRepeat.wrapper.append(
             this.editor.endRepeat.summary,
             this.editor.endRepeat.type.wrapper,
-            this.editor.endRepeat.times,
+            this.editor.endRepeat.times.input[0],
             this.editor.endRepeat.date.wrapper
         );
         this.editor.endRepeat.summary.className = "summary";
         this.editor.endRepeat.summary.textContent = "end repeat";
+        this.editor.endRepeat.wrapper.className = "hidden";
 
         // alerts
         this.editor.alerts.wrapper.append(
@@ -753,7 +849,7 @@ class BopCal {
         // alerts menu
         this.editor.alerts.menu.wrapper.append(
             this.editor.alerts.menu.type.wrapper,
-            this.editor.alerts.menu.times,
+            this.editor.alerts.menu.times.input[0],
             this.editor.alerts.menu.value.wrapper,
             this.editor.alerts.menu.date.wrapper
         );
@@ -782,15 +878,27 @@ class BopCal {
 
         // busy
         this.editor.options.busy.input.type = "checkbox";
-        this.editor.options.busy.wrapper.append(this.editor.options.busy.input);
+        this.editor.options.busy.wrapper.append(
+            document.createElement("span"),
+            this.editor.options.busy.input
+        );
+        this.editor.options.busy.wrapper.firstElementChild.textContent =
+            "Busy:";
         this.editor.options.busy.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
         });
+        this.editor.options.busy.wrapper.classList.add("checkbox");
+
         // transparency
         this.editor.options.transparency.input.type = "checkbox";
         this.editor.options.transparency.wrapper.append(
+            document.createElement("span"),
             this.editor.options.transparency.input
         );
+        this.editor.options.transparency.wrapper.firstElementChild.textContent =
+            "Transparency:";
+        this.editor.options.transparency.wrapper.classList.add("checkbox");
+
         this.editor.options.transparency.input.addEventListener(
             "change",
             (e) => {
@@ -859,25 +967,32 @@ class BopCal {
             modified: component.modified,
             start: new Date(`${component.start.replace(" ", "T")}Z`),
             end: new Date(`${component.end.replace(" ", "T")}Z`),
-            allday: component.allday,
+            allday: component.allday ?? 0,
             elements: {},
             summary: component.summary,
             type: component.type,
             transparency: component.transparency,
             sequence: component.sequence,
-            rrule: component.rrule,
-            rdates: component.rdates,
-            r_id:
-                component.rrule || component.rdates?.length
-                    ? component.recur_id
-                    : undefined,
-            thisandfuture:
-                component.rrule || component.rdates?.length
-                    ? component.thisandfuture
-                    : undefined,
-            exceptions: component.exceptions,
-            alarms: component.alarms,
         };
+        if (component.rrule)
+            this.calendars[idcal].components[component.uid].rrule =
+                component.rrule;
+        if (component.rdates)
+            this.calendars[idcal].components[component.uid].rdates =
+                component.rdates;
+        if (component.rrule || component.rdates) {
+            if (component.exceptions)
+                this.calendars[idcal].components[component.uid].exceptions =
+                    component.exceptions;
+            if (component.recur_id)
+                this.calendars[idcal].components[component.uid].r_id =
+                    component.recur_id;
+            this.calendars[idcal].components[component.uid].thisandfuture =
+                component.thisandfuture ?? 0;
+        }
+        if (component.alarms)
+            this.calendars[idcal].components[component.uid].alarms =
+                component.alarms;
         this.placeComponent(idcal, component.uid);
     }
     /**
@@ -907,15 +1022,13 @@ class BopCal {
                 for (let i = 0; i < 12; i++) {
                     const monthDate = new Date(year, i);
                     let monthWrapper = document.createElement("div");
-                    setElementAttributes(monthWrapper, [
-                        [
-                            "data-month",
+                    setElementAttributes(monthWrapper, {
+                        "data-month":
                             monthDate.toLocaleString("default", {
                                 month: "long",
                             }) + ` ${year}`,
-                        ],
-                        ["data-value", monthDate.valueOf()],
-                    ]);
+                        "data-value": monthDate.valueOf(),
+                    });
                     monthWrapper.className = "hidden";
                     cal.years[year].months[i] = monthWrapper;
                     if (cal === this.minical) {
@@ -1327,12 +1440,46 @@ class BopCal {
         // apply loading to component's elements
         for (const element of elements) element.classList.add("applying");
         this.editor.modified = false;
+
+        // rrule
+        if (this.editor.repeat.preset.selected !== "0")
+            // get values from frequency, interval,
+
+            component.rrule = {};
+        // check every repeat & endrepeat fields
+        component.rrule.interval = 1;
+        switch (this.editor.repeat.preset.selected) {
+            case "1":
+                // every day
+                component.rrule.frequency = 4;
+                break;
+            case "2":
+                // every week
+                component.rrule.frequency = 5;
+                break;
+            case "3":
+                // every month
+                component.rrule.frequency = 6;
+                break;
+            case "4":
+                // every year
+                component.rrule.frequency = 7;
+                break;
+            case "5":
+                // custom
+                component.rrule.frequency = parseInt(
+                    this.editor.repeat.menu.frequency.selected
+                );
+                break;
+        }
+
         // send modifications to db
         socket.send({
             f: 34,
             c: idcal,
             e: {
                 id: component.id,
+                summary: component.summary,
                 start: toMYSQLDTString(component.start),
                 end: toMYSQLDTString(component.end),
                 allday: component.allday ?? undefined,
@@ -1401,19 +1548,26 @@ class BopCal {
         // populate editor with component's data
         this.editor.summary.value = component.summary;
 
-        this.editor.date.summary.textContent = new Intl.DateTimeFormat("fr", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-        }).formatRange(component.start, component.end);
         this.editor.date.start.input[0].value = toHTMLInputDateValue(
             component.start
         );
+        this.editor.date.start.max(component.end);
         this.editor.date.end.input[0].value = toHTMLInputDateValue(
             component.end
         );
+        this.editor.date.end.min(component.start);
+        this.editor.date.sumUpdate();
+
+        // if repeat, fill repeat fields/summary & show endrepeat
+        if (element.rrule) {
+            // if frequency
+        }
+        // if endrepeat, fill endrepeat fields/summary
+
+        // if invitees
+        // if appointment type
+        // if description
+        // if busy/transparency
 
         this.editor.wrapper.style.setProperty(
             "--editor-color",
@@ -1883,10 +2037,10 @@ class BopCal {
                     timeStyle: "short",
                 }).format(component.start);
                 summary.textContent = component.summary ?? "New event";
-                setElementAttributes(el, [
-                    ["data-cal", idcal],
-                    ["data-uid", uid],
-                ]);
+                setElementAttributes(el, {
+                    "data-cal": idcal,
+                    "data-uid": uid,
+                });
                 el.style.setProperty(
                     "--event-color",
                     this.calendars[idcal].color

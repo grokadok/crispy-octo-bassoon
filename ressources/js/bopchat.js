@@ -84,11 +84,11 @@ class BopChat {
             });
         });
         this.header.append(this.chatTabs, this.usersButton);
-        setElementAttributes(this.input, [
-            ["data-f", "7"],
-            ["data-s", "8"],
-            ["rows", "1"],
-        ]);
+        setElementAttributes(this.input, {
+            "data-f": "7",
+            "data-s": "8",
+            rows: "1",
+        });
         this.input.addEventListener("input", () => {
             if (
                 this.active > 0 &&
@@ -231,20 +231,18 @@ class BopChat {
         for (const user of params.participants) {
             let option = document.createElement("option");
             option.value = user.name;
-            setElementAttributes(option, [
-                ["data-id", user.iduser],
-                ["data-position", user.position],
-                [
-                    "data-avatar",
+            setElementAttributes(option, {
+                "data-id": user.iduser,
+                "data-position": user.position,
+                "data-avatar":
                     user.image ??
-                        user.name
-                            .split(" ")
-                            .map((x) => x.substring(1, 0))
-                            .join("")
-                            .toUpperCase(),
-                ],
-                ["data-status", user.status],
-            ]);
+                    user.name
+                        .split(" ")
+                        .map((x) => x.substring(1, 0))
+                        .join("")
+                        .toUpperCase(),
+                "data-status": user.status,
+            });
             users.append(option);
         }
         tab.append(users);
@@ -283,11 +281,11 @@ class BopChat {
                 day = 24 * 60 * 60 * 1000,
                 week = 7 * day;
 
-            setElementAttributes(field, [
-                ["data-t", params.created],
-                ["data-i", params.iduser],
-                ["data-readby", params.readby],
-            ]);
+            setElementAttributes(field, {
+                "data-t": params.created,
+                "data-i": params.iduser,
+                "data-readby": params.readby,
+            });
             field.className = user.getAttribute("data-position");
             legend.textContent = user.value;
             content.textContent = params.content;
@@ -723,20 +721,18 @@ class BopChat {
             for (const user of chat.participants) {
                 let option = document.createElement("option");
                 option.value = user.name;
-                setElementAttributes(option, [
-                    ["data-id", user.iduser],
-                    ["data-position", user.position],
-                    [
-                        "data-avatar",
+                setElementAttributes(option, {
+                    "data-id": user.iduser,
+                    "data-position": user.position,
+                    "data-avatar":
                         user.image ??
-                            user.name
-                                .split(" ")
-                                .map((x) => x.substring(1, 0))
-                                .join("")
-                                .toUpperCase(),
-                    ],
-                    ["data-status", user.status],
-                ]);
+                        user.name
+                            .split(" ")
+                            .map((x) => x.substring(1, 0))
+                            .join("")
+                            .toUpperCase(),
+                    "data-status": user.status,
+                });
                 userList.push(user.iduser);
                 datalist.append(option);
             }

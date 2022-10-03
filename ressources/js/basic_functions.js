@@ -704,9 +704,8 @@ function selectText(node) {
  * @param {Array} att - Array of attributes to apply to element
  */
 function setElementAttributes(el, att) {
-    for (let [key, value] of att) {
+    for (let [key, value] of Object.entries(att))
         if (typeof value === "number" || value) el.setAttribute(key, value);
-    }
 }
 /**
  * Sets an element draggable.

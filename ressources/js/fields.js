@@ -27,7 +27,7 @@ class Field {
         // this.modal = params.modal ?? false; <- nope ?
         this.multi = params.multi;
         this.name = params.name;
-        this.options = params.options;
+        this.options = params.options ?? {};
         this.task = params.task ?? undefined;
         this.type = params.type;
         this.required = params.required ?? false;
@@ -37,7 +37,8 @@ class Field {
         this.wrapper.classList.add("field");
         this.wrapper.setAttribute("aria-label", this.name);
         const placeholder = params.placeholder ?? this.name,
-            label = params.label ?? this.name;
+            label = params.label ?? this.name,
+            selectEvent = new Event("select");
         // const attributes = [
         //     ["placeholder", params.placeholder ?? ""],
         // ];
@@ -51,22 +52,22 @@ class Field {
                     country = document.createElement("input");
                 this.wrapper.setAttribute("aria-label", "Adresse");
                 this.wrapper.classList.add("address");
-                setElementAttributes(street, [
-                    ["placeholder", "2 rue du Port"],
-                    ["name", "Numéro et voie"],
-                ]);
-                setElementAttributes(postcode, [
-                    ["placeholder", "87200"],
-                    ["name", "Code postal"],
-                ]);
-                setElementAttributes(city, [
-                    ["placeholder", "Sainte Bernadette"],
-                    ["name", "Ville"],
-                ]);
-                setElementAttributes(country, [
-                    ["placeholder", "France"],
-                    ["name", "Pays"],
-                ]);
+                setElementAttributes(street, {
+                    placeholder: "2 rue du Port",
+                    name: "Numéro et voie",
+                });
+                setElementAttributes(postcode, {
+                    placeholder: "87200",
+                    name: "Code postal",
+                });
+                setElementAttributes(city, {
+                    placeholder: "Sainte Bernadette",
+                    name: "Ville",
+                });
+                setElementAttributes(country, {
+                    placeholder: "France",
+                    name: "Pays",
+                });
                 if (params.value) {
                     street.value = params.value.street;
                     postcode.value = params.value.postcode;
@@ -127,19 +128,27 @@ class Field {
                 if (params.max) fieldElement.max = params.max;
                 this.input.push(fieldElement);
                 this.wrapper.append(fieldElement);
+                this.min = (date) =>
+                    fieldElement.setAttribute(
+                        "min",
+                        toHTMLInputDateValue(date)
+                    );
+                this.max = (date) =>
+                    fieldElement.setAttribute(
+                        "max",
+                        toHTMLInputDateValue(date)
+                    );
                 break;
             }
             case "email": {
                 let fieldElement = document.createElement("input");
-                setElementAttributes(fieldElement, [
-                    ["type", "email"],
-                    [
-                        "pattern",
+                setElementAttributes(fieldElement, {
+                    type: "email",
+                    pattern:
                         "^[\\w!#$%&’*+/=?`{|}~^-]+(?:\\.[\\w!#$%&’*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}$",
-                    ],
                     // ["name", label],
-                    ["placeholder", placeholder],
-                ]);
+                    placeholder: placeholder,
+                });
                 this.wrapper.append(fieldElement);
                 fieldElement.value = params.value ?? "";
                 if (this.required)
@@ -151,14 +160,33 @@ class Field {
                 this.input.push(fieldElement);
                 break;
             }
+            case "input_number": {
+                let fieldElement = document.createElement("input");
+                setElementAttributes(fieldElement, {
+                    type: "number",
+                    pattern: "\\d*",
+                    min: params.min ?? "",
+                    max: params.max ?? "",
+                });
+                this.wrapper.append(fieldElement);
+                if (params.value) fieldElement.value = params.value;
+                if (this.required) {
+                    fieldElement.addEventListener("input", () => {
+                        this.getValid();
+                        Modal.find(fieldElement)?.checkRequiredFields();
+                    });
+                }
+                this.input.push(fieldElement);
+                break;
+            }
             case "input_string": {
                 let fieldElement = document.createElement("input");
-                setElementAttributes(fieldElement, [
-                    ["spellcheck", "false"],
-                    ["autocomplete", "off"],
+                setElementAttributes(fieldElement, {
+                    spellcheck: "false",
+                    autocomplete: "off",
                     // ["name", label],
-                    ["placeholder", placeholder],
-                ]);
+                    placeholder: placeholder,
+                });
                 this.wrapper.append(fieldElement);
                 if (params.value) fieldElement.value = params.value;
                 if (this.required) {
@@ -173,10 +201,10 @@ class Field {
             }
             case "input_text": {
                 let fieldElement = document.createElement("textarea");
-                setElementAttributes(fieldElement, [
+                setElementAttributes(fieldElement, {
                     // ["name", label],
-                    ["placeholder", placeholder],
-                ]);
+                    placeholder: placeholder,
+                });
                 this.wrapper.append(fieldElement);
                 fieldElement.textContent = params.value ?? "";
                 if (this.required) {
@@ -195,17 +223,15 @@ class Field {
             case "new-password": {
                 let fieldElement = document.createElement("input");
                 fieldElement.className = "password";
-                setElementAttributes(fieldElement, [
-                    ["type", "password"],
-                    [
-                        "pattern",
+                setElementAttributes(fieldElement, {
+                    type: "password",
+                    pattern:
                         "^(?=.*[a-z])(?=.*[A-Z])(?=.*[\\d])(?=.*[!@#$%^&*]).{12,}$",
-                    ],
-                    ["maxlength", "64"],
+                    maxlength: "64",
                     // ["name", label],
-                    ["placeholder", placeholder],
-                    ["autocomplete", this.type !== "password" ? this.type : ""],
-                ]);
+                    placeholder: placeholder,
+                    autocomplete: this.type !== "password" ? this.type : "",
+                });
                 this.wrapper.append(fieldElement);
                 this.wrapper.insertAdjacentHTML(
                     "beforeend",
@@ -241,10 +267,10 @@ class Field {
             }
             case "phone": {
                 let fieldElement = document.createElement("input");
-                setElementAttributes(fieldElement, [
-                    ["name", label],
-                    ["placeholder", placeholder],
-                ]);
+                setElementAttributes(fieldElement, {
+                    name: label,
+                    placeholder: placeholder,
+                });
                 this.wrapper.append(fieldElement);
                 this.intlTel = intlTelInput(fieldElement, {
                     utilsScript: "./assets/intlTelInput/js/utils.js",
@@ -317,76 +343,25 @@ class Field {
                     fieldElement = document.createElement("div");
                 this.ul = document.createElement("ul");
                 this.ul.className = "fadeout";
-                if (this.task) {
-                    socket.send({
-                        f: 7,
-                        s: this.task,
-                    });
-                } else {
-                    // populate from this.options{number id, string content}
-                    const loadingValue = this.value ?? "",
-                        switchSelect = (el) => {
-                            this.input[0].textContent =
-                                el.getElementsByTagName("span")[0].textContent;
-                            this.input[0].classList.remove("empty");
-                            for (let child of el.parentNode.children) {
-                                child === el
-                                    ? (child.className = "selected")
-                                    : (child.className = "");
-                            }
-                            this.selected = el.getAttribute("data-select");
-                            fadeOut(this.ul);
-                        };
-                    for (const [id, content] of Object.entries(this.options)) {
-                        let li = document.createElement("li"),
-                            span = document.createElement("span");
-                        setElementAttributes(li, [
-                            ["data-select", id],
-                            ["tabindex", "0"],
-                        ]);
-                        span.textContent = content;
-                        if (loadingValue && loadingValue === id) {
-                            field.input[0].textContent = content;
-                            field.input[0].classList.remove("empty");
-                            li.className = "selected";
-                        }
-                        li.append(span);
-                        li.addEventListener("click", function () {
-                            switchSelect(li);
-                        });
-                        li.addEventListener("keydown", (e) => {
-                            switch (e.code) {
-                                case "Enter":
-                                case "Space":
-                                    switchSelect(li);
-                                    break;
-                                case "ArrowUp":
-                                    e.preventDefault();
-                                    if (li !== ul.firstChild)
-                                        li.previousElementSibling.focus();
-                                    else field.input[0].focus();
-                                    break;
-                                case "ArrowDown":
-                                    e.preventDefault();
-                                    if (li !== ul.lastChild)
-                                        li.nextElementSibling.focus();
-                                    break;
-                                case "Tab":
-                                    fadeOut(ul);
-                            }
-                        });
-                        this.ul.append(li);
-                    }
-                }
+                this.set = (id) => {
+                    this.input[0].classList.remove("empty");
+                    this.input[0].textContent = this.options[id].content;
+                    this.input[0].setAttribute("data-value", id);
+                    if (this.selected)
+                        this.options[this.selected].li.classList.remove(
+                            "selected"
+                        );
+                    this.selected = id;
+                    this.options[this.selected].li.classList.add("selected");
+                    this.input[0].dispatchEvent(selectEvent);
+                    fadeOut(this.ul);
+                };
                 // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
-                setElementAttributes(fieldElement, [
-                    // ["readonly", "true"],
-                    ["data-value", params.value],
-                    // ["name", label],
-                    // ["placeholder", placeholder],
-                    ["tabindex", "0"],
-                ]);
+                setElementAttributes(fieldElement, {
+                    "data-value": params.value,
+                    tabindex: "0",
+                });
                 fieldElement.textContent = placeholder;
                 fieldElement.classList.add("empty");
                 this.wrapper.classList.add("select");
@@ -420,6 +395,53 @@ class Field {
                     }
                 });
                 this.input.push(fieldElement);
+                if (this.task) {
+                    socket.send({
+                        f: 7,
+                        s: this.task,
+                    });
+                } else {
+                    // populate from this.options{number id, string content}
+                    for (const [id, content] of Object.entries(this.options)) {
+                        let li = document.createElement("li"),
+                            span = document.createElement("span");
+                        setElementAttributes(li, {
+                            "data-select": id,
+                            tabindex: "0",
+                        });
+                        span.textContent = content;
+                        li.append(span);
+                        li.addEventListener("click", () => {
+                            this.set(id);
+                        });
+                        li.addEventListener("keydown", (e) => {
+                            switch (e.code) {
+                                case "Enter":
+                                case "Space":
+                                    this.set(id);
+                                    break;
+                                case "ArrowUp":
+                                    e.preventDefault();
+                                    if (li !== ul.firstChild)
+                                        li.previousElementSibling.focus();
+                                    else this.input[0].focus();
+                                    break;
+                                case "ArrowDown":
+                                    e.preventDefault();
+                                    if (li !== ul.lastChild)
+                                        li.nextElementSibling.focus();
+                                    break;
+                                case "Tab":
+                                    fadeOut(ul);
+                            }
+                        });
+                        this.ul.append(li);
+                        this.options[id] = { content: content, li: li };
+                    }
+                    console.info(params.value);
+                    if (typeof params.value !== "undefined")
+                        this.set(params.value);
+                }
                 break;
             }
             case "selectize": {
@@ -434,11 +456,11 @@ class Field {
                 this.ul = document.createElement("ul");
                 // this.ul.className = "fadeout";
                 this.ul.setAttribute("role", "listbox");
-                setElementAttributes(fieldElement, [
-                    ["spellcheck", "false"],
-                    ["autocomplete", "off"],
-                    ["placeholder", placeholder],
-                ]);
+                setElementAttributes(fieldElement, {
+                    spellcheck: "false",
+                    autocomplete: "off",
+                    placeholder: placeholder,
+                });
                 this.wrapper.classList.add("selectize");
                 container.className = "container";
                 container.append(fieldElement, this.ul);
@@ -859,7 +881,7 @@ class Field {
                         task: data.s,
                     });
                     for (let field of fields) {
-                        const loadingValue =
+                        const loadValue =
                                 field.input[0].getAttribute("data-value") ?? "",
                             ul = field.ul;
                         removeAttributes(field.input[0], [
@@ -867,40 +889,28 @@ class Field {
                             "data-f",
                             "data-s",
                         ]);
-                        function switchSelect(el) {
-                            field.input[0].textContent =
-                                el.getElementsByTagName("span")[0].textContent;
-                            field.input[0].classList.remove("empty");
-                            for (let child of el.parentNode.children) {
-                                child === el
-                                    ? (child.className = "selected")
-                                    : (child.className = "");
-                            }
-                            field.selected = el.getAttribute("data-select");
-                            fadeOut(ul);
-                        }
                         for (const obj of data.response.content) {
                             let li = document.createElement("li"),
                                 span = document.createElement("span");
-                            setElementAttributes(li, [
-                                ["data-select", obj.id],
-                                ["tabindex", "0"],
-                            ]);
-                            span.textContent = obj["content"];
-                            if (loadingValue && loadingValue === obj.id) {
-                                field.input[0].textContent = obj["content"];
+                            setElementAttributes(li, {
+                                "data-select": obj.id,
+                                tabindex: "0",
+                            });
+                            span.textContent = obj.content;
+                            if (loadValue && loadValue === obj.id) {
+                                field.input[0].textContent = obj.content;
                                 field.input[0].classList.remove("empty");
                                 li.className = "selected";
                             }
                             li.append(span);
-                            li.addEventListener("click", function () {
-                                switchSelect(li);
+                            li.addEventListener("click", () => {
+                                field.set(obj.id);
                             });
                             li.addEventListener("keydown", (e) => {
                                 switch (e.code) {
                                     case "Enter":
                                     case "Space":
-                                        switchSelect(li);
+                                        field.set(obj.id);
                                         break;
                                     case "ArrowUp":
                                         e.preventDefault();
@@ -918,6 +928,10 @@ class Field {
                                 }
                             });
                             ul.append(li);
+                            field.options[obj.id] = {
+                                content: obj.content,
+                                li: li,
+                            };
                         }
                         if (!field.input[0].value) {
                             const first = ul.getElementsByTagName("li")[0];
@@ -1078,7 +1092,7 @@ class Field {
         //             task: data.s,
         //         });
         //         for (let field of fields) {
-        //             const loadingValue =
+        //             const loadValue =
         //                     field.input[0].getAttribute("data-value") ?? "",
         //                 ul = field.ul;
         //             removeAttributes(field.input[0], [
@@ -1106,7 +1120,7 @@ class Field {
         //                     ["tabindex", "0"],
         //                 ]);
         //                 span.textContent = obj["content"];
-        //                 if (loadingValue && loadingValue === obj.id) {
+        //                 if (loadValue && loadValue === obj.id) {
         //                     field.input[0].textContent = obj["content"];
         //                     field.input[0].classList.remove("empty");
         //                     li.className = "selected";
