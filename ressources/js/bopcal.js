@@ -403,6 +403,7 @@ class BopCal {
 
             // date :
             date: {
+                // grid 4 columns, auto rows
                 wrapper: document.createElement("div"),
                 // span summary
                 summary: document.createElement("span"),
@@ -415,37 +416,51 @@ class BopCal {
                             hour: "numeric",
                             minute: "numeric",
                         }).formatRange(
-                            new Date(this.editor.date.start.input[0].value),
-                            new Date(this.editor.date.end.input[0].value)
+                            new Date(
+                                this.editor.date.start.field.input[0].value
+                            ),
+                            new Date(this.editor.date.end.field.input[0].value)
                         );
                 },
                 // checkbox allday
                 allday: {
-                    wrapper: document.createElement("div"),
-                    span: document.createElement("span"),
                     input: document.createElement("input"),
+                    span: document.createElement("span"),
+                    wrapper: document.createElement("div"),
                 },
                 // input start
-                start: new Field({
-                    compact: true,
-                    name: "Start",
-                    required: true,
-                    type: "datepicker",
-                }),
+                start: {
+                    field: new Field({
+                        compact: true,
+                        max: new Date(),
+                        name: "Start",
+                        required: true,
+                        type: "datetime",
+                        value: new Date(),
+                    }),
+                    span: document.createElement("span"),
+                    wrapper: document.createElement("div"),
+                },
                 // input end
-                end: new Field({
-                    compact: true,
-                    name: "End",
-                    required: true,
-                    type: "datepicker",
-                }),
+                end: {
+                    field: new Field({
+                        compact: true,
+                        min: new Date(),
+                        name: "End",
+                        required: true,
+                        type: "datetime",
+                        value: new Date(),
+                    }),
+                    span: document.createElement("span"),
+                    wrapper: document.createElement("div"),
+                },
             },
 
             // repeat :
             repeat: {
+                summary: document.createElement("span"),
                 wrapper: document.createElement("div"),
                 // span summary
-                summary: document.createElement("span"),
                 // select interval (select custom opens custom repeat menu)
                 preset: new Field({
                     compact: true,
@@ -461,6 +476,7 @@ class BopCal {
                     },
                     value: 0,
                 }),
+                span: document.createElement("span"),
 
                 // custom repeat menu
                 menu: {
@@ -548,9 +564,9 @@ class BopCal {
 
             // end repeat :
             endRepeat: {
-                wrapper: document.createElement("div"),
                 // span summary
                 summary: document.createElement("span"),
+                wrapper: document.createElement("div"),
                 // select type (after, on date)
                 type: new Field({
                     compact: true,
@@ -559,6 +575,7 @@ class BopCal {
                     options: { 0: "never", 1: "after", 2: "on date" },
                     value: 0,
                 }),
+                span: document.createElement("span"),
                 // select times (number." time(s)")
                 times: new Field({
                     compact: true,
@@ -568,17 +585,20 @@ class BopCal {
                     max: 9999,
                     value: 1,
                 }), // type number, max 9999, min 1
+                timeSpan: document.createElement("span"),
                 // select date
                 date: new Field({
                     compact: true,
+                    min: new Date(),
                     name: "date",
-                    type: "datepicker",
+                    type: "date",
+                    value: new Date(),
                 }),
             },
 
             // alerts :
             alerts: {
-                wrapper: document.createElement("div"),
+                span: document.createElement("span"),
                 // select time, custom opens menu, none value removes line if other alert line present
                 time: new Field({
                     compact: true,
@@ -598,6 +618,7 @@ class BopCal {
                     },
                     value: 0,
                 }),
+                wrapper: document.createElement("div"),
                 // button + to add line
                 // alert custom menu :
                 menu: {
@@ -636,13 +657,12 @@ class BopCal {
                     date: new Field({
                         compact: true,
                         name: "date",
-                        type: "datepicker",
+                        type: "datetime",
                     }),
                 },
             },
 
             invitees: {
-                wrapper: document.createElement("div"),
                 // selectize invitee
                 selectize: new Field({
                     compact: true,
@@ -652,6 +672,8 @@ class BopCal {
                     multi: true,
                     placeholder: "invitees...",
                 }), // select creates line with fields below
+                span: document.createElement("span"),
+                wrapper: document.createElement("div"),
                 // span invitee's name, hover color: red, click remove
                 // select role (client, ...)
                 // select status
@@ -662,7 +684,7 @@ class BopCal {
 
             // appointment
             appointment: {
-                wrapper: document.createElement("div"),
+                span: document.createElement("span"),
                 // select appointment type
                 type: new Field({
                     compact: true,
@@ -670,14 +692,16 @@ class BopCal {
                     type: "select",
                     options: { 0: "" },
                 }), // select populated with preconfigured appointment types for calendar's client/owner
+                wrapper: document.createElement("div"),
                 // span datetime of next available
                 next: document.createElement("span"),
             },
 
             // options
             options: {
-                wrapper: document.createElement("div"),
+                span: document.createElement("span"),
                 summary: document.createElement("span"),
+                wrapper: document.createElement("div"),
                 // textarea||quill description
                 description: new Field({
                     compact: true,
@@ -719,9 +743,18 @@ class BopCal {
         //date
         this.editor.date.wrapper.append(
             this.editor.date.summary,
+            this.editor.date.allday.span,
             this.editor.date.allday.wrapper,
+            this.editor.date.start.span,
             this.editor.date.start.wrapper,
-            this.editor.date.end.wrapper
+            this.editor.date.end.span,
+            this.editor.date.end.wrapper,
+            this.editor.repeat.summary,
+            this.editor.repeat.span,
+            this.editor.repeat.wrapper,
+            this.editor.endRepeat.summary,
+            this.editor.endRepeat.span,
+            this.editor.endRepeat.wrapper
         );
         // summary
         this.editor.date.summary.className = "summary";
@@ -731,12 +764,10 @@ class BopCal {
         // on click on anywhere else than inside date elements, reverse hide.
 
         // allday
+        this.editor.date.allday.span.textContent = "All day:";
         this.editor.date.allday.input.type = "checkbox";
         this.editor.date.allday.input.setAttribute("aria-label", "allday");
-        this.editor.date.allday.wrapper.append(
-            document.createElement("span"),
-            this.editor.date.allday.input
-        );
+        this.editor.date.allday.wrapper.append(this.editor.date.allday.input);
         this.editor.date.allday.wrapper.firstElementChild.textContent =
             "All day:";
         this.editor.date.allday.wrapper.classList.add("checkbox");
@@ -744,67 +775,78 @@ class BopCal {
             console.log(e.target.checked);
             // would be cool to change input type for start/end to date, with value according to datetime-local start/end
         });
-        const tempDate = new Date();
-        // start value = today 12h
-        this.editor.date.start.input[0].value = toHTMLInputDateValue(tempDate);
-        this.editor.date.end.min(tempDate);
-        // end value = today 13h
-        this.editor.date.end.input[0].value = toHTMLInputDateValue(
-            tempDate.setHours(tempDate.getHours() + 1)
+        // start event :
+        this.editor.date.start.span.textContent = "Start:";
+        this.editor.date.start.wrapper.append(
+            this.editor.date.start.field.wrapper
         );
-        this.editor.date.start.max(tempDate);
-        // start event listener :
-        this.editor.date.start.input[0].addEventListener("change", () => {
+        this.editor.date.start.field.input[0].addEventListener("change", () => {
             this.editor.date.end.min(
-                new Date(this.editor.date.start.input[0].value)
+                new Date(this.editor.date.start.field.input[0].value)
             );
             this.editor.date.sumUpdate();
         });
-        // end event listener :
-        this.editor.date.end.input[0].addEventListener("change", () => {
-            this.editor.date.start.min(
-                new Date(this.editor.date.end.input[0].value)
-            );
+        this.editor.date.start.field.input[0].addEventListener("blur", () => {
+            // if date start > date end, date start = date end - 15min
+        });
+        // end event :
+        this.editor.date.end.span.textContent = "End:";
+        this.editor.date.end.wrapper.append(this.editor.date.end.field.wrapper);
+        this.editor.date.end.field.input[0].addEventListener("change", () => {
+            const date = new Date(this.editor.date.end.field.input[0].value);
+            this.editor.date.start.min(date);
+            this.editor.endRepeat.date.min(date);
+            if (
+                new Date(this.editor.endRepeat.date.input[0].value).valueOf() <
+                date.valueOf()
+            )
+                this.editor.endRepeat.date.input[0].value =
+                    toHTMLInputDateValue(date);
             this.editor.date.sumUpdate();
+        });
+        this.editor.date.end.field.input[0].addEventListener("blur", () => {
+            // if date end < date start, date end = date start + 15min
         });
 
         // repeat
         this.editor.repeat.wrapper.append(
-            this.editor.repeat.summary,
             this.editor.repeat.preset.wrapper,
             this.editor.repeat.menu.wrapper
         );
         this.editor.repeat.summary.className = "summary";
-        this.editor.repeat.summary.textContent = "repeat";
+        this.editor.repeat.span.textContent = "repeat:";
         this.editor.repeat.preset.input[0].addEventListener("select", (e) => {
             const value = parseInt(e.target.getAttribute("data-value"));
-            if (value === 0)
+            if (value === 0) {
+                this.editor.endRepeat.span.classList.add("hidden");
                 this.editor.endRepeat.wrapper.classList.add("hidden");
-            else if (value === 5) {
-                // custom
-                this.editor.endRepeat.wrapper.classList.remove("hidden");
-                // show menu
-                console.log("show menu !");
             } else {
+                this.editor.endRepeat.span.classList.remove("hidden");
                 this.editor.endRepeat.wrapper.classList.remove("hidden");
-                this.editor.repeat.menu.interval.input.input[0].value = 1;
-                switch (parseInt(e.target.getAttribute("data-value"))) {
-                    case 1:
-                        // daily
-                        this.editor.repeat.menu.frequency.set(4);
-                        break;
-                    case 2:
-                        // weekly
-                        this.editor.repeat.menu.frequency.set(5);
-                        break;
-                    case 3:
-                        // monthly
-                        this.editor.repeat.menu.frequency.set(6);
-                        break;
-                    case 4:
-                        // yearly
-                        this.editor.repeat.menu.frequency.set(7);
-                        break;
+                if (value === 5) {
+                    // custom
+                    // show menu
+                    console.log("show menu !");
+                } else {
+                    this.editor.repeat.menu.interval.input.input[0].value = 1;
+                    switch (parseInt(e.target.getAttribute("data-value"))) {
+                        case 1:
+                            // daily
+                            this.editor.repeat.menu.frequency.set(4);
+                            break;
+                        case 2:
+                            // weekly
+                            this.editor.repeat.menu.frequency.set(5);
+                            break;
+                        case 3:
+                            // monthly
+                            this.editor.repeat.menu.frequency.set(6);
+                            break;
+                        case 4:
+                            // yearly
+                            this.editor.repeat.menu.frequency.set(7);
+                            break;
+                    }
                 }
             }
         });
@@ -832,14 +874,53 @@ class BopCal {
 
         // end repeat
         this.editor.endRepeat.wrapper.append(
-            this.editor.endRepeat.summary,
             this.editor.endRepeat.type.wrapper,
             this.editor.endRepeat.times.input[0],
+            this.editor.endRepeat.timeSpan,
             this.editor.endRepeat.date.wrapper
         );
         this.editor.endRepeat.summary.className = "summary";
-        this.editor.endRepeat.summary.textContent = "end repeat";
+        this.editor.endRepeat.span.textContent = "end repeat:";
+        this.editor.endRepeat.span.classList.add("hidden");
         this.editor.endRepeat.wrapper.className = "hidden";
+        this.editor.endRepeat.times.input[0].classList.add("hidden");
+        this.editor.endRepeat.timeSpan.textContent = "time";
+        this.editor.endRepeat.timeSpan.classList.add("hidden");
+        this.editor.endRepeat.date.wrapper.classList.add("hidden");
+        this.editor.endRepeat.type.input[0].addEventListener("select", (e) => {
+            switch (parseInt(e.target.getAttribute("data-value"))) {
+                case 0:
+                    // hide times & date
+                    this.editor.endRepeat.times.input[0].classList.add(
+                        "hidden"
+                    );
+                    this.editor.endRepeat.timeSpan.classList.add("hidden");
+                    this.editor.endRepeat.date.wrapper.classList.add("hidden");
+                    break;
+                case 1:
+                    // show times
+                    this.editor.endRepeat.times.input[0].classList.remove(
+                        "hidden"
+                    );
+                    this.editor.endRepeat.timeSpan.classList.remove("hidden");
+                    this.editor.endRepeat.date.wrapper.classList.add("hidden");
+                    break;
+                case 2:
+                    // show date
+                    this.editor.endRepeat.times.input[0].classList.add(
+                        "hidden"
+                    );
+                    this.editor.endRepeat.timeSpan.classList.add("hidden");
+                    this.editor.endRepeat.date.wrapper.classList.remove(
+                        "hidden"
+                    );
+                    break;
+            }
+        });
+        this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
+            this.editor.endRepeat.timeSpan.textContent =
+                parseInt(e.target.value) > 1 ? "times" : "time";
+        });
 
         // alerts
         this.editor.alerts.wrapper.append(
@@ -874,7 +955,7 @@ class BopCal {
             this.editor.options.transparency.wrapper
         );
         this.editor.options.summary.className = "summary";
-        this.editor.options.summary.textContent = "options";
+        this.editor.options.summary.textContent = "options:";
 
         // busy
         this.editor.options.busy.input.type = "checkbox";
@@ -910,8 +991,9 @@ class BopCal {
             this.editor.summary,
             document.createElement("hr"),
             this.editor.date.wrapper,
-            this.editor.repeat.wrapper,
-            this.editor.endRepeat.wrapper,
+            // this.editor.repeat.wrapper,
+            // this.editor.endRepeat.wrapper,
+            document.createElement("hr"),
             this.editor.alerts.wrapper,
             document.createElement("hr"),
             this.editor.invitees.wrapper,
@@ -1548,14 +1630,14 @@ class BopCal {
         // populate editor with component's data
         this.editor.summary.value = component.summary;
 
-        this.editor.date.start.input[0].value = toHTMLInputDateValue(
+        this.editor.date.start.field.input[0].value = toHTMLInputDateTimeValue(
             component.start
         );
-        this.editor.date.start.max(component.end);
-        this.editor.date.end.input[0].value = toHTMLInputDateValue(
+        this.editor.date.start.field.max(component.end);
+        this.editor.date.end.field.input[0].value = toHTMLInputDateTimeValue(
             component.end
         );
-        this.editor.date.end.min(component.start);
+        this.editor.date.end.field.min(component.start);
         this.editor.date.sumUpdate();
 
         // if repeat, fill repeat fields/summary & show endrepeat

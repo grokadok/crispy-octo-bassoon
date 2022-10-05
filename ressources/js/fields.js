@@ -118,14 +118,13 @@ class Field {
                 fieldElement.addEventListener("click", (e) => e.target.blur());
                 break;
             }
-            case "datepicker": {
+            case "date": {
                 let fieldElement = document.createElement("input");
-                fieldElement.type = "datetime-local";
+                fieldElement.type = "date";
+                fieldElement.required = true;
                 fieldElement.value = toHTMLInputDateValue(
                     params.value ?? new Date()
                 );
-                if (params.min) fieldElement.min = params.min;
-                if (params.max) fieldElement.max = params.max;
                 this.input.push(fieldElement);
                 this.wrapper.append(fieldElement);
                 this.min = (date) =>
@@ -138,6 +137,31 @@ class Field {
                         "max",
                         toHTMLInputDateValue(date)
                     );
+                if (params.min) this.min(params.min);
+                if (params.max) this.max(params.max);
+                break;
+            }
+            case "datetime": {
+                let fieldElement = document.createElement("input");
+                fieldElement.type = "datetime-local";
+                fieldElement.required = true;
+                fieldElement.value = toHTMLInputDateTimeValue(
+                    params.value ?? new Date()
+                );
+                this.input.push(fieldElement);
+                this.wrapper.append(fieldElement);
+                this.min = (date) =>
+                    fieldElement.setAttribute(
+                        "min",
+                        toHTMLInputDateTimeValue(date)
+                    );
+                this.max = (date) =>
+                    fieldElement.setAttribute(
+                        "max",
+                        toHTMLInputDateTimeValue(date)
+                    );
+                if (params.min) this.min(params.min);
+                if (params.max) this.max(params.max);
                 break;
             }
             case "email": {
@@ -170,12 +194,23 @@ class Field {
                 });
                 this.wrapper.append(fieldElement);
                 if (params.value) fieldElement.value = params.value;
-                if (this.required) {
-                    fieldElement.addEventListener("input", () => {
-                        this.getValid();
-                        Modal.find(fieldElement)?.checkRequiredFields();
-                    });
-                }
+                fieldElement.addEventListener("input", () => {
+                    fieldElement.style.width = `${
+                        fieldElement.value.length
+                            ? fieldElement.value.length
+                            : 1
+                    }ch`;
+                    if (this.required) {
+                        fieldElement.addEventListener("input", () => {
+                            this.getValid();
+                            Modal.find(fieldElement)?.checkRequiredFields();
+                        });
+                    }
+                });
+                fieldElement.addEventListener("blur", () => {
+                    if (!fieldElement.value)
+                        fieldElement.value = params.min ?? 1;
+                });
                 this.input.push(fieldElement);
                 break;
             }

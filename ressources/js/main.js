@@ -129,8 +129,8 @@ class ClassMain {
         });
         // parse tabs
         this.prepareTab(this.tabs.map);
-        let theme = document.createElement("li");
-        let themeText = document.createElement("span"),
+        let theme = document.createElement("li"),
+            themeText = document.createElement("span"),
             logout = document.createElement("li"),
             logoutText = document.createElement("span");
         themeText.textContent = "theme";
