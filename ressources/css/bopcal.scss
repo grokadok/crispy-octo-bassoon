@@ -157,14 +157,31 @@
                     display: none;
                 }
             } */
-            & > span:first-of-type {
+            /* & > span:first-of-type {
                 width: 7rem;
                 text-align: right;
-            }
+            } */
             /* date */
             &:first-of-type {
-                & .summary {
-                    width: 100%;
+                display: grid;
+                grid-auto-rows: auto;
+                grid-template-columns: repeat(3, 1fr);
+                column-gap: 0.5rem;
+                & *:not(.summary) {
+                    font-size: 0.9rem;
+                }
+                & > span {
+                    grid-column: 1 / 2;
+                    text-align: right;
+                }
+                & > div:not(.hidden) {
+                    grid-column: 2 / -1;
+                    display: flex;
+                    gap: 0.5rem;
+                }
+                & > .summary {
+                    grid-column: 1 / -1;
+                    /* width: 100%; */
                     cursor: pointer;
                     text-align: center;
                 }
