@@ -408,19 +408,20 @@ class BopCal {
                 // span summary
                 summary: document.createElement("span"),
                 sumUpdate: () => {
+                    let sum = new Intl.DateTimeFormat("fr", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                    }).formatRange(
+                        new Date(this.editor.date.start.field.input[0].value),
+                        new Date(this.editor.date.end.field.input[0].value)
+                    );
                     this.editor.date.summary.textContent =
-                        new Intl.DateTimeFormat("fr", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "numeric",
-                        }).formatRange(
-                            new Date(
-                                this.editor.date.start.field.input[0].value
-                            ),
-                            new Date(this.editor.date.end.field.input[0].value)
-                        );
+                        sum.search(/,.*,/) !== -1
+                            ? sum.replace(" – ", "\n")
+                            : sum;
                 },
                 // checkbox allday
                 allday: {
@@ -482,24 +483,29 @@ class BopCal {
                 menu: {
                     wrapper: document.createElement("div"),
                     // select frequency
-                    frequency: new Field({
-                        compact: true,
-                        name: "frequency",
-                        type: "select",
-                        options: {
-                            4: "daily",
-                            5: "weekly",
-                            6: "monthly",
-                            7: "yearly",
-                        },
-                    }),
+                    frequency: {
+                        field: new Field({
+                            compact: true,
+                            name: "frequency",
+                            type: "select",
+                            options: {
+                                4: "daily",
+                                5: "weekly",
+                                6: "monthly",
+                                7: "yearly",
+                            },
+                            value: 4,
+                        }),
+                        span: document.createElement("span"),
+                        wrapper: document.createElement("div"),
+                    },
                     // dayly :
                     // input every x days
                     interval: {
                         // use same for weeks, months, years
                         wrapper: document.createElement("div"),
                         span: document.createElement("span"),
-                        input: new Field({
+                        field: new Field({
                             compact: true,
                             name: "interval",
                             type: "input_number",
@@ -512,11 +518,29 @@ class BopCal {
                     // weekly :
                     // input every x weeks
                     // toggle on week days
-                    picker: document.createElement("div"), // use same picker for weekdays, dates, months
+                    each: {
+                        wrapper: document.createElement("div"),
+                        span: document.createElement("span"),
+                        radio: document.createElement("input"),
+                    },
+                    picker: {
+                        wrapper: document.createElement("div"),
+                        field: new Field({
+                            compact: true,
+                            name: "picker",
+                            type: "picker",
+                            multi: true,
+                        }),
+                    }, // use same picker for weekdays, dates, months
                     // monthly :
                     // input every x months
                     // toggle each date
                     // on the
+                    onTheRadio: {
+                        wrapper: document.createElement("div"),
+                        span: document.createElement("span"),
+                        radio: document.createElement("input"),
+                    },
                     onThe: {
                         wrapper: document.createElement("div"),
                         span: document.createElement("span"),
@@ -533,6 +557,7 @@ class BopCal {
                                 4: "fifth",
                                 5: "last",
                             },
+                            value: 0,
                         }),
                         // select day, weekend day, monday, ..., sunday
                         what: new Field({
@@ -551,6 +576,7 @@ class BopCal {
                                 8: "saturday",
                                 9: "sunday",
                             },
+                            value: 0,
                         }),
                     },
                     // yearly :
@@ -629,6 +655,7 @@ class BopCal {
                         name: "type",
                         type: "select",
                         options: { 0: "notification", 1: "Email", 2: "Sms" },
+                        value: 0,
                     }),
                     // input x select time before/after, on date value changes input into datetime-local
                     times: new Field({
@@ -653,6 +680,7 @@ class BopCal {
                             6: "days after",
                             7: "on date",
                         },
+                        value: 1,
                     }), // at time of event hides times input, on date hides times input shows date picker
                     date: new Field({
                         compact: true,
@@ -781,7 +809,7 @@ class BopCal {
             this.editor.date.start.field.wrapper
         );
         this.editor.date.start.field.input[0].addEventListener("change", () => {
-            this.editor.date.end.min(
+            this.editor.date.end.field.min(
                 new Date(this.editor.date.start.field.input[0].value)
             );
             this.editor.date.sumUpdate();
@@ -794,7 +822,7 @@ class BopCal {
         this.editor.date.end.wrapper.append(this.editor.date.end.field.wrapper);
         this.editor.date.end.field.input[0].addEventListener("change", () => {
             const date = new Date(this.editor.date.end.field.input[0].value);
-            this.editor.date.start.min(date);
+            this.editor.date.start.field.min(date);
             this.editor.endRepeat.date.min(date);
             if (
                 new Date(this.editor.endRepeat.date.input[0].value).valueOf() <
@@ -817,6 +845,7 @@ class BopCal {
         this.editor.repeat.span.textContent = "repeat:";
         this.editor.repeat.preset.input[0].addEventListener("select", (e) => {
             const value = parseInt(e.target.getAttribute("data-value"));
+            this.editor.repeat.menu.wrapper.classList.remove("show");
             if (value === 0) {
                 this.editor.endRepeat.span.classList.add("hidden");
                 this.editor.endRepeat.wrapper.classList.add("hidden");
@@ -826,25 +855,25 @@ class BopCal {
                 if (value === 5) {
                     // custom
                     // show menu
-                    console.log("show menu !");
+                    this.editor.repeat.menu.wrapper.classList.add("show");
                 } else {
-                    this.editor.repeat.menu.interval.input.input[0].value = 1;
-                    switch (parseInt(e.target.getAttribute("data-value"))) {
+                    this.editor.repeat.menu.interval.field.input[0].value = 1;
+                    switch (value) {
                         case 1:
                             // daily
-                            this.editor.repeat.menu.frequency.set(4);
+                            this.editor.repeat.menu.frequency.field.set(4);
                             break;
                         case 2:
                             // weekly
-                            this.editor.repeat.menu.frequency.set(5);
+                            this.editor.repeat.menu.frequency.field.set(5);
                             break;
                         case 3:
                             // monthly
-                            this.editor.repeat.menu.frequency.set(6);
+                            this.editor.repeat.menu.frequency.field.set(6);
                             break;
                         case 4:
                             // yearly
-                            this.editor.repeat.menu.frequency.set(7);
+                            this.editor.repeat.menu.frequency.field.set(7);
                             break;
                     }
                 }
@@ -855,19 +884,162 @@ class BopCal {
         this.editor.repeat.menu.wrapper.append(
             this.editor.repeat.menu.frequency.wrapper,
             this.editor.repeat.menu.interval.wrapper,
-            this.editor.repeat.menu.picker,
+            this.editor.repeat.menu.each.wrapper,
+            this.editor.repeat.menu.picker.wrapper,
+            this.editor.repeat.menu.onTheRadio.wrapper,
             this.editor.repeat.menu.onThe.wrapper
         );
         this.editor.repeat.menu.wrapper.className = "menu";
+
+        // repeat menu frequency
+        this.editor.repeat.menu.frequency.wrapper.append(
+            this.editor.repeat.menu.frequency.span,
+            this.editor.repeat.menu.frequency.field.wrapper
+        );
+        this.editor.repeat.menu.frequency.span.textContent = "Frequency:";
+        this.editor.repeat.menu.frequency.field.input[0].addEventListener(
+            "select",
+            (e) => {
+                const value = parseInt(e.target.getAttribute("data-value")),
+                    intervalMany =
+                        parseInt(
+                            this.editor.repeat.menu.interval.field.input[0]
+                                .value
+                        ) > 1;
+                this.editor.repeat.menu.wrapper.classList.remove(
+                    "daily",
+                    "weekly",
+                    "monthly",
+                    "yearly"
+                );
+                switch (value) {
+                    case 4:
+                        // daily
+                        // menu.class.add = dayly
+                        this.editor.repeat.menu.wrapper.classList.add("daily");
+                        // interval.value = day/days depending on field value
+                        this.editor.repeat.menu.interval.value.textContent =
+                            intervalMany ? "days" : "day";
+                        break;
+                    case 5:
+                        // weekly
+                        // menu.class.add = weekly
+                        this.editor.repeat.menu.wrapper.classList.add("weekly");
+                        // interval.value =  week/weeks on:
+                        this.editor.repeat.menu.interval.value.textContent =
+                            intervalMany ? "weeks on:" : "week on:";
+                        // picker.options = weekdays
+                        this.editor.repeat.menu.picker.field.setOptions(
+                            getLocalWeekDays({
+                                weekstart: this.weekstart,
+                                type: "narrow",
+                            })
+                        );
+                        this.editor.repeat.menu.picker.field.enable();
+                        break;
+                    case 6:
+                        // monthly
+                        // menu.class.add = monthly
+                        this.editor.repeat.menu.wrapper.classList.add(
+                            "monthly"
+                        );
+                        // interval.value = month/months depending on field value
+                        this.editor.repeat.menu.interval.value.textContent =
+                            intervalMany ? "months" : "month";
+                        // picker.options = monthdays
+                        this.editor.repeat.menu.picker.field.setOptions(
+                            [...Array(31).keys()].map((x) => x + 1)
+                        );
+                        // onTheRadio.type = radio
+                        this.editor.repeat.menu.onTheRadio.radio.type = "radio";
+                        this.editor.repeat.menu.each.radio.checked = true;
+                        this.editor.repeat.menu.picker.field.enable();
+                        this.editor.repeat.menu.onThe.which.disable();
+                        this.editor.repeat.menu.onThe.what.disable();
+
+                        break;
+                    case 7:
+                        // yearly
+                        // menu.class.add = yearly
+                        this.editor.repeat.menu.wrapper.classList.add("yearly");
+                        // interval.value = year/years in:
+                        this.editor.repeat.menu.interval.value.textContent =
+                            intervalMany ? "years in:" : "year in:";
+                        // picker.options = months
+                        this.editor.repeat.menu.picker.field.setOptions(
+                            getLocalMonths("short")
+                        );
+                        this.editor.repeat.menu.picker.field.enable();
+                        this.editor.repeat.menu.onThe.which.disable();
+                        this.editor.repeat.menu.onThe.what.disable();
+                        // onTheRadio.type = checkbox
+                        this.editor.repeat.menu.onTheRadio.radio.type =
+                            "checkbox";
+                        this.editor.repeat.menu.onTheRadio.radio.checked = false;
+                        break;
+                }
+            }
+        );
+
         // repeat menu interval
         this.editor.repeat.menu.interval.wrapper.append(
             this.editor.repeat.menu.interval.span,
-            this.editor.repeat.menu.interval.input.input[0],
+            this.editor.repeat.menu.interval.field.input[0],
             this.editor.repeat.menu.interval.value
         );
+        this.editor.repeat.menu.interval.span.textContent = "Every";
+        this.editor.repeat.menu.interval.value.textContent = "day";
+
+        // repeat menu picker
+        this.editor.repeat.menu.each.wrapper.append(
+            this.editor.repeat.menu.each.radio,
+            this.editor.repeat.menu.each.span
+        );
+        this.editor.repeat.menu.each.radio.type = "radio";
+        this.editor.repeat.menu.each.radio.checked = true;
+        this.editor.repeat.menu.each.radio.name = "repeat-menu";
+        this.editor.repeat.menu.each.radio.addEventListener("input", (e) => {
+            if (
+                e.target.checked &&
+                this.editor.repeat.menu.picker.field.disabled
+            ) {
+                // if checked enable picker, disable onthe fields
+                this.editor.repeat.menu.picker.field.enable();
+                this.editor.repeat.menu.onThe.which.disable();
+                this.editor.repeat.menu.onThe.what.disable();
+            }
+        });
+        this.editor.repeat.menu.each.span.textContent = "Each:";
+
+        this.editor.repeat.menu.picker.wrapper.append(
+            this.editor.repeat.menu.picker.field.wrapper // or input[0], to test
+        );
         // repeat menu onThe
+        this.editor.repeat.menu.onTheRadio.wrapper.append(
+            this.editor.repeat.menu.onTheRadio.radio,
+            this.editor.repeat.menu.onTheRadio.span
+        );
+        this.editor.repeat.menu.onTheRadio.radio.type = "radio";
+        this.editor.repeat.menu.onTheRadio.radio.name = "repeat-menu";
+        this.editor.repeat.menu.onTheRadio.radio.addEventListener(
+            "input",
+            (e) => {
+                if (
+                    e.target.checked &&
+                    !this.editor.repeat.menu.picker.field.disabled
+                ) {
+                    if (e.target.type === "radio")
+                        this.editor.repeat.menu.picker.field.disable();
+                    this.editor.repeat.menu.onThe.which.enable();
+                    this.editor.repeat.menu.onThe.what.enable();
+                } else if (!e.target.checked && e.target.type === "checkbox") {
+                    this.editor.repeat.menu.onThe.which.disable();
+                    this.editor.repeat.menu.onThe.what.disable();
+                }
+            }
+        );
+        this.editor.repeat.menu.onTheRadio.span.textContent = "On the:";
         this.editor.repeat.menu.onThe.wrapper.append(
-            this.editor.repeat.menu.onThe.span,
             this.editor.repeat.menu.onThe.which.wrapper,
             this.editor.repeat.menu.onThe.what.wrapper
         );

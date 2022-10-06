@@ -22,6 +22,7 @@ class Field {
         this.wrapper = document.createElement("div");
         this.input = [];
         this.isValid = false;
+        this.disabled = false;
         this.timer;
         this.add = params.add ?? undefined;
         // this.modal = params.modal ?? false; <- nope ?
@@ -331,6 +332,61 @@ class Field {
                 this.input.push(fieldElement);
                 break;
             }
+            case "picker": {
+                const toggleOption = (element) => {
+                    // get state of option
+                    const state = element.classList.contains("selected");
+                    console.log(state);
+                    // if !this.multi, remove all selected
+                    if (!this.multi)
+                        this.wrapper
+                            .querySelectorAll(".selected")
+                            .forEach((el) => el.classList.remove("selected"));
+                    // apply toggle to option
+                    state
+                        ? element.classList.remove("selected")
+                        : element.classList.add("selected");
+                };
+                this.setOptions = (options) => {
+                    // empty picker
+                    this.wrapper.innerHTML = "";
+                    // for each option, create box
+                    options.forEach((option) => {
+                        let div = document.createElement("div");
+                        div.textContent = option;
+                        div.tabindex = 0;
+                        div.addEventListener("keyup", (e) => {
+                            if (e.code === "Enter" || e.code === "Space")
+                                toggleOption(e.target);
+                        });
+                        this.wrapper.append(div);
+                    });
+                };
+                this.disable = () => {
+                    if (!this.disabled) {
+                        this.wrapper.classList.add("disabled");
+                        Array.from(
+                            this.wrapper.getElementsByTagName("div")
+                        ).forEach((option) => (option.tabindex = -1));
+                        this.disabled = true;
+                    }
+                };
+                this.enable = () => {
+                    if (this.disabled) {
+                        this.wrapper.classList.remove("disabled");
+                        Array.from(
+                            this.wrapper.getElementsByTagName("div")
+                        ).forEach((option) => (option.tabindex = 0));
+                        this.disabled = false;
+                    }
+                };
+                if (params.options) this.setOptions(params.options);
+                this.wrapper.addEventListener("click", (e) => {
+                    toggleOption(e.target);
+                });
+                this.wrapper.classList.add("picker");
+                break;
+            }
             case "quill": {
                 let fieldElement = document.createElement("div");
                 const toolbarOptions = [
@@ -477,6 +533,26 @@ class Field {
                     if (typeof params.value !== "undefined")
                         this.set(params.value);
                 }
+                this.disable = () => {
+                    if (!this.disabled) {
+                        this.wrapper.classList.add("disabled");
+                        fieldElement.tabindex = -1;
+                        Array.from(this.ul.children).forEach(
+                            (li) => (li.tabindex = -1)
+                        );
+                        this.disabled = true;
+                    }
+                };
+                this.enable = () => {
+                    if (this.disabled) {
+                        this.wrapper.classList.remove("disabled");
+                        fieldElement.tabindex = 0;
+                        Array.from(this.ul.children).forEach(
+                            (li) => (li.tabindex = 0)
+                        );
+                        this.disabled = false;
+                    }
+                };
                 break;
             }
             case "selectize": {

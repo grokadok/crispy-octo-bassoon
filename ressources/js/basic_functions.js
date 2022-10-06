@@ -392,6 +392,44 @@ function getLastDayOfWeek(date, weekstart = 1) {
     return lastDay;
 }
 /**
+ * Returns an array of local months
+ * @param {String} type - 'numeric', '2-digit', 'long', 'short', 'narrow'
+ * @returns Months array
+ */
+function getLocalMonths(type = "long") {
+    let date = new Date(),
+        months = [];
+    for (let i = 0; i < 12; i++) {
+        date.setMonth(i);
+        months.push(date.toLocaleDateString("en-us", { month: type }));
+    }
+    return months;
+}
+/**
+ * Returns an array of local weekdays from Monday or provided first day of week.
+ * @param {Object} options
+ * @param {Number} options.weekstart - First day of week (0: Sunday, 1: Monday,...), default: 1
+ * @param {String} options.type - 'long', 'short', 'narrow'
+ * @returns Local week days
+ */
+function getLocalWeekDays(options) {
+    const firstDay = getFirstDayOfWeek(new Date(), options?.weekstart ?? 1);
+    let days = [
+        firstDay.toLocaleString(navigator.language, {
+            weekday: options?.type ?? "long",
+        }),
+    ];
+    for (let i = 0; i < 6; i++) {
+        firstDay.setDate(firstDay.getDate() + 1);
+        days.push(
+            firstDay.toLocaleString(navigator.language, {
+                weekday: options?.type ?? "long",
+            })
+        );
+    }
+    return days;
+}
+/**
  * Returns week number for a given date.
  * @param {Date} date
  * @returns {Number} week number
