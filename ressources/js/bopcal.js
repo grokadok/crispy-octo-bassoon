@@ -442,6 +442,24 @@ class BopCal {
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
                 },
+                checkStart: () => {
+                    if (!this.editor.date.start.field.input[0].validity.valid) {
+                        const date = new Date(
+                            this.editor.date.start.field.input[0].max
+                        );
+                        date.setMinutes(date.getMinutes() - 15);
+                        this.editor.date.setStart(
+                            toHTMLInputDateTimeValue(date)
+                        );
+                    }
+                },
+                setStart: (date) => {
+                    this.editor.date.start.field.input[0].value =
+                        toHTMLInputDateTimeValue(date);
+                    this.editor.date.sumUpdate();
+                    this.editor.date.end.field.min(date);
+                    this.editor.date.checkEnd();
+                },
                 // input end
                 end: {
                     field: new Field({
@@ -454,6 +472,24 @@ class BopCal {
                     }),
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
+                },
+                checkEnd: () => {
+                    if (!this.editor.date.end.field.input[0].validity.valid) {
+                        const date = new Date(
+                            this.editor.date.end.field.input[0].min
+                        );
+                        date.setMinutes(date.getMinutes() + 15);
+                        this.editor.date.setEnd(toHTMLInputDateTimeValue(date));
+                    }
+                },
+                setEnd: (date) => {
+                    this.editor.date.end.field.input[0].value =
+                        toHTMLInputDateTimeValue(date);
+                    this.editor.date.sumUpdate();
+                    this.editor.date.start.field.max(date);
+                    this.editor.date.checkStart();
+                    this.editor.endRepeat.date.min(date);
+                    this.editor.endRepeat.check();
                 },
             },
 
@@ -620,6 +656,11 @@ class BopCal {
                     type: "date",
                     value: new Date(),
                 }),
+                check: () => {
+                    if (!this.editor.endRepeat.date.input[0].validity.valid)
+                        this.editor.endRepeat.date.input[0].value =
+                            this.editor.endRepeat.date.input[0].min;
+                },
             },
 
             // alerts :
@@ -803,7 +844,6 @@ class BopCal {
             console.log(e.target.checked);
             // would be cool to change input type for start/end to date, with value according to datetime-local start/end
         });
-        // start event :
         this.editor.date.start.span.textContent = "Start:";
         this.editor.date.start.wrapper.append(
             this.editor.date.start.field.wrapper
@@ -815,25 +855,20 @@ class BopCal {
             this.editor.date.sumUpdate();
         });
         this.editor.date.start.field.input[0].addEventListener("blur", () => {
-            // if date start > date end, date start = date end - 15min
+            this.editor.date.checkStart();
         });
         // end event :
         this.editor.date.end.span.textContent = "End:";
         this.editor.date.end.wrapper.append(this.editor.date.end.field.wrapper);
         this.editor.date.end.field.input[0].addEventListener("change", () => {
             const date = new Date(this.editor.date.end.field.input[0].value);
-            this.editor.date.start.field.min(date);
-            this.editor.endRepeat.date.min(date);
-            if (
-                new Date(this.editor.endRepeat.date.input[0].value).valueOf() <
-                date.valueOf()
-            )
-                this.editor.endRepeat.date.input[0].value =
-                    toHTMLInputDateValue(date);
             this.editor.date.sumUpdate();
+            this.editor.date.start.field.max(date);
+            this.editor.endRepeat.date.min(date);
+            this.editor.endRepeat.check();
         });
         this.editor.date.end.field.input[0].addEventListener("blur", () => {
-            // if date end < date start, date end = date start + 15min
+            this.editor.date.checkEnd();
         });
 
         // repeat
@@ -989,6 +1024,27 @@ class BopCal {
         );
         this.editor.repeat.menu.interval.span.textContent = "Every";
         this.editor.repeat.menu.interval.value.textContent = "day";
+        this.editor.repeat.menu.interval.field.input[0].addEventListener(
+            "input",
+            (e) => {
+                let array =
+                        this.editor.repeat.menu.interval.value.textContent.split(
+                            " "
+                        ),
+                    word = array.shift();
+                const lastChar = word.slice(-1);
+                if (parseInt(e.target.value) > 1 && lastChar !== "s")
+                    this.editor.repeat.menu.interval.value.textContent = `${word}s ${array.join(
+                        " "
+                    )}`;
+                else if (parseInt(e.target.value) === 1 && lastChar === "s") {
+                    this.editor.repeat.menu.interval.value.textContent = `${word.slice(
+                        0,
+                        -1
+                    )} ${array.join(" ")}`;
+                }
+            }
+        );
 
         // repeat menu picker
         this.editor.repeat.menu.each.wrapper.append(
@@ -1092,6 +1148,9 @@ class BopCal {
         this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
             this.editor.endRepeat.timeSpan.textContent =
                 parseInt(e.target.value) > 1 ? "times" : "time";
+        });
+        this.editor.endRepeat.date.input[0].addEventListener("change", () => {
+            this.editor.endRepeat.check();
         });
 
         // alerts
@@ -1801,16 +1860,8 @@ class BopCal {
 
         // populate editor with component's data
         this.editor.summary.value = component.summary;
-
-        this.editor.date.start.field.input[0].value = toHTMLInputDateTimeValue(
-            component.start
-        );
-        this.editor.date.start.field.max(component.end);
-        this.editor.date.end.field.input[0].value = toHTMLInputDateTimeValue(
-            component.end
-        );
-        this.editor.date.end.field.min(component.start);
-        this.editor.date.sumUpdate();
+        this.editor.date.setStart(toHTMLInputDateTimeValue(component.start));
+        this.editor.date.setEnd(toHTMLInputDateTimeValue(component.end));
 
         // if repeat, fill repeat fields/summary & show endrepeat
         if (element.rrule) {

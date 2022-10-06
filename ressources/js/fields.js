@@ -354,7 +354,7 @@ class Field {
                     options.forEach((option) => {
                         let div = document.createElement("div");
                         div.textContent = option;
-                        div.tabindex = 0;
+                        div.tabIndex = 0;
                         div.addEventListener("keyup", (e) => {
                             if (e.code === "Enter" || e.code === "Space")
                                 toggleOption(e.target);
@@ -367,7 +367,7 @@ class Field {
                         this.wrapper.classList.add("disabled");
                         Array.from(
                             this.wrapper.getElementsByTagName("div")
-                        ).forEach((option) => (option.tabindex = -1));
+                        ).forEach((option) => (option.tabIndex = -1));
                         this.disabled = true;
                     }
                 };
@@ -376,7 +376,7 @@ class Field {
                         this.wrapper.classList.remove("disabled");
                         Array.from(
                             this.wrapper.getElementsByTagName("div")
-                        ).forEach((option) => (option.tabindex = 0));
+                        ).forEach((option) => (option.tabIndex = 0));
                         this.disabled = false;
                     }
                 };
@@ -536,9 +536,9 @@ class Field {
                 this.disable = () => {
                     if (!this.disabled) {
                         this.wrapper.classList.add("disabled");
-                        fieldElement.tabindex = -1;
+                        fieldElement.tabIndex = -1;
                         Array.from(this.ul.children).forEach(
-                            (li) => (li.tabindex = -1)
+                            (li) => (li.tabIndex = -1)
                         );
                         this.disabled = true;
                     }
@@ -546,9 +546,9 @@ class Field {
                 this.enable = () => {
                     if (this.disabled) {
                         this.wrapper.classList.remove("disabled");
-                        fieldElement.tabindex = 0;
+                        fieldElement.tabIndex = 0;
                         Array.from(this.ul.children).forEach(
-                            (li) => (li.tabindex = 0)
+                            (li) => (li.tabIndex = 0)
                         );
                         this.disabled = false;
                     }
