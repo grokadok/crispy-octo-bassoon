@@ -497,11 +497,7 @@ class BopCal {
             repeat: {
                 summary: document.createElement("span"),
                 sumUpdate: () => {
-                    const value = parseInt(
-                        this.editor.repeat.preset.input[0].getAttribute(
-                            "data-value"
-                        )
-                    );
+                    const value = parseInt(this.editor.repeat.preset.selected);
                     let summary = "";
                     switch (value) {
                         case 1:
@@ -526,9 +522,7 @@ class BopCal {
                     );
                     let frequency = "";
                     const freqValue = parseInt(
-                        this.editor.repeat.menu.frequency.field.input[0].getAttribute(
-                            "data-value"
-                        )
+                        this.editor.repeat.menu.frequency.field.selected
                     );
                     switch (freqValue) {
                         case 4:
@@ -729,11 +723,11 @@ class BopCal {
                 // span summary
                 summary: document.createElement("span"),
                 sumUpdate: () => {
-                    const value = parseInt(
-                        this.editor.endRepeat.type.input[0].getAttribute(
-                            "data-value"
-                        )
-                    );
+                    if (parseInt(this.editor.repeat.preset.selected) === 0) {
+                        this.editor.endRepeat.summary.textContent = "";
+                        return;
+                    }
+                    const value = parseInt(this.editor.endRepeat.type.selected);
                     let summary = "";
                     if (
                         value === 1 &&
@@ -968,6 +962,7 @@ class BopCal {
         this.editor.date.allday.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
             // would be cool to change input type for start/end to date, with value according to datetime-local start/end
+            this.editor.modified = true;
         });
         this.editor.date.start.span.textContent = "Start:";
         this.editor.date.start.wrapper.append(
@@ -978,6 +973,7 @@ class BopCal {
                 new Date(this.editor.date.start.field.input[0].value)
             );
             this.editor.date.sumUpdate();
+            this.editor.modified = true;
         });
         this.editor.date.start.field.input[0].addEventListener("blur", () => {
             this.editor.date.checkStart();
@@ -991,6 +987,7 @@ class BopCal {
             this.editor.date.start.field.max(date);
             this.editor.endRepeat.date.min(date);
             this.editor.endRepeat.check();
+            this.editor.modified = true;
         });
         this.editor.date.end.field.input[0].addEventListener("blur", () => {
             this.editor.date.checkEnd();
@@ -1017,6 +1014,7 @@ class BopCal {
                 if (value === 5)
                     this.editor.repeat.menu.wrapper.classList.add("show");
             }
+            this.editor.modified = true;
         });
 
         // repeat menu
@@ -1137,6 +1135,7 @@ class BopCal {
                         break;
                 }
                 this.editor.repeat.sumUpdate();
+                this.editor.modified = true;
             }
         );
 
@@ -1168,6 +1167,7 @@ class BopCal {
                     )} ${array.join(" ")}`;
                 }
                 this.editor.repeat.sumUpdate();
+                this.editor.modified = true;
             }
         );
 
@@ -1189,12 +1189,20 @@ class BopCal {
                 this.editor.repeat.menu.onThe.which.disable();
                 this.editor.repeat.menu.onThe.what.disable();
             }
+            this.editor.modified = true;
         });
         this.editor.repeat.menu.each.span.textContent = "Each:";
 
         this.editor.repeat.menu.picker.wrapper.append(
             this.editor.repeat.menu.picker.field.wrapper // or input[0], to test
         );
+        this.editor.repeat.menu.picker.field.wrapper.addEventListener(
+            "select",
+            () => {
+                this.editor.modified = true;
+            }
+        );
+
         // repeat menu onThe
         this.editor.repeat.menu.onTheRadio.wrapper.append(
             this.editor.repeat.menu.onTheRadio.radio,
@@ -1217,12 +1225,25 @@ class BopCal {
                     this.editor.repeat.menu.onThe.which.disable();
                     this.editor.repeat.menu.onThe.what.disable();
                 }
+                this.editor.modified = true;
             }
         );
         this.editor.repeat.menu.onTheRadio.span.textContent = "On the:";
         this.editor.repeat.menu.onThe.wrapper.append(
             this.editor.repeat.menu.onThe.which.wrapper,
             this.editor.repeat.menu.onThe.what.wrapper
+        );
+        this.editor.repeat.menu.onThe.what.input[0].addEventListener(
+            "input",
+            () => {
+                this.editor.modified = true;
+            }
+        );
+        this.editor.repeat.menu.onThe.which.input[0].addEventListener(
+            "input",
+            () => {
+                this.editor.modified = true;
+            }
         );
 
         // end repeat
@@ -1237,6 +1258,9 @@ class BopCal {
         this.editor.endRepeat.span.classList.add("hidden");
         this.editor.endRepeat.wrapper.className = "hidden";
         this.editor.endRepeat.times.input[0].classList.add("hidden");
+        this.editor.endRepeat.times.input[0].addEventListener("input", () => {
+            this.editor.modified = true;
+        });
         this.editor.endRepeat.timeSpan.textContent = "times";
         this.editor.endRepeat.timeSpan.classList.add("hidden");
         this.editor.endRepeat.date.wrapper.classList.add("hidden");
@@ -1269,11 +1293,13 @@ class BopCal {
                     );
                     break;
             }
+            this.editor.modified = true;
         });
         // this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
         // });
         this.editor.endRepeat.date.input[0].addEventListener("change", () => {
             this.editor.endRepeat.check();
+            this.editor.modified = true;
         });
 
         // alerts
@@ -1952,8 +1978,8 @@ class BopCal {
         });
     }
     editorFocus(idcal, uid, element) {
-        if (this.editor.modified)
-            this.editorApply(this.editor.idcal, this.editor.uid);
+        // if (this.editor.modified)
+        //     this.editorApply(this.editor.idcal, this.editor.uid);
         this.editor.idcal = idcal;
         this.editor.uid = uid;
         const component = this.calendars[idcal].components[uid],
@@ -2018,8 +2044,13 @@ class BopCal {
             .querySelector(".expanded")
             ?.classList.remove("expanded");
         // if modifications
-        if (this.editor.modified)
-            this.editorApply(this.editor.idcal, this.editor.uid);
+        if (this.editor.modified) {
+            this.editor.repeat.sumUpdate();
+            this.editor.endRepeat.sumUpdate();
+            console.log("modified");
+            this.editor.modified = false;
+            // this.editorApply(this.editor.idcal, this.editor.uid);
+        }
         delete this.editor.idcal;
         delete this.editor.uid;
     }
