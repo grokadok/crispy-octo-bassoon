@@ -401,7 +401,7 @@ function getLocalMonths(type = "long") {
         months = [];
     for (let i = 0; i < 12; i++) {
         date.setMonth(i);
-        months.push(date.toLocaleDateString("en-us", { month: type }));
+        months.push([i, date.toLocaleDateString("en-us", { month: type })]);
     }
     return months;
 }
@@ -413,19 +413,25 @@ function getLocalMonths(type = "long") {
  * @returns Local week days
  */
 function getLocalWeekDays(options) {
-    const firstDay = getFirstDayOfWeek(new Date(), options?.weekstart ?? 1);
+    const firstDay = getFirstDayOfWeek(new Date(), options?.weekstart ?? 1),
+        dayNumber = firstDay.getDay();
     let days = [
-        firstDay.toLocaleString(navigator.language, {
-            weekday: options?.type ?? "long",
-        }),
+        [
+            dayNumber,
+            firstDay.toLocaleString(navigator.language, {
+                weekday: options?.type ?? "long",
+            }),
+        ],
     ];
     for (let i = 0; i < 6; i++) {
         firstDay.setDate(firstDay.getDate() + 1);
-        days.push(
+        const dayNumber = firstDay.getDay();
+        days.push([
+            dayNumber,
             firstDay.toLocaleString(navigator.language, {
                 weekday: options?.type ?? "long",
-            })
-        );
+            }),
+        ]);
     }
     return days;
 }
@@ -976,6 +982,31 @@ function toISO8601ExtString(date) {
         date =
             date.slice(0, 13) + ":" + date.slice(13, 15) + ":" + date.slice(15);
     return date;
+}
+/**
+ * Returns local month from Date month number.
+ * @param {Number} number Month number (0: jan)
+ * @param {String} type "numeric", "2-digit", "long", "short", "narrow"
+ * @returns {String} Local month
+ */
+function toLocalMonth(number, type = "long") {
+    let date = new Date(2022, number);
+    return date.toLocaleString(navigator.language, {
+        month: type,
+    });
+}
+/**
+ * Returns local week day from Date weekday number (0: Sunday)
+ * @param {Number} number Day number to get string of
+ * @param {String} type "long", "short", "narrow"
+ * @returns {String} Local weekday.
+ */
+function toLocalWeekDay(number, type = "long") {
+    let date = new Date();
+    while (date.getDay() !== number) date.setDate(date.getDate() + 1);
+    return date.toLocaleString(navigator.language, {
+        weekday: type,
+    });
 }
 /** Format date to mysql datetime.
  * @param {Date} date

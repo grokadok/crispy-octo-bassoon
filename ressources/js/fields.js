@@ -209,7 +209,7 @@ class Field {
                     }
                 });
                 fieldElement.addEventListener("blur", () => {
-                    if (!fieldElement.value)
+                    if (!fieldElement.validity.valid)
                         fieldElement.value = params.min ?? 1;
                 });
                 this.input.push(fieldElement);
@@ -333,10 +333,16 @@ class Field {
                 break;
             }
             case "picker": {
-                const toggleOption = (element) => {
+                this.toggleOption = (value) => {
                     // get state of option
+                    const element = this.wrapper.querySelector(
+                        `[data-value="${value}"]`
+                    );
+                    if (!element)
+                        return console.warn(
+                            `No option with value = ${value} found.`
+                        );
                     const state = element.classList.contains("selected");
-                    console.log(state);
                     // if !this.multi, remove all selected
                     if (!this.multi)
                         this.wrapper
@@ -346,6 +352,7 @@ class Field {
                     state
                         ? element.classList.remove("selected")
                         : element.classList.add("selected");
+                    this.wrapper.dispatchEvent(selectEvent);
                 };
                 this.setOptions = (options) => {
                     // empty picker
@@ -353,11 +360,14 @@ class Field {
                     // for each option, create box
                     options.forEach((option) => {
                         let div = document.createElement("div");
-                        div.textContent = option;
+                        div.textContent = option[1];
+                        div.setAttribute("data-value", option[0]);
                         div.tabIndex = 0;
                         div.addEventListener("keyup", (e) => {
                             if (e.code === "Enter" || e.code === "Space")
-                                toggleOption(e.target);
+                                this.toggleOption(
+                                    e.target.getAttribute("data-value")
+                                );
                         });
                         this.wrapper.append(div);
                     });
@@ -380,9 +390,20 @@ class Field {
                         this.disabled = false;
                     }
                 };
+                // this.select = (value) => {
+                //     if (!this.multi)
+                //         Array.from(
+                //             this.wrapper.querySelectorAll(".selected")
+                //         ).forEach((x) => x.classList.remove("selected"));
+                //     const optionSelect = this.wrapper.querySelector(
+                //         `[data-value="${value}"]`
+                //     );
+                //     optionSelect.classList.add("selected");
+                //     this.wrapper.dispatchEvent(selectEvent);
+                // };
                 if (params.options) this.setOptions(params.options);
                 this.wrapper.addEventListener("click", (e) => {
-                    toggleOption(e.target);
+                    this.toggleOption(e.target.getAttribute("data-value"));
                 });
                 this.wrapper.classList.add("picker");
                 break;

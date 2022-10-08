@@ -69,6 +69,7 @@
         align-items: center;
         padding: 0.5rem 0.2rem;
         background-color: transparent;
+        pointer-events: none;
         scale: 0;
         transform-origin: top;
         transition: scale var(--transition-bounce), top var(--transition-bounce),
@@ -108,6 +109,12 @@
             &[type="number"] {
                 width: 1ch;
                 appearance: textfield;
+                &::-webkit-inner-spin-button,
+                &::-webkit-outer-spin-button {
+                    -webkit-appearance: none;
+                    -moz-appearance: none;
+                    appearance: none;
+                }
             }
             &:not([type="checkbox"]):focus {
                 box-shadow: none;
@@ -132,7 +139,7 @@
                 grid-auto-rows: auto;
                 grid-template-columns: repeat(3, 1fr);
                 column-gap: 0.5rem;
-                & *:not(.summary) {
+                & * {
                     font-size: 0.9rem;
                 }
                 & > span {
@@ -152,6 +159,9 @@
                     cursor: pointer;
                     text-align: center;
                     white-space: pre-line;
+                    &:first-of-type {
+                        font-size: initial;
+                    }
                 }
                 &:not(.expanded) {
                     & > *:not(.summary) {
@@ -159,7 +169,7 @@
                     }
                 }
                 &.expanded {
-                    & > .summary {
+                    & > .summary:not(.show) {
                         display: none;
                     }
                 }
@@ -213,13 +223,13 @@
                     scale: 1;
                     transition: scale var(--transition-global),
                         background-color var(--transition-global);
-                    &.selected {
-                        background-color: var(--editor-color);
-                    }
                     &:hover {
                         background-color: var(--editor-color);
                         scale: 1.1;
                         transition: scale 0s, background-color 0s;
+                    }
+                    &.selected {
+                        background-color: var(--editor-color);
                     }
                 }
             }
@@ -267,6 +277,7 @@
             }
         }
         &.show {
+            pointer-events: all;
             scale: 1;
         }
         &::before {
