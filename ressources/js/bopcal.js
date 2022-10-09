@@ -395,7 +395,7 @@ class BopCal {
 
         // event editor
         this.editor = {
-            modified: false,
+            modified: {},
             wrapper: document.createElement("div"),
 
             // input summary
@@ -448,17 +448,18 @@ class BopCal {
                             this.editor.date.start.field.input[0].max
                         );
                         date.setMinutes(date.getMinutes() - 15);
-                        this.editor.date.setStart(
-                            toHTMLInputDateTimeValue(date)
-                        );
+                        this.editor.date.setStart(date);
                     }
                 },
                 setStart: (date) => {
                     this.editor.date.start.field.input[0].value =
                         toHTMLInputDateTimeValue(date);
-                    this.editor.date.sumUpdate();
                     this.editor.date.end.field.min(date);
+                    this.editor.date.sumUpdate();
                     this.editor.date.checkEnd();
+                    date.valueOf() !== this.focus.start.valueOf()
+                        ? (this.editor.modified.start = toMYSQLDTString(date))
+                        : delete this.editor.modified.start;
                 },
                 // input end
                 end: {
@@ -479,7 +480,7 @@ class BopCal {
                             this.editor.date.end.field.input[0].min
                         );
                         date.setMinutes(date.getMinutes() + 15);
-                        this.editor.date.setEnd(toHTMLInputDateTimeValue(date));
+                        this.editor.date.setEnd(date);
                     }
                 },
                 setEnd: (date) => {
@@ -490,6 +491,9 @@ class BopCal {
                     this.editor.date.checkStart();
                     this.editor.endRepeat.date.min(date);
                     this.editor.endRepeat.check();
+                    date.valueOf() !== this.focus.end.valueOf()
+                        ? (this.editor.modified.end = toMYSQLDTString(date))
+                        : delete this.editor.modified.end;
                 },
             },
 
@@ -589,6 +593,34 @@ class BopCal {
                     // if year and one month : every year
                     // if year and onthe : every x year(s) on the x day of month, month and month
                     // if year and not on the : every x year(s) in month, month and month
+                },
+                setFrequency: () => {
+                    const frequency =
+                        this.editor.repeat.menu.frequency.field.selected;
+                    if (frequency !== this.focus.rrule.frequency)
+                        this.editor.modified.rrule.frequency = frequency;
+                    else {
+                        if (
+                            !Object.keys(this.editor.modified.rrule).length &&
+                            !Object.keys(this.focus.rrule).length
+                        )
+                            return delete this.editor.modified.rrule;
+                        delete this.editor.modified.rrule.frequency;
+                    }
+                },
+                setInterval: () => {
+                    const interval =
+                        this.editor.repeat.menu.interval.field.selected;
+                    if (interval !== this.focus.rrule.interval)
+                        this.editor.modified.rrule.interval = interval;
+                    else {
+                        if (
+                            !Object.keys(this.editor.modified.rrule).length &&
+                            !Object.keys(this.focus.rrule).length
+                        )
+                            return delete this.editor.modified.rrule;
+                        delete this.editor.modified.rrule.interval;
+                    }
                 },
                 wrapper: document.createElement("div"),
                 // span summary
@@ -916,16 +948,14 @@ class BopCal {
 
         // summary
         this.editor.summary.placeholder = "New event";
-        this.editor.summary.addEventListener("input", () => {
-            if (this.focus) {
-                this.editor.modified = true;
-                // update component.summary
-                this.focus.summary = this.editor.summary.value;
-                // for each element, change summary
-                for (const element of Object.values(this.focus.elements))
-                    element.getElementsByTagName("span")[1].textContent =
-                        this.editor.summary.value;
-            }
+        this.editor.summary.addEventListener("input", (e) => {
+            e.target.value !== this.focus.summary
+                ? (this.editor.modified.summary = e.target.value)
+                : delete this.editor.modified.summary;
+            // for each element, change summary
+            for (const element of Object.values(this.focus.elements))
+                element.getElementsByTagName("span")[1].textContent =
+                    this.editor.summary.value;
         });
 
         //date
@@ -947,10 +977,6 @@ class BopCal {
         // summary
         this.editor.date.summary.className = "summary";
         this.editor.date.summary.textContent = "date";
-
-        // hide dateSummary, show other elements > set class to wrapper
-        // on click on anywhere else than inside date elements, reverse hide.
-
         // allday
         this.editor.date.allday.span.textContent = "All day:";
         this.editor.date.allday.input.type = "checkbox";
@@ -962,19 +988,21 @@ class BopCal {
         this.editor.date.allday.input.addEventListener("change", (e) => {
             console.log(e.target.checked);
             // would be cool to change input type for start/end to date, with value according to datetime-local start/end
-            this.editor.modified = true;
+            if (this.focus.allday !== e.target.checked)
+                this.editor.modified.allday = e.target.checked ? 1 : 0;
+            else delete this.editor.modified.allday;
         });
         this.editor.date.start.span.textContent = "Start:";
         this.editor.date.start.wrapper.append(
             this.editor.date.start.field.wrapper
         );
-        this.editor.date.start.field.input[0].addEventListener("change", () => {
-            this.editor.date.end.field.min(
-                new Date(this.editor.date.start.field.input[0].value)
-            );
-            this.editor.date.sumUpdate();
-            this.editor.modified = true;
-        });
+        this.editor.date.start.field.input[0].addEventListener(
+            "change",
+            (e) => {
+                this.editor.date.end.field.min(new Date(e.target.value));
+                this.editor.date.sumUpdate();
+            }
+        );
         this.editor.date.start.field.input[0].addEventListener("blur", () => {
             this.editor.date.checkStart();
         });
@@ -987,7 +1015,6 @@ class BopCal {
             this.editor.date.start.field.max(date);
             this.editor.endRepeat.date.min(date);
             this.editor.endRepeat.check();
-            this.editor.modified = true;
         });
         this.editor.date.end.field.input[0].addEventListener("blur", () => {
             this.editor.date.checkEnd();
@@ -1004,17 +1031,37 @@ class BopCal {
             const value = parseInt(e.target.getAttribute("data-value"));
             this.editor.repeat.menu.wrapper.classList.remove("show");
             this.editor.repeat.sumUpdate();
+            // set frequency/interval
             if (value === 0) {
                 this.editor.endRepeat.span.classList.add("hidden");
                 this.editor.endRepeat.wrapper.classList.add("hidden");
+                Object.keys(this.focus.rrule).length
+                    ? (this.editor.modified.rrule = {})
+                    : delete this.editor.modified.rrule;
             } else {
                 this.editor.endRepeat.span.classList.remove("hidden");
                 this.editor.endRepeat.wrapper.classList.remove("hidden");
                 this.editor.repeat.summary.classList.remove("show");
+                switch (value) {
+                    case 1:
+                        this.editor.repeat.menu.frequency.field.set(4);
+                        break;
+                    case 2:
+                        this.editor.repeat.menu.frequency.field.set(5);
+                        break;
+                    case 3:
+                        this.editor.repeat.menu.frequency.field.set(6);
+                        break;
+                    case 4:
+                        this.editor.repeat.menu.frequency.field.set(7);
+                        break;
+                }
                 if (value === 5)
                     this.editor.repeat.menu.wrapper.classList.add("show");
+                else this.editor.repeat.menu.interval.field.value = 1;
+                this.editor.repeat.setFrequency();
+                this.editor.repeat.setInterval();
             }
-            this.editor.modified = true;
         });
 
         // repeat menu
@@ -1135,7 +1182,6 @@ class BopCal {
                         break;
                 }
                 this.editor.repeat.sumUpdate();
-                this.editor.modified = true;
             }
         );
 
@@ -1167,7 +1213,6 @@ class BopCal {
                     )} ${array.join(" ")}`;
                 }
                 this.editor.repeat.sumUpdate();
-                this.editor.modified = true;
             }
         );
 
@@ -1189,7 +1234,6 @@ class BopCal {
                 this.editor.repeat.menu.onThe.which.disable();
                 this.editor.repeat.menu.onThe.what.disable();
             }
-            this.editor.modified = true;
         });
         this.editor.repeat.menu.each.span.textContent = "Each:";
 
@@ -1198,9 +1242,7 @@ class BopCal {
         );
         this.editor.repeat.menu.picker.field.wrapper.addEventListener(
             "select",
-            () => {
-                this.editor.modified = true;
-            }
+            () => {}
         );
 
         // repeat menu onThe
@@ -1225,7 +1267,6 @@ class BopCal {
                     this.editor.repeat.menu.onThe.which.disable();
                     this.editor.repeat.menu.onThe.what.disable();
                 }
-                this.editor.modified = true;
             }
         );
         this.editor.repeat.menu.onTheRadio.span.textContent = "On the:";
@@ -1235,15 +1276,11 @@ class BopCal {
         );
         this.editor.repeat.menu.onThe.what.input[0].addEventListener(
             "input",
-            () => {
-                this.editor.modified = true;
-            }
+            () => {}
         );
         this.editor.repeat.menu.onThe.which.input[0].addEventListener(
             "input",
-            () => {
-                this.editor.modified = true;
-            }
+            () => {}
         );
 
         // end repeat
@@ -1258,9 +1295,10 @@ class BopCal {
         this.editor.endRepeat.span.classList.add("hidden");
         this.editor.endRepeat.wrapper.className = "hidden";
         this.editor.endRepeat.times.input[0].classList.add("hidden");
-        this.editor.endRepeat.times.input[0].addEventListener("input", () => {
-            this.editor.modified = true;
-        });
+        this.editor.endRepeat.times.input[0].addEventListener(
+            "input",
+            () => {}
+        );
         this.editor.endRepeat.timeSpan.textContent = "times";
         this.editor.endRepeat.timeSpan.classList.add("hidden");
         this.editor.endRepeat.date.wrapper.classList.add("hidden");
@@ -1293,13 +1331,11 @@ class BopCal {
                     );
                     break;
             }
-            this.editor.modified = true;
         });
         // this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
         // });
         this.editor.endRepeat.date.input[0].addEventListener("change", () => {
             this.editor.endRepeat.check();
-            this.editor.modified = true;
         });
 
         // alerts
@@ -1371,8 +1407,6 @@ class BopCal {
             this.editor.summary,
             document.createElement("hr"),
             this.editor.date.wrapper,
-            // this.editor.repeat.wrapper,
-            // this.editor.endRepeat.wrapper,
             document.createElement("hr"),
             this.editor.alerts.wrapper,
             document.createElement("hr"),
@@ -1431,17 +1465,18 @@ class BopCal {
             end: new Date(`${component.end.replace(" ", "T")}Z`),
             allday: component.allday ?? 0,
             elements: {},
+            rrule: component.rrule ?? {},
             summary: component.summary,
             type: component.type,
             transparency: component.transparency,
             sequence: component.sequence,
         };
-        if (component.rrule)
-            this.calendars[idcal].components[component.uid].rrule =
-                component.rrule;
-        if (component.rdates)
-            this.calendars[idcal].components[component.uid].rdates =
-                component.rdates;
+        // if (component.rrule)
+        //     this.calendars[idcal].components[component.uid].rrule =
+        //         component.rrule;
+        // if (component.rdates)
+        //     this.calendars[idcal].components[component.uid].rdates =
+        //         component.rdates;
         if (component.rrule || component.rdates) {
             if (component.exceptions)
                 this.calendars[idcal].components[component.uid].exceptions =
@@ -1911,8 +1946,40 @@ class BopCal {
             elements = Object.values(component.elements);
         // apply loading to component's elements
         for (const element of elements) element.classList.add("applying");
-        this.editor.modified = false;
 
+        let content = {
+            id: component.id,
+            start: toMYSQLDTString(component.start),
+            end: toMYSQLDTString(component.end),
+            allday: component.allday ?? undefined,
+            type: component.type,
+            description: component.description ?? undefined,
+            class: component.class !== 1 ? component.class : undefined,
+            location: component.location ?? undefined,
+            priority: component.priority !== 2 ? component.priority : undefined,
+            status: component.status !== 1 ? component.status : undefined,
+            transparency:
+                component.transparency !== 0
+                    ? component.transparency
+                    : undefined,
+            rrule: component.rrule !== 0 ? component.rrule : undefined,
+            rdates: component.rdates ?? undefined,
+            exceptions: component.exceptions ?? undefined,
+            tags: component.tags ?? undefined,
+            invitees: component.invitees ?? undefined,
+            alarms: component.alarms ?? undefined,
+        };
+        // summary
+        // if summary different from component
+        if (this.editor.summary.value !== component.summary)
+            content.summary = this.editor.summary.value;
+        if (
+            new Date(this.editor.date.start.field.value).valueOf() !==
+            component.start.valueOf
+        )
+            content.start = toMYSQLDTString(
+                new Date(this.editor.date.start.field.value)
+            );
         // rrule
         if (this.editor.repeat.preset.selected !== "0")
             // get values from frequency, interval,
@@ -1949,33 +2016,11 @@ class BopCal {
         socket.send({
             f: 34,
             c: idcal,
-            e: {
-                id: component.id,
-                summary: component.summary,
-                start: toMYSQLDTString(component.start),
-                end: toMYSQLDTString(component.end),
-                allday: component.allday ?? undefined,
-                type: component.type,
-                description: component.description ?? undefined,
-                class: component.class !== 1 ? component.class : undefined,
-                location: component.location ?? undefined,
-                priority:
-                    component.priority !== 2 ? component.priority : undefined,
-                status: component.status !== 1 ? component.status : undefined,
-                transparency:
-                    component.transparency !== 0
-                        ? component.transparency
-                        : undefined,
-                rrule: component.rrule !== 0 ? component.rrule : undefined,
-                rdates: component.rdates ?? undefined,
-                exceptions: component.exceptions ?? undefined,
-                tags: component.tags ?? undefined,
-                invitees: component.invitees ?? undefined,
-                alarms: component.alarms ?? undefined,
-            },
+            e: this.editor.modified,
             m: component.modified,
             u: uid,
         });
+        this.editor.modified = {};
     }
     editorFocus(idcal, uid, element) {
         // if (this.editor.modified)
@@ -2019,8 +2064,8 @@ class BopCal {
 
         // populate editor with component's data
         this.editor.summary.value = component.summary;
-        this.editor.date.setStart(toHTMLInputDateTimeValue(component.start));
-        this.editor.date.setEnd(toHTMLInputDateTimeValue(component.end));
+        this.editor.date.setStart(component.start);
+        this.editor.date.setEnd(component.end);
 
         // if repeat, fill repeat fields/summary & show endrepeat
         if (element.rrule) {
@@ -2047,8 +2092,7 @@ class BopCal {
         if (this.editor.modified) {
             this.editor.repeat.sumUpdate();
             this.editor.endRepeat.sumUpdate();
-            console.log("modified");
-            this.editor.modified = false;
+            console.log(this.editor.modified);
             // this.editorApply(this.editor.idcal, this.editor.uid);
         }
         delete this.editor.idcal;
