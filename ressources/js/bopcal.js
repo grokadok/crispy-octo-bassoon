@@ -98,7 +98,8 @@ class BopCal {
         };
         this.bigcal.cal.addEventListener("scroll", (e) => {
             this.bigcal.layout.firstElementChild.style.top = `-${this.bigcal.cal.scrollTop}px`;
-            this.editorHide();
+            if (this.editor.wrapper.classList.contains("show"))
+                this.editorHide();
             if (typeof this.bigcal.focus !== "undefined")
                 delete this.bigcal.focus;
             // set timeout
@@ -442,21 +443,27 @@ class BopCal {
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
                 },
-                checkStart: () => {
-                    if (!this.editor.date.start.field.input[0].validity.valid) {
-                        const date = new Date(
-                            this.editor.date.start.field.input[0].max
-                        );
-                        date.setMinutes(date.getMinutes() - 15);
-                        this.editor.date.setStart(date);
-                    }
-                },
                 setStart: (date) => {
-                    this.editor.date.start.field.input[0].value =
-                        toHTMLInputDateTimeValue(date);
+                    if (
+                        toHTMLInputDateTimeValue(date) !==
+                        this.editor.date.start.field.input[0].value
+                    )
+                        this.editor.date.start.field.input[0].value =
+                            toHTMLInputDateTimeValue(date);
                     this.editor.date.end.field.min(date);
+                    if (!this.editor.date.start.field.input[0].validity.valid) {
+                        console.warn("invalid");
+                        let newEnd = new Date(date);
+                        newEnd.setMinutes(newEnd.getMinutes() + 15);
+                        this.editor.date.end.field.input[0].value =
+                            toHTMLInputDateTimeValue(newEnd);
+                        this.editor.date.start.field.max(newEnd);
+                        this.editor.endRepeat.date.min(newEnd);
+                        if (!this.editor.endRepeat.date.input[0].validity.valid)
+                            this.editor.endRepeat.date.input[0].value =
+                                toHTMLInputDateValue(newEnd);
+                    }
                     this.editor.date.sumUpdate();
-                    this.editor.date.checkEnd();
                     date.valueOf() !== this.focus.start.valueOf()
                         ? (this.editor.modified.start = toMYSQLDTString(date))
                         : delete this.editor.modified.start;
@@ -474,23 +481,26 @@ class BopCal {
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
                 },
-                checkEnd: () => {
-                    if (!this.editor.date.end.field.input[0].validity.valid) {
-                        const date = new Date(
-                            this.editor.date.end.field.input[0].min
-                        );
-                        date.setMinutes(date.getMinutes() + 15);
-                        this.editor.date.setEnd(date);
-                    }
-                },
                 setEnd: (date) => {
-                    this.editor.date.end.field.input[0].value =
-                        toHTMLInputDateTimeValue(date);
-                    this.editor.date.sumUpdate();
+                    if (
+                        toHTMLInputDateTimeValue(date) !==
+                        this.editor.date.end.field.input[0].value
+                    )
+                        this.editor.date.end.field.input[0].value =
+                            toHTMLInputDateTimeValue(date);
                     this.editor.date.start.field.max(date);
-                    this.editor.date.checkStart();
+                    if (!this.editor.date.end.field.input[0].validity.valid) {
+                        let newStart = date;
+                        newStart.setMinutes(newStart.getMinutes() + 15);
+                        this.editor.date.start.field.input[0].value =
+                            toHTMLInputDateTimeValue(newStart);
+                        this.editor.date.end.field.min(newStart);
+                    }
                     this.editor.endRepeat.date.min(date);
-                    this.editor.endRepeat.check();
+                    if (!this.editor.endRepeat.date.input[0].validity.valid)
+                        this.editor.endRepeat.date.input[0].value =
+                            toHTMLInputDateValue(date);
+                    this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.end.valueOf()
                         ? (this.editor.modified.end = toMYSQLDTString(date))
                         : delete this.editor.modified.end;
@@ -595,10 +605,16 @@ class BopCal {
                     // if year and not on the : every x year(s) in month, month and month
                 },
                 setFrequency: () => {
-                    const frequency =
-                        this.editor.repeat.menu.frequency.field.selected;
+                    const frequency = parseInt(
+                        this.editor.repeat.menu.frequency.field.selected
+                    );
+                    console.info(`freq: ${frequency}`);
                     if (frequency !== this.focus.rrule.frequency)
-                        this.editor.modified.rrule.frequency = frequency;
+                        this.editor.modified.rrule
+                            ? (this.editor.modified.rrule.frequency = frequency)
+                            : (this.editor.modified.rrule = {
+                                  frequency: frequency,
+                              });
                     else {
                         if (
                             !Object.keys(this.editor.modified.rrule).length &&
@@ -607,12 +623,19 @@ class BopCal {
                             return delete this.editor.modified.rrule;
                         delete this.editor.modified.rrule.frequency;
                     }
+                    this.editor.repeat.sumUpdate();
                 },
                 setInterval: () => {
-                    const interval =
-                        this.editor.repeat.menu.interval.field.selected;
+                    const interval = parseInt(
+                        this.editor.repeat.menu.interval.field.input[0].value
+                    );
+                    console.info(`interval: ${interval}`);
                     if (interval !== this.focus.rrule.interval)
-                        this.editor.modified.rrule.interval = interval;
+                        this.editor.modified.rrule
+                            ? (this.editor.modified.rrule.interval = interval)
+                            : (this.editor.modified.rrule = {
+                                  interval: interval,
+                              });
                     else {
                         if (
                             !Object.keys(this.editor.modified.rrule).length &&
@@ -621,6 +644,85 @@ class BopCal {
                             return delete this.editor.modified.rrule;
                         delete this.editor.modified.rrule.interval;
                     }
+                    this.editor.repeat.sumUpdate();
+                },
+                setEach: () => {
+                    if (this.editor.modified.rrule)
+                        ["by_weekday", "by_date", "by_month"].forEach(
+                            (x) => delete this.editor.modified.rrule[x]
+                        );
+                    const freq = parseInt(
+                        this.editor.repeat.menu.frequency.field.selected
+                    );
+                    if (freq === 4) return;
+                    const values = Array.from(
+                        this.editor.repeat.menu.picker.wrapper.querySelectorAll(
+                            ".selected"
+                        )
+                    ).map((x) => parseInt(x.getAttribute("data-value")));
+                    switch (freq) {
+                        case 5: // week
+                            if (this.focus.rrule.by_weekday) {
+                                const compare = arrayCompare(
+                                    this.focus.rrule.by_weekday,
+                                    values
+                                );
+                                if (
+                                    !compare.only_1.length &&
+                                    !compare.only_2.length
+                                )
+                                    return;
+                            }
+                            this.editor.modified.rrule
+                                ? (this.editor.modified.rrule.by_weekday =
+                                      values)
+                                : (this.editor.modified.rrule = {
+                                      by_weekday: values,
+                                  });
+                            break;
+                        case 6: // month
+                            if (this.focus.rrule.by_date) {
+                                const compare = arrayCompare(
+                                    this.focus.rrule.by_date,
+                                    values
+                                );
+                                if (
+                                    !compare.only_1.length &&
+                                    !compare.only_2.length
+                                )
+                                    return;
+                            }
+                            if (this.editor.repeat.menu.each.radio.checked)
+                                this.editor.modified.rrule
+                                    ? (this.editor.modified.rrule.by_date =
+                                          values)
+                                    : (this.editor.modified.rrule = {
+                                          by_date: values,
+                                      });
+                            break;
+                        case 7: // year
+                            if (this.focus.rrule.by_month) {
+                                const compare = arrayCompare(
+                                    this.focus.rrule.by_month,
+                                    values
+                                );
+                                if (
+                                    !compare.only_1.length &&
+                                    !compare.only_2.length
+                                )
+                                    return;
+                            }
+                            this.editor.modified.rrule
+                                ? (this.editor.modified.rrule.by_month = values)
+                                : (this.editor.modified.rrule = {
+                                      by_month: values,
+                                  });
+                            break;
+                    }
+                    console.log(this.editor.modified.rrule);
+                },
+                setOnDate: () => {
+                    // setpos
                 },
                 wrapper: document.createElement("div"),
                 // span summary
@@ -807,11 +909,6 @@ class BopCal {
                     type: "date",
                     value: new Date(),
                 }),
-                check: () => {
-                    if (!this.editor.endRepeat.date.input[0].validity.valid)
-                        this.editor.endRepeat.date.input[0].value =
-                            this.editor.endRepeat.date.input[0].min;
-                },
             },
 
             // alerts :
@@ -999,25 +1096,14 @@ class BopCal {
         this.editor.date.start.field.input[0].addEventListener(
             "change",
             (e) => {
-                this.editor.date.end.field.min(new Date(e.target.value));
-                this.editor.date.sumUpdate();
+                this.editor.date.setStart(new Date(e.target.value));
             }
         );
-        this.editor.date.start.field.input[0].addEventListener("blur", () => {
-            this.editor.date.checkStart();
-        });
         // end event :
         this.editor.date.end.span.textContent = "End:";
         this.editor.date.end.wrapper.append(this.editor.date.end.field.wrapper);
-        this.editor.date.end.field.input[0].addEventListener("change", () => {
-            const date = new Date(this.editor.date.end.field.input[0].value);
-            this.editor.date.sumUpdate();
-            this.editor.date.start.field.max(date);
-            this.editor.endRepeat.date.min(date);
-            this.editor.endRepeat.check();
-        });
-        this.editor.date.end.field.input[0].addEventListener("blur", () => {
-            this.editor.date.checkEnd();
+        this.editor.date.end.field.input[0].addEventListener("change", (e) => {
+            this.editor.date.setEnd(new Date(e.target.value));
         });
 
         // repeat
@@ -1027,12 +1113,11 @@ class BopCal {
         );
         this.editor.repeat.summary.className = "summary";
         this.editor.repeat.span.textContent = "repeat:";
-        this.editor.repeat.preset.input[0].addEventListener("select", (e) => {
-            const value = parseInt(e.target.getAttribute("data-value"));
+        this.editor.repeat.preset.input[0].addEventListener("select", () => {
+            const value = parseInt(this.editor.repeat.preset.selected);
             this.editor.repeat.menu.wrapper.classList.remove("show");
-            this.editor.repeat.sumUpdate();
-            // set frequency/interval
             if (value === 0) {
+                this.editor.repeat.sumUpdate();
                 this.editor.endRepeat.span.classList.add("hidden");
                 this.editor.endRepeat.wrapper.classList.add("hidden");
                 Object.keys(this.focus.rrule).length
@@ -1181,7 +1266,8 @@ class BopCal {
                         this.editor.repeat.menu.onTheRadio.radio.checked = false;
                         break;
                 }
-                this.editor.repeat.sumUpdate();
+                this.editor.repeat.setFrequency();
+                this.editor.repeat.setEach();
             }
         );
 
@@ -1212,7 +1298,7 @@ class BopCal {
                         -1
                     )} ${array.join(" ")}`;
                 }
-                this.editor.repeat.sumUpdate();
+                this.editor.repeat.setInterval();
             }
         );
 
@@ -1234,6 +1320,7 @@ class BopCal {
                 this.editor.repeat.menu.onThe.which.disable();
                 this.editor.repeat.menu.onThe.what.disable();
             }
+            this.editor.repeat.setEach();
         });
         this.editor.repeat.menu.each.span.textContent = "Each:";
 
@@ -1242,7 +1329,9 @@ class BopCal {
         );
         this.editor.repeat.menu.picker.field.wrapper.addEventListener(
             "select",
-            () => {}
+            () => {
+                this.editor.repeat.setEach();
+            }
         );
 
         // repeat menu onThe
@@ -1335,7 +1424,9 @@ class BopCal {
         // this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
         // });
         this.editor.endRepeat.date.input[0].addEventListener("change", () => {
-            this.editor.endRepeat.check();
+            if (!this.editor.endRepeat.date.input[0].validity.valid)
+                this.editor.endRepeat.date.input[0].value =
+                    this.editor.endRepeat.date.input[0].min;
         });
 
         // alerts
@@ -1868,18 +1959,9 @@ class BopCal {
                 this.editor.repeat.menu.wrapper.classList.remove("show");
                 this.editor.repeat.sumUpdate();
             }
-            // date edition
-            // if target = datesummary
-            // if (this.editor.date.summary.contains(e.target))
-            //     this.editor.wrapper.classList.add("date-edition");
-            // // else if date-edition and target not in date editor
-            // else if (
-            //     this.editor.wrapper.classList.contains("date-edition") &&
-            //     !this.editor.dateEdition.contains(e.target)
-            // )
-            //     this.editor.wrapper.classList.remove("date-edition");
             return;
-        } else this.editorHide();
+        } else if (this.editor.wrapper.classList.contains("show"))
+            this.editorHide();
         if (this.focus)
             Object.values(this.focus.elements).forEach((x) =>
                 x.classList.remove("focus")
