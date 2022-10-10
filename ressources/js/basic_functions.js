@@ -30,16 +30,25 @@ function appendChildren(parent, children) {
 function arrayCompare(array_1, array_2) {
     let only_1 = [],
         only_2 = [],
-        both = [];
+        both = [],
+        equal = true;
     for (el of array_1) {
         if (array_2.includes(el)) both.push(el);
-        else only_1.push(el);
+        else {
+            only_1.push(el);
+            equal = false;
+        }
     }
-    for (el of array_2) if (!array_1.includes(el)) only_2.push(el);
+    for (el of array_2)
+        if (!array_1.includes(el)) {
+            only_2.push(el);
+            equal = false;
+        }
     return {
         only_1: only_1,
         only_2: only_2,
         both: both,
+        equal: equal,
     };
 }
 /**

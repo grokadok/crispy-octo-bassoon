@@ -429,6 +429,15 @@ class BopCal {
                     input: document.createElement("input"),
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
+                    setAllday: () => {
+                        delete this.editor.modified.allday;
+                        const allday = this.editor.date.allday.input.checked
+                            ? 1
+                            : 0;
+                        if (this.focus.allday !== allday)
+                            this.editor.modified.allday = allday;
+                        console.log(this.editor.modified);
+                    },
                 },
                 // input start
                 start: {
@@ -458,9 +467,11 @@ class BopCal {
                         this.editor.date.end.field.input[0].value =
                             toHTMLInputDateTimeValue(newEnd);
                         this.editor.date.start.field.max(newEnd);
-                        this.editor.endRepeat.date.min(newEnd);
-                        if (!this.editor.endRepeat.date.input[0].validity.valid)
-                            this.editor.endRepeat.date.input[0].value =
+                        this.editor.endRepeat.until.min(newEnd);
+                        if (
+                            !this.editor.endRepeat.until.input[0].validity.valid
+                        )
+                            this.editor.endRepeat.until.input[0].value =
                                 toHTMLInputDateValue(newEnd);
                     }
                     this.editor.date.sumUpdate();
@@ -496,9 +507,9 @@ class BopCal {
                             toHTMLInputDateTimeValue(newStart);
                         this.editor.date.end.field.min(newStart);
                     }
-                    this.editor.endRepeat.date.min(date);
-                    if (!this.editor.endRepeat.date.input[0].validity.valid)
-                        this.editor.endRepeat.date.input[0].value =
+                    this.editor.endRepeat.until.min(date);
+                    if (!this.editor.endRepeat.until.input[0].validity.valid)
+                        this.editor.endRepeat.until.input[0].value =
                             toHTMLInputDateValue(date);
                     this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.end.valueOf()
@@ -608,7 +619,6 @@ class BopCal {
                     const frequency = parseInt(
                         this.editor.repeat.menu.frequency.field.selected
                     );
-                    console.info(`freq: ${frequency}`);
                     if (frequency !== this.focus.rrule.frequency)
                         this.editor.modified.rrule
                             ? (this.editor.modified.rrule.frequency = frequency)
@@ -629,7 +639,6 @@ class BopCal {
                     const interval = parseInt(
                         this.editor.repeat.menu.interval.field.input[0].value
                     );
-                    console.info(`interval: ${interval}`);
                     if (interval !== this.focus.rrule.interval)
                         this.editor.modified.rrule
                             ? (this.editor.modified.rrule.interval = interval)
@@ -646,59 +655,145 @@ class BopCal {
                     }
                     this.editor.repeat.sumUpdate();
                 },
-                setEach: () => {
+                reset: () => {
+                    Object.keys(this.focus.rrule).length
+                        ? (this.editor.modified.rrule = {})
+                        : delete this.editor.modified.rrule;
+                },
+                setBy: () => {
                     if (this.editor.modified.rrule)
-                        ["by_weekday", "by_date", "by_month"].forEach(
-                            (x) => delete this.editor.modified.rrule[x]
-                        );
+                        // reset setby
+                        [
+                            "by_weekday",
+                            "by_date",
+                            "by_month",
+                            "by_setpos",
+                        ].forEach((x) => delete this.editor.modified.rrule[x]);
                     const freq = parseInt(
                         this.editor.repeat.menu.frequency.field.selected
                     );
-                    if (freq === 4) return;
+                    if (freq === 4) return console.log(this.editor.modified); // if daily, return
                     const values = Array.from(
+                        // get picker values
                         this.editor.repeat.menu.picker.wrapper.querySelectorAll(
                             ".selected"
                         )
                     ).map((x) => parseInt(x.getAttribute("data-value")));
+                    let pos = [], // prepare setpos values
+                        by = [];
+                    const setPos = () => {
+                        if (
+                            !this.focus.rrule.by_setpos ||
+                            !arrayCompare(this.focus.rrule.by_setpos, pos).equal
+                        ) {
+                            this.editor.modified.rrule
+                                ? (this.editor.modified.rrule.by_setpos = pos)
+                                : (this.editor.modified.rrule = {
+                                      by_setpos: pos,
+                                  });
+                        }
+                        if (
+                            !this.focus.rrule.by_weekday ||
+                            !arrayCompare(this.focus.rrule.by_weekday, by).equal
+                        ) {
+                            this.editor.modified.rrule
+                                ? (this.editor.modified.rrule.by_weekday = by)
+                                : (this.editor.modified.rrule = {
+                                      by_weekday: by,
+                                  });
+                        }
+                    };
+                    switch (
+                        parseInt(this.editor.repeat.menu.onThe.which.selected)
+                    ) {
+                        case 0: // first
+                            pos = [1];
+                            break;
+                        case 1: // second
+                            pos = [2];
+                            break;
+                        case 2: //third
+                            pos = [3];
+                            break;
+                        case 3: //fourth
+                            pos = [4];
+                            break;
+                        case 4: // fifth
+                            pos = [5];
+                            break;
+                        case 5: // last
+                            pos = [-1];
+                            break;
+                    }
+                    switch (
+                        parseInt(this.editor.repeat.menu.onThe.what.selected)
+                    ) {
+                        case 0: // day
+                            by = [0, 1, 2, 3, 4, 5, 6];
+                            break;
+                        case 1: // work day
+                            by = [1, 2, 3, 4, 5];
+                            break;
+                        case 2: // weekend day
+                            by = [0, 6];
+                            break;
+                        case 3: // monday
+                            by = [1];
+                            break;
+                        case 4: // tuesday
+                            by = [2];
+                            break;
+                        case 5: // wednesday
+                            by = [3];
+                            break;
+                        case 6: // thursday
+                            by = [4];
+                            break;
+                        case 7: // friday
+                            by = [5];
+                            break;
+                        case 8: // saturday
+                            by = [6];
+                            break;
+                        case 9: // sunday
+                            by = [0];
+                            break;
+                    }
                     switch (freq) {
                         case 5: // week
-                            if (this.focus.rrule.by_weekday) {
-                                const compare = arrayCompare(
+                            if (
+                                !this.focus.rrule.by_weekday ||
+                                !arrayCompare(
                                     this.focus.rrule.by_weekday,
                                     values
-                                );
-                                if (
-                                    !compare.only_1.length &&
-                                    !compare.only_2.length
-                                )
-                                    return;
-                            }
-                            this.editor.modified.rrule
-                                ? (this.editor.modified.rrule.by_weekday =
-                                      values)
-                                : (this.editor.modified.rrule = {
-                                      by_weekday: values,
-                                  });
+                                ).equal
+                            )
+                                this.editor.modified.rrule
+                                    ? (this.editor.modified.rrule.by_weekday =
+                                          values)
+                                    : (this.editor.modified.rrule = {
+                                          by_weekday: values,
+                                      });
                             break;
                         case 6: // month
-                            if (this.focus.rrule.by_date) {
-                                const compare = arrayCompare(
-                                    this.focus.rrule.by_date,
-                                    values
-                                );
-                                if (
-                                    !compare.only_1.length &&
-                                    !compare.only_2.length
-                                )
-                                    return;
-                            }
-                            if (this.editor.repeat.menu.each.radio.checked)
+                            if (
+                                this.editor.repeat.menu.each.radio.checked &&
+                                (!this.focus.rrule.by_date ||
+                                    !arrayCompare(
+                                        this.focus.rrule.by_date,
+                                        values
+                                    ).equal)
+                            )
                                 this.editor.modified.rrule
                                     ? (this.editor.modified.rrule.by_date =
                                           values)
                                     : (this.editor.modified.rrule = {
                                           by_date: values,
                                       });
+                            else if (
+                                this.editor.repeat.menu.onTheRadio.radio.checked
+                            )
+                                setPos();
                             break;
                         case 7: // year
                             if (this.focus.rrule.by_month) {
@@ -717,12 +812,13 @@ class BopCal {
                                 : (this.editor.modified.rrule = {
                                       by_month: values,
                                   });
+                            if (
+                                this.editor.repeat.menu.onTheRadio.radio.checked
+                            )
+                                setPos();
                             break;
                     }
                     console.log(this.editor.modified.rrule);
-                },
-                setOnDate: () => {
-                    // setpos
                 },
                 wrapper: document.createElement("div"),
                 // span summary
@@ -830,7 +926,7 @@ class BopCal {
                             type: "select",
                             options: {
                                 0: "day",
-                                1: "week day",
+                                1: "work day",
                                 2: "weekend day",
                                 3: "monday",
                                 4: "tuesday",
@@ -865,21 +961,64 @@ class BopCal {
                     let summary = "";
                     if (
                         value === 1 &&
-                        parseInt(this.editor.endRepeat.times.input[0].value) > 1
+                        parseInt(this.editor.endRepeat.count.input[0].value) > 1
                     ) {
                         // after x times
                         summary = `for ${parseInt(
-                            this.editor.endRepeat.times.input[0].value
+                            this.editor.endRepeat.count.input[0].value
                         )} times`;
                     } else if (value === 2)
                         summary = `until ${new Date(
-                            this.editor.endRepeat.date.input[0].value
+                            this.editor.endRepeat.until.input[0].value
                         ).toLocaleDateString(navigator.language, {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                         })}`;
                     this.editor.endRepeat.summary.textContent = summary;
+                },
+                setEnd: () => {
+                    // reset end
+                    if (this.editor.modified.rrule)
+                        ["count", "until"].forEach(
+                            (x) => delete this.editor.modified.rrule[x]
+                        );
+                    const endSelected = parseInt(
+                        this.editor.endRepeat.type.selected
+                    );
+                    let count = 0,
+                        until = null;
+                    switch (endSelected) {
+                        case 0: // never
+                            break;
+                        case 1: // count
+                            count = parseInt(
+                                this.editor.endRepeat.count.input[0].value
+                            );
+                            break;
+                        case 2: // until
+                            until = toMYSQLDTString(
+                                new Date(
+                                    this.editor.endRepeat.until.input[0].value
+                                )
+                            );
+                            break;
+                    }
+                    if (
+                        !this.focus.rrule.count ||
+                        this.focus.rrule.count !== count
+                    )
+                        this.editor.modified.rrule
+                            ? (this.editor.modified.rrule.count = count)
+                            : (this.editor.modified.rrule = { count: count });
+                    if (
+                        !this.focus.rrule.until ||
+                        this.focus.rrule.until !== until
+                    )
+                        this.editor.modified.rrule
+                            ? (this.editor.modified.rrule.until = until)
+                            : (this.editor.modified.rrule = { until: until });
+                    console.log(this.editor.modified.rrule);
                 },
                 wrapper: document.createElement("div"),
                 // select type (after, on date)
@@ -892,7 +1031,7 @@ class BopCal {
                 }),
                 span: document.createElement("span"),
                 // select times (number." time(s)")
-                times: new Field({
+                count: new Field({
                     compact: true,
                     name: "times",
                     type: "input_number",
@@ -902,7 +1041,7 @@ class BopCal {
                 }), // type number, max 9999, min 1
                 timeSpan: document.createElement("span"),
                 // select date
-                date: new Field({
+                until: new Field({
                     compact: true,
                     min: new Date(),
                     name: "date",
@@ -1082,12 +1221,9 @@ class BopCal {
         this.editor.date.allday.wrapper.firstElementChild.textContent =
             "All day:";
         this.editor.date.allday.wrapper.classList.add("checkbox");
-        this.editor.date.allday.input.addEventListener("change", (e) => {
-            console.log(e.target.checked);
+        this.editor.date.allday.input.addEventListener("change", () => {
             // would be cool to change input type for start/end to date, with value according to datetime-local start/end
-            if (this.focus.allday !== e.target.checked)
-                this.editor.modified.allday = e.target.checked ? 1 : 0;
-            else delete this.editor.modified.allday;
+            this.editor.date.allday.setAllday();
         });
         this.editor.date.start.span.textContent = "Start:";
         this.editor.date.start.wrapper.append(
@@ -1114,15 +1250,16 @@ class BopCal {
         this.editor.repeat.summary.className = "summary";
         this.editor.repeat.span.textContent = "repeat:";
         this.editor.repeat.preset.input[0].addEventListener("select", () => {
+            this.editor.repeat.reset();
             const value = parseInt(this.editor.repeat.preset.selected);
             this.editor.repeat.menu.wrapper.classList.remove("show");
             if (value === 0) {
                 this.editor.repeat.sumUpdate();
                 this.editor.endRepeat.span.classList.add("hidden");
                 this.editor.endRepeat.wrapper.classList.add("hidden");
-                Object.keys(this.focus.rrule).length
-                    ? (this.editor.modified.rrule = {})
-                    : delete this.editor.modified.rrule;
+                // Object.keys(this.focus.rrule).length
+                //     ? (this.editor.modified.rrule = {})
+                //     : delete this.editor.modified.rrule;
             } else {
                 this.editor.endRepeat.span.classList.remove("hidden");
                 this.editor.endRepeat.wrapper.classList.remove("hidden");
@@ -1141,11 +1278,15 @@ class BopCal {
                         this.editor.repeat.menu.frequency.field.set(7);
                         break;
                 }
-                if (value === 5)
+                if (value === 5) {
+                    // run reset each/pos
+                    // run seteach & setpos (compact into one sole method, with reset in it)
+                    this.editor.repeat.setBy();
                     this.editor.repeat.menu.wrapper.classList.add("show");
-                else this.editor.repeat.menu.interval.field.value = 1;
+                } else this.editor.repeat.menu.interval.field.value = 1;
                 this.editor.repeat.setFrequency();
                 this.editor.repeat.setInterval();
+                this.editor.endRepeat.setEnd();
             }
         });
 
@@ -1267,7 +1408,7 @@ class BopCal {
                         break;
                 }
                 this.editor.repeat.setFrequency();
-                this.editor.repeat.setEach();
+                this.editor.repeat.setBy();
             }
         );
 
@@ -1320,7 +1461,7 @@ class BopCal {
                 this.editor.repeat.menu.onThe.which.disable();
                 this.editor.repeat.menu.onThe.what.disable();
             }
-            this.editor.repeat.setEach();
+            this.editor.repeat.setBy();
         });
         this.editor.repeat.menu.each.span.textContent = "Each:";
 
@@ -1330,7 +1471,7 @@ class BopCal {
         this.editor.repeat.menu.picker.field.wrapper.addEventListener(
             "select",
             () => {
-                this.editor.repeat.setEach();
+                this.editor.repeat.setBy();
             }
         );
 
@@ -1356,6 +1497,7 @@ class BopCal {
                     this.editor.repeat.menu.onThe.which.disable();
                     this.editor.repeat.menu.onThe.what.disable();
                 }
+                this.editor.repeat.setBy();
             }
         );
         this.editor.repeat.menu.onTheRadio.span.textContent = "On the:";
@@ -1364,69 +1506,76 @@ class BopCal {
             this.editor.repeat.menu.onThe.what.wrapper
         );
         this.editor.repeat.menu.onThe.what.input[0].addEventListener(
-            "input",
-            () => {}
+            "select",
+            () => {
+                this.editor.repeat.setBy();
+            }
         );
         this.editor.repeat.menu.onThe.which.input[0].addEventListener(
-            "input",
-            () => {}
+            "select",
+            () => {
+                this.editor.repeat.setBy();
+            }
         );
 
         // end repeat
         this.editor.endRepeat.wrapper.append(
             this.editor.endRepeat.type.wrapper,
-            this.editor.endRepeat.times.input[0],
+            this.editor.endRepeat.count.input[0],
             this.editor.endRepeat.timeSpan,
-            this.editor.endRepeat.date.wrapper
+            this.editor.endRepeat.until.wrapper
         );
         this.editor.endRepeat.summary.className = "summary";
         this.editor.endRepeat.span.textContent = "end repeat:";
         this.editor.endRepeat.span.classList.add("hidden");
         this.editor.endRepeat.wrapper.className = "hidden";
-        this.editor.endRepeat.times.input[0].classList.add("hidden");
-        this.editor.endRepeat.times.input[0].addEventListener(
+        this.editor.endRepeat.count.input[0].classList.add("hidden");
+        this.editor.endRepeat.count.input[0].addEventListener(
             "input",
             () => {}
         );
         this.editor.endRepeat.timeSpan.textContent = "times";
         this.editor.endRepeat.timeSpan.classList.add("hidden");
-        this.editor.endRepeat.date.wrapper.classList.add("hidden");
+        this.editor.endRepeat.until.wrapper.classList.add("hidden");
         this.editor.endRepeat.type.input[0].addEventListener("select", (e) => {
             switch (parseInt(e.target.getAttribute("data-value"))) {
                 case 0:
                     // hide times & date
-                    this.editor.endRepeat.times.input[0].classList.add(
+                    this.editor.endRepeat.count.input[0].classList.add(
                         "hidden"
                     );
                     this.editor.endRepeat.timeSpan.classList.add("hidden");
-                    this.editor.endRepeat.date.wrapper.classList.add("hidden");
+                    this.editor.endRepeat.until.wrapper.classList.add("hidden");
                     break;
                 case 1:
                     // show times
-                    this.editor.endRepeat.times.input[0].classList.remove(
+                    this.editor.endRepeat.count.input[0].classList.remove(
                         "hidden"
                     );
                     this.editor.endRepeat.timeSpan.classList.remove("hidden");
-                    this.editor.endRepeat.date.wrapper.classList.add("hidden");
+                    this.editor.endRepeat.until.wrapper.classList.add("hidden");
                     break;
                 case 2:
                     // show date
-                    this.editor.endRepeat.times.input[0].classList.add(
+                    this.editor.endRepeat.count.input[0].classList.add(
                         "hidden"
                     );
                     this.editor.endRepeat.timeSpan.classList.add("hidden");
-                    this.editor.endRepeat.date.wrapper.classList.remove(
+                    this.editor.endRepeat.until.wrapper.classList.remove(
                         "hidden"
                     );
                     break;
             }
+            this.editor.endRepeat.setEnd();
         });
-        // this.editor.endRepeat.times.input[0].addEventListener("input", (e) => {
-        // });
-        this.editor.endRepeat.date.input[0].addEventListener("change", () => {
-            if (!this.editor.endRepeat.date.input[0].validity.valid)
-                this.editor.endRepeat.date.input[0].value =
-                    this.editor.endRepeat.date.input[0].min;
+        this.editor.endRepeat.count.input[0].addEventListener("input", (e) => {
+            this.editor.endRepeat.setEnd();
+        });
+        this.editor.endRepeat.until.input[0].addEventListener("change", () => {
+            if (!this.editor.endRepeat.until.input[0].validity.valid)
+                this.editor.endRepeat.until.input[0].value =
+                    this.editor.endRepeat.until.input[0].min;
+            this.editor.endRepeat.setEnd();
         });
 
         // alerts
