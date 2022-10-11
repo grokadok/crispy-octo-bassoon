@@ -1250,43 +1250,45 @@ class BopCal {
         this.editor.repeat.summary.className = "summary";
         this.editor.repeat.span.textContent = "repeat:";
         this.editor.repeat.preset.input[0].addEventListener("select", () => {
-            this.editor.repeat.reset();
-            const value = parseInt(this.editor.repeat.preset.selected);
-            this.editor.repeat.menu.wrapper.classList.remove("show");
-            if (value === 0) {
-                this.editor.repeat.sumUpdate();
-                this.editor.endRepeat.span.classList.add("hidden");
-                this.editor.endRepeat.wrapper.classList.add("hidden");
-                // Object.keys(this.focus.rrule).length
-                //     ? (this.editor.modified.rrule = {})
-                //     : delete this.editor.modified.rrule;
-            } else {
-                this.editor.endRepeat.span.classList.remove("hidden");
-                this.editor.endRepeat.wrapper.classList.remove("hidden");
-                this.editor.repeat.summary.classList.remove("show");
-                switch (value) {
-                    case 1:
-                        this.editor.repeat.menu.frequency.field.set(4);
-                        break;
-                    case 2:
-                        this.editor.repeat.menu.frequency.field.set(5);
-                        break;
-                    case 3:
-                        this.editor.repeat.menu.frequency.field.set(6);
-                        break;
-                    case 4:
-                        this.editor.repeat.menu.frequency.field.set(7);
-                        break;
+            if (this.focus) {
+                this.editor.repeat.reset();
+                const value = parseInt(this.editor.repeat.preset.selected);
+                this.editor.repeat.menu.wrapper.classList.remove("show");
+                if (value === 0) {
+                    this.editor.repeat.sumUpdate();
+                    this.editor.endRepeat.span.classList.add("hidden");
+                    this.editor.endRepeat.wrapper.classList.add("hidden");
+                    // Object.keys(this.focus.rrule).length
+                    //     ? (this.editor.modified.rrule = {})
+                    //     : delete this.editor.modified.rrule;
+                } else {
+                    this.editor.endRepeat.span.classList.remove("hidden");
+                    this.editor.endRepeat.wrapper.classList.remove("hidden");
+                    this.editor.repeat.summary.classList.remove("show");
+                    switch (value) {
+                        case 1:
+                            this.editor.repeat.menu.frequency.field.set(4);
+                            break;
+                        case 2:
+                            this.editor.repeat.menu.frequency.field.set(5);
+                            break;
+                        case 3:
+                            this.editor.repeat.menu.frequency.field.set(6);
+                            break;
+                        case 4:
+                            this.editor.repeat.menu.frequency.field.set(7);
+                            break;
+                    }
+                    if (value === 5) {
+                        // run reset each/pos
+                        // run seteach & setpos (compact into one sole method, with reset in it)
+                        this.editor.repeat.setBy();
+                        this.editor.repeat.menu.wrapper.classList.add("show");
+                    } else this.editor.repeat.menu.interval.field.value = 1;
+                    this.editor.repeat.setFrequency();
+                    this.editor.repeat.setInterval();
+                    this.editor.endRepeat.setEnd();
                 }
-                if (value === 5) {
-                    // run reset each/pos
-                    // run seteach & setpos (compact into one sole method, with reset in it)
-                    this.editor.repeat.setBy();
-                    this.editor.repeat.menu.wrapper.classList.add("show");
-                } else this.editor.repeat.menu.interval.field.value = 1;
-                this.editor.repeat.setFrequency();
-                this.editor.repeat.setInterval();
-                this.editor.endRepeat.setEnd();
             }
         });
 
@@ -2217,6 +2219,7 @@ class BopCal {
                 modified: this.editor.modified,
             });
         this.editor.modified = {};
+        this.editorReset();
         this.editor.idcal = idcal;
         this.editor.uid = uid;
         const component = this.calendars[idcal].components[uid],
@@ -2307,6 +2310,36 @@ class BopCal {
         this.editor.modified = {};
         delete this.editor.idcal;
         delete this.editor.uid;
+    }
+    editorReset() {
+        // summary
+        // repeat
+        // preset: none
+        this.editor.repeat.preset.set(0);
+        // frequency: 4
+        // this.editor.repeat.menu.frequency.field.set(4);
+        // // interval: 1
+        // this.editor.repeat.menu.interval.field.input[0].value = 1;
+        // // each radio checked: true
+        // this.editor.repeat.menu.each.radio.checked = true;
+        // // picker: clear selected
+        // this.editor.repeat.menu.picker.clear();
+        // // ontheradio checked: false
+        // this.editor.repeat.menu.onTheRadio.radio.checked = false;
+        // // onthe which: 0
+        // this.editor.repeat.menu.onThe.which.set(0);
+        // // onthe what: 0
+        // this.editor.repeat.menu.onThe.what.set(0);
+
+        // // endRepeat
+        // // type: 0
+        // this.editor.endRepeat.type.set(0);
+        // // count: 0
+        // this.editor.endRepeat.count.input[0].value = 0;
+        // // until: new Date()
+        // this.editor.endRepeat.until.input[0].value = toHTMLInputDateValue(
+        //     new Date()
+        // );
     }
     editorShow() {
         this.editor.wrapper

@@ -390,6 +390,11 @@ class Field {
                         this.disabled = false;
                     }
                 };
+                this.clear = () => {
+                    Array.from(
+                        this.wrapper.querySelectorAll(".selected")
+                    ).forEach((option) => option.classList.remove("selected"));
+                };
                 // this.select = (value) => {
                 //     if (!this.multi)
                 //         Array.from(

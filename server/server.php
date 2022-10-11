@@ -2200,7 +2200,7 @@ class FWServer
                 // if in range, send light event
                 // send notification anyway
                 // var_dump($newEvent['event']);
-                var_dump($newEvent);
+                // var_dump($newEvent);
                 foreach ($newEvent['users'] as $user) $this->serv->push($user['fd'], json_encode(['f' => 25, 'c' => $task['c'], 'event' => $newEvent['event']]));
                 // !!! to complete
                 return;
