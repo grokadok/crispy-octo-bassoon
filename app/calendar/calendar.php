@@ -767,28 +767,28 @@ trait BopCal
             $request['content'][] = $rule['weekstart'];
         }
         // by_day
-        if (isset($rule['by_day'])) {
-            $request['set'][] = 'by_day = ?';
+        if (isset($rule['by_weekday'])) {
+            $request['set'][] = 'by_weekday = ?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_day'];
+            $request['content'][] = implode(',', $rule['by_weekday']);
         }
         // by_monthday
-        if (isset($rule['by_monthday'])) {
-            $request['set'][] = 'by_monthday = ?';
+        if (isset($rule['by_date'])) {
+            $request['set'][] = 'by_date = ?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_monthday'];
+            $request['content'][] = implode(',', $rule['by_date']);
         }
         // by_month
         if (isset($rule['by_month'])) {
             $request['set'][] = 'by_month = ?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_month'];
+            $request['content'][] = implode(',', $rule['by_month']);
         }
         // by_setpos
         if (isset($rule['by_setpos'])) {
             $request['set'][] = 'by_setpos = ?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_setpos'];
+            $request['content'][] = implode(',', $rule['by_setpos']);
         }
         $this->db->request([
             'query' => 'UPDATE cal_rrule SET ' . implode(',', $request['set']) . ' WHERE idcal_component = ?;',
@@ -1002,40 +1002,40 @@ trait BopCal
             $request['content'][] = $rule['week_start'];
         }
         // by_day
-        if (isset($rule['by_day'])) {
-            $request['into'] .= ',by_day';
+        if (isset($rule['by_weekday'])) {
+            $request['into'] .= ',by_weekday';
             $request['values'] .= ',?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_day'];
+            $request['content'][] = implode(',', $rule['by_weekday']);
         }
         // by_monthday
-        if (isset($rule['by_month_day'])) {
-            $request['into'] .= ',by_month_day';
+        if (isset($rule['by_date'])) {
+            $request['into'] .= ',by_date';
             $request['values'] .= ',?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_month_day'];
+            $request['content'][] = implode(',', $rule['by_date']);
         }
         // by_month
         if (isset($rule['by_month'])) {
             $request['into'] .= ',by_month';
             $request['values'] .= ',?';
             $request['type'] .= 's';
-            $request['content'][] = $rule['by_month'];
+            $request['content'][] = implode(',', $rule['by_month']);
         }
         // by_setpos
         if (isset($rule['by_setpos'])) {
             $request['into'] .= ',by_setpos';
             $request['values'] .= ',?';
-            $request['type'] .= 'i';
-            $request['content'][] = $rule['by_setpos'];
+            $request['type'] .= 's';
+            $request['content'][] = implode(',', $rule['by_setpos']);
         }
         return $this->db->request([
-            'query' => 'INSERT INTO cal_rrule (idcal_component, ' . $request['into'] . ') VALUES (?, ' . $request['values'] . ');',
+            'query' => 'INSERT INTO cal_rrule (idcal_component' . $request['into'] . ') VALUES (?' . $request['values'] . ');',
             'type' => 'i' . $request['type'],
             'content' => [$idcomponent, ...$request['content']],
         ]);
     }
-    private function calComponentUpdate(int $cal_folder, array $component)
+    private function calComponentUpdate(int $cal_folder, int $idcomponent, array $update)
     {
         $request = [
             'set' => [],
@@ -1043,105 +1043,146 @@ trait BopCal
             'content' => [],
         ];
         // type
-        $request['set'][] = 'type = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['type'] ?? 0;
-        // description
-        if (!empty($component['description'])) {
-            $request['set'][] = 'description = ?';
+        if (isset($update['type'])) {
+            $request['set'][] = 'type = ?';
             $request['type'] .= 'i';
-            $request['content'][] = $this->calAddDescription($component['description']);
-        } else $this->calComponentRemoveDescription($component['id']);
-        // all_day
-        $request['set'][] = 'all_day = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['all_day'] ?? 0;
-        // class
-        $request['set'][] = 'class = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['class'] ?? 1;
-        // location
-        if (!empty($component['location'])) {
-            $request['set'][] = 'location = ?';
-            $request['type'] .= 'i';
-            $request['content'][]  = $this->calAddLocation($component['location']);
-        } else $this->calComponentRemoveLocation($component['id']);
-        // priority
-        $request['set'][] = 'priority = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['priority'] ?? 2;
-        // status
-        $request['set'][] = 'status = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['status'] ?? 1;
-        // transparency
-        $request['set'][] = 'transparency = ?';
-        $request['type'] .= 'i';
-        $request['content'][] = $component['transparency'] ?? 0;
-        // recurrence
-        $request['set'][] = 'rrule = ?';
-        $request['type'] .= 'i';
-        $rruleSet = !empty($this->db->request([
-            'query' => 'SELECT NULL FROM cal_rrule WHERE idcal_component = ?;',
-            'type' => 'i',
-            'content' => [$component['id']],
-        ]));
-        if (!empty($component['rrule'])) {
-            $request['content'][] = 1;
-            // insert/update rrule
-            $rruleSet ? $this->calComponentChangeRRule($component['id'], $component['rrule']) :
-                $this->calComponentSetRRUle($component['id'], $component['rrule']);
-        } else {
-            $request['content'][] = 0;
-            // delete rrule
-            if ($rruleSet)
-                $this->calComponentRemoveRRUle($component['id']);
+            $request['content'][] = $update['type'] ?? 0;
         }
-        $request['set'][] = 'rdate = ?';
-        $request['type'] .= 'i';
-        // remove rdates
-        $this->db->request([
-            'query' => 'DELETE FROM cal_rdate WHERE idcal_component = ?;',
-            'type' => 'i',
-            'content' => [$component['id']],
-        ]);
-        if (!empty($component['rdate'])) {
-            $request['content'][] = 1;
-            // insert rdates
-            foreach ($component['rdate'] as $date) {
-                $this->db->request([
-                    'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?, ?);',
-                    'type' => 'is',
-                    'content' => [$component['id'], $date],
-                ]);
+        // summary
+        if (isset($update['summary'])) {
+            $request['set'][] = 'summary = ?';
+            $request['type'] .= 's';
+            $request['content'][] = $update['summary'];
+        }
+        // start
+        if (!empty($update['start'])) {
+            $request['set'][] = 'start = ?';
+            $request['type'] .= 's';
+            $request['content'][] = $update['start'];
+        }
+        // end
+        if (!empty($update['end'])) {
+            $request['set'][] = 'end = ?';
+            $request['type'] .= 's';
+            $request['content'][] = $update['end'];
+        }
+        // description
+        if (isset($update['description'])) {
+            if (!empty($update['description'])) {
+                $request['set'][] = 'description = ?';
+                $request['type'] .= 'i';
+                $request['content'][] = $this->calAddDescription($update['description']);
+            } else $this->calComponentRemoveDescription($idcomponent);
+        }
+        // all_day
+        if (isset($update['all_day'])) {
+            $request['set'][] = 'all_day = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $update['all_day'];
+        }
+        // class
+        if (!empty($update['class'])) {
+            $request['set'][] = 'class = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $update['class'];
+        }
+        // location
+        if (isset($update['location'])) {
+            if (!empty($update['location'])) {
+                $request['set'][] = 'location = ?';
+                $request['type'] .= 'i';
+                $request['content'][]  = $this->calAddLocation($update['location']);
+            } else $this->calComponentRemoveLocation($idcomponent);
+        }
+        // priority
+        if (isset($update['priority'])) {
+            $request['set'][] = 'priority = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $update['priority'];
+        }
+        // status
+        if (isset($update['status'])) {
+            $request['set'][] = 'status = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $update['status'];
+        }
+        // transparency
+        if (isset($update['transparency'])) {
+            $request['set'][] = 'transparency = ?';
+            $request['type'] .= 'i';
+            $request['content'][] = $update['transparency'];
+        }
+        // recurrence
+        if (isset($update['rrule'])) {
+            $request['set'][] = 'rrule = ?';
+            $request['type'] .= 'i';
+            $ruleset = !empty($this->db->request([
+                'query' => 'SELECT NULL FROM cal_rrule WHERE idcal_component = ?;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]));
+            if (!empty($update['rrule'])) {
+                $request['content'][] = 1;
+                // insert/update rrule
+                $ruleset ?
+                    $this->calComponentChangeRRUle($idcomponent, $update['rrule'])
+                    : $this->calComponentSetRRUle($idcomponent, $update['rrule']);
+            } else {
+                $request['content'][] = 0;
+                // delete rrule
+                if ($ruleset)
+                    $this->calComponentRemoveRRUle($idcomponent);
             }
-        } else {
-            $request['content'][] = 0;
+        }
+        if (isset($update['rdate'])) {
+            $request['set'][] = 'rdate = ?';
+            $request['type'] .= 'i';
+            // remove rdates
+            $this->db->request([
+                'query' => 'DELETE FROM cal_rdate WHERE idcal_component = ?;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]);
+            if (!empty($update['rdate'])) {
+                $request['content'][] = 1;
+                // insert rdates
+                foreach ($update['rdate'] as $date) {
+                    $this->db->request([
+                        'query' => 'INSERT INTO cal_rdate (idcal_component, date) VALUES (?, ?);',
+                        'type' => 'is',
+                        'content' => [$idcomponent, $date],
+                    ]);
+                }
+            } else {
+                $request['content'][] = 0;
+            }
         }
 
         $set = implode(',', $request['set']);
         $this->db->request([
-            'query' => "UPDATE cal_component SET summary = ?, start = ?, end = ?, $set WHERE idcal_component = ?;",
-            'type' => 'sss' . $request['type'] . 'i',
-            'content' => [$component['summary'], $component['start'], $component['end'], ...$request['content'], $component['id']],
+            'query' => "UPDATE cal_component SET $set WHERE idcal_component = ?;",
+            'type' => $request['type'] . 'i',
+            'content' => [...$request['content'], $idcomponent],
         ]);
 
-        $this->db->request([
-            'query' => 'DELETE FROM cal_comp_has_tag WHERE idcal_component = ?;',
-            'type' => 'i',
-            'content' => [$component['id']],
-        ]);
-        if (isset($component['tag'])) {
-            foreach ($component['tag'] as $tag) {
-                $this->db->request([
-                    'query' => 'INSERT INTO cal_comp_has_tag (idcal_component,idtag) VALUES (?,?);',
-                    'type' => 'ii',
-                    'content' => [$component['id'], $tag],
-                ]);
-            }
+        if (isset($update['tag'])) {
+            $this->db->request([
+                'query' => 'DELETE FROM cal_comp_has_tag WHERE idcal_component = ?;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]);
+            if (!empty($update['tag']))
+                foreach ($update['tag'] as $tag) {
+                    $this->db->request([
+                        'query' => 'INSERT INTO cal_comp_has_tag (idcal_component,idtag) VALUES (?,?);',
+                        'type' => 'ii',
+                        'content' => [$idcomponent, $tag],
+                    ]);
+                }
         }
         // retrieve & return light info about updated event
-        return ['event' => $this->calGetEventLightData($component['id']), 'users' => $this->calGetConnectUsers($cal_folder)];
+        $light = $this->calGetEventLightData($idcomponent);
+        return ['event' => $light, 'users' => $this->calGetConnectUsers($cal_folder, $light['start'], $light['end'])];
     }
     private function calFileCheckModified(string $uid, string $modified)
     {
@@ -1302,7 +1343,7 @@ trait BopCal
         // if rrule, get rrule
         $event['rrule'] = !empty($event['rrule']) ? $this->calGetEventRRule($event['idcal_component']) : null;
         // if rdate, get rdate
-        $event['rdates'] = !empty($event['rdate']) ? $this->calGetEventRDate($event['idcal_component']) : null;
+        $event['rdate'] = !empty($event['rdate']) ? $this->calGetEventRDate($event['idcal_component']) : null;
         // if exceptions, get'em
         if (!empty($event['rrule']) || !empty($event['rdate']))
             $event['exceptions'] = $this->calGetEventException($event['idcal_component']);
@@ -1326,7 +1367,7 @@ trait BopCal
     {
         return $this->db->request([
             'query' =>
-            'SELECT frequency,set_interval,until,count,week_start,by_day,by_monthday,by_month,by_setpos FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
+            'SELECT frequency,set_interval as "interval",until,count,week_start,by_weekday,by_date,by_month,by_setpos FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idcomponent],
         ])[0];

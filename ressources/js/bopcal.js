@@ -430,12 +430,12 @@ class BopCal {
                     span: document.createElement("span"),
                     wrapper: document.createElement("div"),
                     setAllday: () => {
-                        delete this.editor.modified.allday;
+                        delete this.editor.modified.all_day;
                         const allday = this.editor.date.allday.input.checked
                             ? 1
                             : 0;
                         if (this.focus.allday !== allday)
-                            this.editor.modified.allday = allday;
+                            this.editor.modified.all_day = allday;
                         console.log(this.editor.modified);
                     },
                 },
@@ -1698,6 +1698,11 @@ class BopCal {
     addComponent(idcal, component) {
         if (!this.calendars[idcal].components)
             this.calendars[idcal].components = {};
+        // if component exists, remove all elements  before updating component
+        if (this.calendars[idcal].components[component.uid])
+            Object.values(
+                this.calendars[idcal].components[component.uid].elements
+            ).forEach((x) => x.remove());
         this.calendars[idcal].components[component.uid] = {
             id: component.idcal_component,
             modified: component.modified,
@@ -1711,14 +1716,25 @@ class BopCal {
             transparency: component.transparency,
             sequence: component.sequence,
         };
-        // if (component.rrule)
-        //     this.calendars[idcal].components[component.uid].rrule =
-        //         component.rrule;
-        // if (component.rdates)
-        //     this.calendars[idcal].components[component.uid].rdates =
-        //         component.rdates;
+        if (component.rrule) {
+            if (component.rrule.by_weekday)
+                component.rrule.by_weekday =
+                    component.rrule.by_weekday.split(",");
+            if (component.rrule.by_date)
+                component.rrule.by_date = component.rrule.by_date.split(",");
+            if (component.rrule.by_month)
+                component.rrule.by_month = component.rrule.by_month.split(",");
+            if (component.rrule.by_setpos)
+                component.rrule.by_setpos =
+                    component.rrule.by_setpos.split(",");
+            this.calendars[idcal].components[component.uid].rrule =
+                component.rrule;
+        }
+        if (component.rdates)
+            this.calendars[idcal].components[component.uid].rdates =
+                component.rdates.split(",");
         if (component.rrule || component.rdates) {
-            if (component.exceptions)
+            if (component.exceptions.length)
                 this.calendars[idcal].components[component.uid].exceptions =
                     component.exceptions;
             if (component.recur_id)
@@ -2154,7 +2170,11 @@ class BopCal {
         });
     }
     componentUpdate(data) {
-        const component = cal.calendars[data.c].components[data.u];
+        console.log("got updated component");
+        // const component = cal.calendars[data.c].components[data.u];
+        let component = data.e;
+        component.modified = data.m;
+        this.addComponent(data.c, data.e);
         // apply component update
         // place component
 
@@ -2172,90 +2192,31 @@ class BopCal {
             cal.destroy();
         }
     }
-    editorApply(idcal, uid) {
-        const component = this.calendars[idcal].components[uid],
-            elements = Object.values(component.elements);
+    editorApply(options) {
+        console.log("editor apply");
+        console.log(options);
+        const component = this.calendars[options.idcal].components[options.uid];
         // apply loading to component's elements
-        for (const element of elements) element.classList.add("applying");
-
-        let content = {
-            id: component.id,
-            start: toMYSQLDTString(component.start),
-            end: toMYSQLDTString(component.end),
-            allday: component.allday ?? undefined,
-            type: component.type,
-            description: component.description ?? undefined,
-            class: component.class !== 1 ? component.class : undefined,
-            location: component.location ?? undefined,
-            priority: component.priority !== 2 ? component.priority : undefined,
-            status: component.status !== 1 ? component.status : undefined,
-            transparency:
-                component.transparency !== 0
-                    ? component.transparency
-                    : undefined,
-            rrule: component.rrule !== 0 ? component.rrule : undefined,
-            rdates: component.rdates ?? undefined,
-            exceptions: component.exceptions ?? undefined,
-            tags: component.tags ?? undefined,
-            invitees: component.invitees ?? undefined,
-            alarms: component.alarms ?? undefined,
-        };
-        // summary
-        // if summary different from component
-        if (this.editor.summary.value !== component.summary)
-            content.summary = this.editor.summary.value;
-        if (
-            new Date(this.editor.date.start.field.value).valueOf() !==
-            component.start.valueOf
-        )
-            content.start = toMYSQLDTString(
-                new Date(this.editor.date.start.field.value)
-            );
-        // rrule
-        if (this.editor.repeat.preset.selected !== "0")
-            // get values from frequency, interval,
-
-            component.rrule = {};
-        // check every repeat & endrepeat fields
-        component.rrule.interval = 1;
-        switch (this.editor.repeat.preset.selected) {
-            case "1":
-                // every day
-                component.rrule.frequency = 4;
-                break;
-            case "2":
-                // every week
-                component.rrule.frequency = 5;
-                break;
-            case "3":
-                // every month
-                component.rrule.frequency = 6;
-                break;
-            case "4":
-                // every year
-                component.rrule.frequency = 7;
-                break;
-            case "5":
-                // custom
-                component.rrule.frequency = parseInt(
-                    this.editor.repeat.menu.frequency.selected
-                );
-                break;
-        }
-
+        for (const element of Object.values(component.elements))
+            element.classList.add("applying");
         // send modifications to db
         socket.send({
+            c: options.idcal,
+            e: options.modified,
             f: 34,
-            c: idcal,
-            e: this.editor.modified,
+            i: component.id,
             m: component.modified,
-            u: uid,
+            u: options.uid,
         });
-        this.editor.modified = {};
     }
     editorFocus(idcal, uid, element) {
-        // if (this.editor.modified)
-        //     this.editorApply(this.editor.idcal, this.editor.uid);
+        if (Object.keys(this.editor.modified).length)
+            this.editorApply({
+                idcal: this.editor.idcal,
+                uid: this.editor.uid,
+                modified: this.editor.modified,
+            });
+        this.editor.modified = {};
         this.editor.idcal = idcal;
         this.editor.uid = uid;
         const component = this.calendars[idcal].components[uid],
@@ -2295,20 +2256,34 @@ class BopCal {
 
         // populate editor with component's data
         this.editor.summary.value = component.summary;
+        this.editor.date.allday = component.all_day;
         this.editor.date.setStart(component.start);
         this.editor.date.setEnd(component.end);
 
         // if repeat, fill repeat fields/summary & show endrepeat
-        if (element.rrule) {
-            // if frequency
-        }
-        // if endrepeat, fill endrepeat fields/summary
+        // if (component.rrule) {
+        //     // frequency
+        //     this.editor.repeat.menu.frequency.field.set(
+        //         component.rrule.frequency
+        //     );
+        //     // interval
+        //     this.editor.repeat.menu.interval.field.input[0].value =
+        //         component.rrule.interval;
+        //     // if until
+        //     // if count
+        //     // by_weekday
+        //     // by_date
+        //     // by_month
+        //     // by_setpos
+        // }
 
         // if invitees
         // if appointment type
         // if description
         // if busy/transparency
 
+        this.editor.repeat.sumUpdate();
+        this.editor.endRepeat.sumUpdate();
         this.editor.wrapper.style.setProperty(
             "--editor-color",
             element.style.getPropertyValue("--event-color")
@@ -2320,12 +2295,16 @@ class BopCal {
             .querySelector(".expanded")
             ?.classList.remove("expanded");
         // if modifications
-        if (this.editor.modified) {
-            this.editor.repeat.sumUpdate();
-            this.editor.endRepeat.sumUpdate();
-            console.log(this.editor.modified);
-            // this.editorApply(this.editor.idcal, this.editor.uid);
+        if (Object.keys(this.editor.modified).length) {
+            // this.editor.repeat.sumUpdate();
+            // this.editor.endRepeat.sumUpdate();
+            this.editorApply({
+                idcal: this.editor.idcal,
+                uid: this.editor.uid,
+                modified: this.editor.modified,
+            });
         }
+        this.editor.modified = {};
         delete this.editor.idcal;
         delete this.editor.uid;
     }
@@ -2625,14 +2604,13 @@ class BopCal {
             });
         }
         switch (data.f) {
-            case 21:
-                // calendars and static values
+            case 21: // get calendars and static values
                 for (const [key, value] of Object.entries(data.response))
                     cal[key] = value;
                 for (const key of Object.keys(cal.calendars))
                     cal.minicalAddCalendar(key);
                 break;
-            case 22:
+            case 22: // get components in range
                 if (data.response)
                     for (const [calendar, events] of Object.entries(
                         data.response
@@ -2640,16 +2618,14 @@ class BopCal {
                         for (const event of events)
                             cal.addComponent(calendar, event);
                 break;
-            case 25:
-                // new event
+            case 25: // new component
                 cal.addComponent(data.c, data.event);
                 break;
-            case 27:
-                // new calendar
+            case 27: // new calendar
                 cal.addCalendar(data.response);
                 Modal.modals.filter((x) => x.task === 27)[0].close();
                 break;
-            case 29:
+            case 29: // remove calendar
                 if (data.x) {
                     console.log(
                         `Calendar #${data.c} has been removed by owner.`
@@ -2666,6 +2642,7 @@ class BopCal {
                 }
                 break;
             case 32: {
+                // update component's range
                 let component = cal.calendars[data.c].components[data.u];
                 component.modified = data.m;
                 component.start = new Date(`${data.s.replace(" ", "T")}Z`);
@@ -2674,6 +2651,7 @@ class BopCal {
                 break;
             }
             case 33: {
+                // delete component
                 const component = cal.calendars[data.c].components[data.u];
                 for (let element of Object.values(component.elements))
                     element.remove();
@@ -2686,7 +2664,7 @@ class BopCal {
                 });
                 break;
             }
-            case 34:
+            case 34: // update component
                 cal.componentUpdate(data);
                 break;
         }

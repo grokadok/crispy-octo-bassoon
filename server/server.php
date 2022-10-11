@@ -2296,18 +2296,18 @@ class FWServer
             // UPDATE COMPONENT (34)
             /////////////////////////////////////////////////////
 
-            if ($f === 34 && isset($task['c']) && isset($task['e']) && isset($task['u']) && isset($task['m'])) {
+            if ($f === 34 && isset($task['c']) && isset($task['e']) && isset($task['u']) && isset($task['m']) && isset($task['i'])) {
                 // check user write access
                 if (!$this->calCheckUserWriteAccess($iduser, $task['c'])) return ['fail' => 'user has no write access.'];
                 // check modified === db modified
                 if (!$this->calFileCheckModified($task['u'], $task['m'])) return ['fail' => 'cal_component modified value not in sync.'];
                 // update cal_component according to provided data and return light event data
-                $updated = $this->calComponentUpdate($task['c'], $task['e']);
+                $updated = $this->calComponentUpdate($task['c'], $task['i'], $task['e']);
                 // update cal_file->modified
                 $modified = $this->calSetFileModified($task['u']);
                 // send 'em updated data.
-                $message = json_encode(['f' => 34, 'c' => $modified[0], 'm' => $modified[1], 'u' => $task['u'], 'e' => $updated]);
-                foreach ($this->calGetConnectUsers($modified[0], $updated['start'], $updated['end']) as $user)
+                $message = json_encode(['f' => 34, 'c' => $modified[0], 'm' => $modified[1], 'u' => $task['u'], 'e' => $updated['event']]);
+                foreach ($updated['users'] as $user)
                     $this->serv->push($user['fd'], $message);
                 return;
             }
