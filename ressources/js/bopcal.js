@@ -165,7 +165,7 @@ class BopCal {
                     x.classList.add("focus")
                 );
                 // move editor towards componentElement and fill with component's data;
-                this.editorFocus(idcal, uid, componentElement);
+                // this.editorFocus(idcal, uid, componentElement);
 
                 if (e.target === handleStart) {
                     const cal = this,
@@ -461,7 +461,6 @@ class BopCal {
                             toHTMLInputDateTimeValue(date);
                     this.editor.date.end.field.min(date);
                     if (!this.editor.date.start.field.input[0].validity.valid) {
-                        console.warn("invalid");
                         let newEnd = new Date(date);
                         newEnd.setMinutes(newEnd.getMinutes() + 15);
                         this.editor.date.end.field.input[0].value =
@@ -470,9 +469,11 @@ class BopCal {
                         this.editor.endRepeat.until.min(newEnd);
                         if (
                             !this.editor.endRepeat.until.input[0].validity.valid
-                        )
+                        ) {
+                            // newEnd.setDate(newEnd.getDate() + 1);
                             this.editor.endRepeat.until.input[0].value =
                                 toHTMLInputDateValue(newEnd);
+                        }
                     }
                     this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.start.valueOf()
@@ -502,15 +503,18 @@ class BopCal {
                     this.editor.date.start.field.max(date);
                     if (!this.editor.date.end.field.input[0].validity.valid) {
                         let newStart = date;
-                        newStart.setMinutes(newStart.getMinutes() + 15);
+                        newStart.setMinutes(newStart.getMinutes() - 15);
                         this.editor.date.start.field.input[0].value =
                             toHTMLInputDateTimeValue(newStart);
                         this.editor.date.end.field.min(newStart);
                     }
                     this.editor.endRepeat.until.min(date);
-                    if (!this.editor.endRepeat.until.input[0].validity.valid)
+                    if (!this.editor.endRepeat.until.input[0].validity.valid) {
+                        // let newEnd = new Date(date);
+                        // newEnd.setDate(newEnd.getDate() + 1);
                         this.editor.endRepeat.until.input[0].value =
                             toHTMLInputDateValue(date);
+                    }
                     this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.end.valueOf()
                         ? (this.editor.modified.end = toMYSQLDTString(date))
@@ -626,12 +630,11 @@ class BopCal {
                                   frequency: frequency,
                               });
                     else {
-                        if (
-                            !Object.keys(this.editor.modified.rrule).length &&
-                            !Object.keys(this.focus.rrule).length
-                        )
-                            return delete this.editor.modified.rrule;
-                        delete this.editor.modified.rrule.frequency;
+                        if (this.editor.modified.rrule) {
+                            if (!Object.keys(this.editor.modified.rrule).length)
+                                return delete this.editor.modified.rrule;
+                            delete this.editor.modified.rrule.frequency;
+                        }
                     }
                     this.editor.repeat.sumUpdate();
                 },
@@ -646,12 +649,11 @@ class BopCal {
                                   interval: interval,
                               });
                     else {
-                        if (
-                            !Object.keys(this.editor.modified.rrule).length &&
-                            !Object.keys(this.focus.rrule).length
-                        )
-                            return delete this.editor.modified.rrule;
-                        delete this.editor.modified.rrule.interval;
+                        if (this.editor.modified.rrule) {
+                            if (!Object.keys(this.editor.modified.rrule).length)
+                                return delete this.editor.modified.rrule;
+                            delete this.editor.modified.rrule.interval;
+                        }
                     }
                     this.editor.repeat.sumUpdate();
                 },
@@ -672,7 +674,7 @@ class BopCal {
                     const freq = parseInt(
                         this.editor.repeat.menu.frequency.field.selected
                     );
-                    if (freq === 4) return console.log(this.editor.modified); // if daily, return
+                    if (freq === 4) return console.log("modified emptied"); // if daily, return
                     const values = Array.from(
                         // get picker values
                         this.editor.repeat.menu.picker.wrapper.querySelectorAll(
@@ -989,23 +991,17 @@ class BopCal {
                     let count = 0,
                         until = null;
                     switch (endSelected) {
-                        case 0: // never
-                            break;
                         case 1: // count
                             count = parseInt(
                                 this.editor.endRepeat.count.input[0].value
                             );
                             break;
                         case 2: // until
-                            until = toMYSQLDTString(
-                                new Date(
-                                    this.editor.endRepeat.until.input[0].value
-                                )
-                            );
+                            until = this.editor.endRepeat.until.input[0].value;
                             break;
                     }
                     if (
-                        !this.focus.rrule.count ||
+                        typeof this.focus.rrule.count === "undefined" ||
                         this.focus.rrule.count !== count
                     )
                         this.editor.modified.rrule
@@ -1258,9 +1254,6 @@ class BopCal {
                     this.editor.repeat.sumUpdate();
                     this.editor.endRepeat.span.classList.add("hidden");
                     this.editor.endRepeat.wrapper.classList.add("hidden");
-                    // Object.keys(this.focus.rrule).length
-                    //     ? (this.editor.modified.rrule = {})
-                    //     : delete this.editor.modified.rrule;
                 } else {
                     this.editor.endRepeat.span.classList.remove("hidden");
                     this.editor.endRepeat.wrapper.classList.remove("hidden");
@@ -1347,11 +1340,19 @@ class BopCal {
                                 type: "narrow",
                             })
                         );
-                        this.editor.repeat.menu.picker.field.toggleOption(
-                            new Date(
-                                this.editor.date.start.field.input[0].value
-                            ).getDay()
-                        );
+                        // set this.focus.rrule.by_weekday ?? today
+                        if (this.focus.rrule.by_weekday) {
+                            this.focus.rrule.by_weekday.forEach((x) =>
+                                this.editor.repeat.menu.picker.field.toggleOption(
+                                    x
+                                )
+                            );
+                        } else
+                            this.editor.repeat.menu.picker.field.toggleOption(
+                                new Date(
+                                    this.editor.date.start.field.input[0].value
+                                ).getDay()
+                            );
                         this.editor.repeat.menu.picker.field.enable();
                         break;
                     case 6:
@@ -1371,11 +1372,19 @@ class BopCal {
                         this.editor.repeat.menu.picker.field.setOptions(
                             monthdays
                         );
-                        this.editor.repeat.menu.picker.field.toggleOption(
-                            new Date(
-                                this.editor.date.start.field.input[0].value
-                            ).getDate()
-                        );
+                        // set this.focus.rrule.by_date ?? today
+                        if (this.focus.rrule.by_date) {
+                            this.focus.rrule.by_date.forEach((x) =>
+                                this.editor.repeat.menu.picker.field.toggleOption(
+                                    x
+                                )
+                            );
+                        } else
+                            this.editor.repeat.menu.picker.field.toggleOption(
+                                new Date(
+                                    this.editor.date.start.field.input[0].value
+                                ).getDate()
+                            );
                         // onTheRadio.type = radio
                         this.editor.repeat.menu.onTheRadio.radio.type = "radio";
                         this.editor.repeat.menu.each.radio.checked = true;
@@ -1395,11 +1404,19 @@ class BopCal {
                         this.editor.repeat.menu.picker.field.setOptions(
                             getLocalMonths("short")
                         );
-                        this.editor.repeat.menu.picker.field.toggleOption(
-                            new Date(
-                                this.editor.date.start.field.input[0].value
-                            ).getMonth()
-                        );
+                        // set this.focus.rrule.by_month ?? this month
+                        if (this.focus.rrule.by_month) {
+                            this.focus.rrule.by_month.forEach((month) =>
+                                this.editor.repeat.menu.picker.field.toggleOption(
+                                    month
+                                )
+                            );
+                        } else
+                            this.editor.repeat.menu.picker.field.toggleOption(
+                                new Date(
+                                    this.editor.date.start.field.input[0].value
+                                ).getMonth()
+                            );
                         this.editor.repeat.menu.picker.field.enable();
                         this.editor.repeat.menu.onThe.which.disable();
                         this.editor.repeat.menu.onThe.what.disable();
@@ -1470,12 +1487,12 @@ class BopCal {
         this.editor.repeat.menu.picker.wrapper.append(
             this.editor.repeat.menu.picker.field.wrapper // or input[0], to test
         );
-        this.editor.repeat.menu.picker.field.wrapper.addEventListener(
-            "select",
-            () => {
-                this.editor.repeat.setBy();
-            }
-        );
+        // this.editor.repeat.menu.picker.field.wrapper.addEventListener(
+        //     "select",
+        //     () => {
+        //         this.editor.repeat.setBy();
+        //     }
+        // );
 
         // repeat menu onThe
         this.editor.repeat.menu.onTheRadio.wrapper.append(
@@ -1719,16 +1736,31 @@ class BopCal {
             sequence: component.sequence,
         };
         if (component.rrule) {
+            // if (component.rrule.until) {
+            //     component.rrule.until = toHTMLInputDateValue(
+            //         new Date(component.rrule.until)
+            //     );
+            // }
             if (component.rrule.by_weekday)
-                component.rrule.by_weekday =
-                    component.rrule.by_weekday.split(",");
+                component.rrule.by_weekday = component.rrule.by_weekday
+                    .split(",")
+                    .map((x) => parseInt(x));
+            // component.rrule.by_weekday.split(",");
             if (component.rrule.by_date)
-                component.rrule.by_date = component.rrule.by_date.split(",");
+                component.rrule.by_date = component.rrule.by_date
+                    .split(",")
+                    .map((x) => parseInt(x));
+            // component.rrule.by_date = component.rrule.by_date.split(",");
             if (component.rrule.by_month)
-                component.rrule.by_month = component.rrule.by_month.split(",");
+                component.rrule.by_month = component.rrule.by_month
+                    .split(",")
+                    .map((x) => parseInt(x));
+            // component.rrule.by_month = component.rrule.by_month.split(",");
             if (component.rrule.by_setpos)
-                component.rrule.by_setpos =
-                    component.rrule.by_setpos.split(",");
+                component.rrule.by_setpos = component.rrule.by_setpos
+                    .split(",")
+                    .map((x) => parseInt(x));
+            // component.rrule.by_setpos.split(",");
             this.calendars[idcal].components[component.uid].rrule =
                 component.rrule;
         }
@@ -2034,6 +2066,9 @@ class BopCal {
                     idcal = componentElement.getAttribute("data-cal"),
                     uid = componentElement.getAttribute("data-uid"),
                     component = this.calendars[idcal].components[uid];
+                // move editor towards componentElement and fill with component's data;
+                if (this.editor.uid !== uid)
+                    this.editorFocus(idcal, uid, componentElement);
                 // if target has focus, open editor
                 if (component === this.focus) this.editorShow();
                 return;
@@ -2264,21 +2299,106 @@ class BopCal {
         this.editor.date.setEnd(component.end);
 
         // if repeat, fill repeat fields/summary & show endrepeat
-        // if (component.rrule) {
-        //     // frequency
-        //     this.editor.repeat.menu.frequency.field.set(
-        //         component.rrule.frequency
-        //     );
-        //     // interval
-        //     this.editor.repeat.menu.interval.field.input[0].value =
-        //         component.rrule.interval;
-        //     // if until
-        //     // if count
-        //     // by_weekday
-        //     // by_date
-        //     // by_month
-        //     // by_setpos
-        // }
+        if (Object.keys(component.rrule).length) {
+            // preset
+
+            // if freq=4 && inter=1 => daily
+            // if freq=5 && inter=1 && !by_weekday => weekly
+            // if freq=6 && inter=1 && !by_date && !by_setpos => monthly
+            // if freq=7 && inter=1 && !by_month => yearly
+            // else custom
+
+            // frequency
+            this.editor.repeat.menu.frequency.field.set(
+                component.rrule.frequency
+            );
+            // interval
+            this.editor.repeat.menu.interval.field.input[0].value =
+                component.rrule.interval;
+            // by_weekday
+            if (component.rrule.by_weekday) {
+                if (component.rrule.frequency === 5)
+                    component.rrule.by_weekday.forEach((wd) =>
+                        this.editor.repeat.menu.picker.field.toggleOption(
+                            parseInt(wd)
+                        )
+                    );
+                else {
+                    let whatOption;
+                    switch (component.rrule.by_weekday.length) {
+                        case 7: // weekdays
+                            whatOption = 0;
+                            break;
+                        case 5: // workdays
+                            whatOption = 1;
+                            break;
+                        case 2: // weekend days
+                            whatOption = 2;
+                            break;
+                        default: // weekday
+                            const whatOptions = {
+                                1: 3,
+                                2: 4,
+                                3: 5,
+                                4: 6,
+                                5: 7,
+                                6: 8,
+                                0: 9,
+                            };
+                            whatOption =
+                                whatOptions[
+                                    parseInt(component.rrule.by_weekday[0])
+                                ];
+                    }
+                    this.editor.repeat.menu.onThe.what.set(whatOption);
+                }
+            }
+            // by_date
+            if (component.rrule.by_date) {
+                component.rrule.by_date.forEach((date) =>
+                    this.editor.repeat.menu.picker.field.toggleOption(
+                        parseInt(date)
+                    )
+                );
+            }
+            // by_month
+            if (component.rrule.by_month)
+                component.rrule.by_month.forEach((month) =>
+                    this.editor.repeat.menu.picker.field.toggleOption(
+                        parseInt(month)
+                    )
+                );
+            // by_setpos
+            if (component.rrule.by_setpos) {
+                // if ([6, 7].includes(component.rrule.frequency))
+                // if month, ontheradio
+                this.editor.repeat.menu.onTheRadio.radio.checked = true;
+                // set which
+                const whichOptions = {
+                    1: 0, // first day
+                    2: 1, // second day
+                    3: 2, // third day
+                    4: 3, // fourth day
+                    5: 4, // fifth day
+                    "-1": 5, // last day
+                };
+                this.editor.repeat.menu.onThe.which.set(
+                    whichOptions[component.rrule.by_setpos[0]]
+                );
+            }
+            // if count
+            if (component.rrule.count) {
+                this.editor.endRepeat.type.set(1);
+                this.editor.endRepeat.count.input[0].value =
+                    component.rrule.count;
+            }
+            // if until
+            if (component.rrule.until) {
+                this.editor.endRepeat.type.set(2);
+                this.editor.endRepeat.until.input[0].value =
+                    toHTMLInputDateValue(new Date(component.rrule.until));
+            }
+        }
 
         // if invitees
         // if appointment type

@@ -395,20 +395,10 @@ class Field {
                         this.wrapper.querySelectorAll(".selected")
                     ).forEach((option) => option.classList.remove("selected"));
                 };
-                // this.select = (value) => {
-                //     if (!this.multi)
-                //         Array.from(
-                //             this.wrapper.querySelectorAll(".selected")
-                //         ).forEach((x) => x.classList.remove("selected"));
-                //     const optionSelect = this.wrapper.querySelector(
-                //         `[data-value="${value}"]`
-                //     );
-                //     optionSelect.classList.add("selected");
-                //     this.wrapper.dispatchEvent(selectEvent);
-                // };
                 if (params.options) this.setOptions(params.options);
                 this.wrapper.addEventListener("click", (e) => {
-                    this.toggleOption(e.target.getAttribute("data-value"));
+                    if (e.target.getAttribute("data-value"))
+                        this.toggleOption(e.target.getAttribute("data-value"));
                 });
                 this.wrapper.classList.add("picker");
                 break;

@@ -969,6 +969,7 @@ function toCalDAVString(date) {
  */
 function toHTMLInputDateValue(date) {
     let tempDate = new Date(date);
+    // convert to timezone
     tempDate.setMinutes(tempDate.getMinutes() - tempDate.getTimezoneOffset());
     return tempDate.toISOString().slice(0, 10);
 }
@@ -978,6 +979,7 @@ function toHTMLInputDateValue(date) {
  */
 function toHTMLInputDateTimeValue(date) {
     let tempDate = new Date(date);
+    // convert to timezone
     tempDate.setMinutes(tempDate.getMinutes() - tempDate.getTimezoneOffset());
     return tempDate.toISOString().slice(0, 16);
 }
