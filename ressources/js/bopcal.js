@@ -2247,6 +2247,11 @@ class BopCal {
         });
     }
     editorFocus(idcal, uid, element) {
+        if (
+            this.editor.modified?.rrule &&
+            !Object.keys(this.editor.modified.rrule).length
+        )
+            delete this.editor.modified.rrule;
         if (Object.keys(this.editor.modified).length)
             this.editorApply({
                 idcal: this.editor.idcal,
@@ -2301,13 +2306,33 @@ class BopCal {
         // if repeat, fill repeat fields/summary & show endrepeat
         if (Object.keys(component.rrule).length) {
             // preset
-
-            // if freq=4 && inter=1 => daily
-            // if freq=5 && inter=1 && !by_weekday => weekly
-            // if freq=6 && inter=1 && !by_date && !by_setpos => monthly
-            // if freq=7 && inter=1 && !by_month => yearly
-            // else custom
-
+            let preset = 0; // none
+            if (
+                component.rrule.interval === 1 &&
+                component.rrule.frequency === 4
+            ) {
+                preset = 1; // if freq=4 && inter=1 => daily
+            } else if (
+                component.rrule.interval === 1 &&
+                component.rrule.frequency === 5 &&
+                !component.rrule.by_weekday
+            ) {
+                preset = 2; // if freq=5 && inter=1 && !by_weekday => weekly
+            } else if (
+                component.rrule.interval === 1 &&
+                component.rrule.frequency === 6 &&
+                !component.rrule.by_date &&
+                !component.rrule.by_setpos
+            ) {
+                preset = 3; // if freq=6 && inter=1 && !by_date && !by_setpos => monthly
+            } else if (
+                component.rrule.interval === 1 &&
+                component.rrule.frequency === 7 &&
+                !component.rrule.by_month
+            ) {
+                preset = 4; // if freq=7 && inter=1 && !by_month => yearly
+            } else preset = 5; // else custom
+            this.editor.repeat.preset.set(preset);
             // frequency
             this.editor.repeat.menu.frequency.field.set(
                 component.rrule.frequency
@@ -2418,9 +2443,12 @@ class BopCal {
             .querySelector(".expanded")
             ?.classList.remove("expanded");
         // if modifications
+        if (
+            this.editor.modified.rrule &&
+            !Object.keys(this.editor.modified?.rrule).length
+        )
+            delete this.editor.modified.rrule;
         if (Object.keys(this.editor.modified).length) {
-            // this.editor.repeat.sumUpdate();
-            // this.editor.endRepeat.sumUpdate();
             this.editorApply({
                 idcal: this.editor.idcal,
                 uid: this.editor.uid,
