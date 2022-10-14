@@ -469,11 +469,9 @@ class BopCal {
                         this.editor.endRepeat.until.min(newEnd);
                         if (
                             !this.editor.endRepeat.until.input[0].validity.valid
-                        ) {
-                            // newEnd.setDate(newEnd.getDate() + 1);
+                        )
                             this.editor.endRepeat.until.input[0].value =
                                 toHTMLInputDateValue(newEnd);
-                        }
                     }
                     this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.start.valueOf()
@@ -509,12 +507,9 @@ class BopCal {
                         this.editor.date.end.field.min(newStart);
                     }
                     this.editor.endRepeat.until.min(date);
-                    if (!this.editor.endRepeat.until.input[0].validity.valid) {
-                        // let newEnd = new Date(date);
-                        // newEnd.setDate(newEnd.getDate() + 1);
+                    if (!this.editor.endRepeat.until.input[0].validity.valid)
                         this.editor.endRepeat.until.input[0].value =
                             toHTMLInputDateValue(date);
-                    }
                     this.editor.date.sumUpdate();
                     date.valueOf() !== this.focus.end.valueOf()
                         ? (this.editor.modified.end = toMYSQLDTString(date))
@@ -671,10 +666,12 @@ class BopCal {
                             "by_month",
                             "by_setpos",
                         ].forEach((x) => delete this.editor.modified.rrule[x]);
-                    const freq = parseInt(
-                        this.editor.repeat.menu.frequency.field.selected
-                    );
-                    if (freq === 4) return console.log("modified emptied"); // if daily, return
+                    const preset = parseInt(this.editor.repeat.preset.selected),
+                        freq = parseInt(
+                            this.editor.repeat.menu.frequency.field.selected
+                        );
+                    if (preset < 5 || freq === 4)
+                        return console.log("setBy emptied"); // if daily, return
                     const values = Array.from(
                         // get picker values
                         this.editor.repeat.menu.picker.wrapper.querySelectorAll(
@@ -1008,13 +1005,12 @@ class BopCal {
                             ? (this.editor.modified.rrule.count = count)
                             : (this.editor.modified.rrule = { count: count });
                     if (
-                        !this.focus.rrule.until ||
+                        (!this.focus.rrule.until && until !== null) ||
                         this.focus.rrule.until !== until
                     )
                         this.editor.modified.rrule
                             ? (this.editor.modified.rrule.until = until)
                             : (this.editor.modified.rrule = { until: until });
-                    console.log(this.editor.modified.rrule);
                 },
                 wrapper: document.createElement("div"),
                 // select type (after, on date)
@@ -1251,6 +1247,8 @@ class BopCal {
                 const value = parseInt(this.editor.repeat.preset.selected);
                 this.editor.repeat.menu.wrapper.classList.remove("show");
                 if (value === 0) {
+                    if (Object.keys(this.focus.rrule).length)
+                        this.editor.modified.rrule = {};
                     this.editor.repeat.sumUpdate();
                     this.editor.endRepeat.span.classList.add("hidden");
                     this.editor.endRepeat.wrapper.classList.add("hidden");
@@ -1258,6 +1256,7 @@ class BopCal {
                     this.editor.endRepeat.span.classList.remove("hidden");
                     this.editor.endRepeat.wrapper.classList.remove("hidden");
                     this.editor.repeat.summary.classList.remove("show");
+                    this.editor.repeat.setBy();
                     switch (value) {
                         case 1:
                             this.editor.repeat.menu.frequency.field.set(4);
@@ -1275,9 +1274,8 @@ class BopCal {
                     if (value === 5) {
                         // run reset each/pos
                         // run seteach & setpos (compact into one sole method, with reset in it)
-                        this.editor.repeat.setBy();
                         this.editor.repeat.menu.wrapper.classList.add("show");
-                    } else this.editor.repeat.menu.interval.field.value = 1;
+                    }
                     this.editor.repeat.setFrequency();
                     this.editor.repeat.setInterval();
                     this.editor.endRepeat.setEnd();
@@ -2249,7 +2247,8 @@ class BopCal {
     editorFocus(idcal, uid, element) {
         if (
             this.editor.modified?.rrule &&
-            !Object.keys(this.editor.modified.rrule).length
+            !Object.keys(this.editor.modified.rrule).length &&
+            !Object.keys(this.focus.rrule).length
         )
             delete this.editor.modified.rrule;
         if (Object.keys(this.editor.modified).length)
@@ -2387,12 +2386,13 @@ class BopCal {
                 );
             }
             // by_month
-            if (component.rrule.by_month)
+            if (component.rrule.by_month) {
                 component.rrule.by_month.forEach((month) =>
                     this.editor.repeat.menu.picker.field.toggleOption(
                         parseInt(month)
                     )
                 );
+            }
             // by_setpos
             if (component.rrule.by_setpos) {
                 // if ([6, 7].includes(component.rrule.frequency))
@@ -2413,15 +2413,15 @@ class BopCal {
             }
             // if count
             if (component.rrule.count) {
-                this.editor.endRepeat.type.set(1);
                 this.editor.endRepeat.count.input[0].value =
                     component.rrule.count;
+                this.editor.endRepeat.type.set(1);
             }
             // if until
             if (component.rrule.until) {
-                this.editor.endRepeat.type.set(2);
                 this.editor.endRepeat.until.input[0].value =
-                    toHTMLInputDateValue(new Date(component.rrule.until));
+                    component.rrule.until.slice(0, 10);
+                this.editor.endRepeat.type.set(2);
             }
         }
 
@@ -2444,8 +2444,9 @@ class BopCal {
             ?.classList.remove("expanded");
         // if modifications
         if (
-            this.editor.modified.rrule &&
-            !Object.keys(this.editor.modified?.rrule).length
+            this.editor.modified?.rrule &&
+            !Object.keys(this.editor.modified.rrule).length &&
+            !Object.keys(this.focus.rrule).length
         )
             delete this.editor.modified.rrule;
         if (Object.keys(this.editor.modified).length) {
@@ -2481,7 +2482,7 @@ class BopCal {
 
         // // endRepeat
         // // type: 0
-        // this.editor.endRepeat.type.set(0);
+        this.editor.endRepeat.type.set(0);
         // // count: 0
         // this.editor.endRepeat.count.input[0].value = 0;
         // // until: new Date()

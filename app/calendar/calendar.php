@@ -753,6 +753,13 @@ trait BopCal
             $request['set'][] = 'until = ?';
             $request['type'] .= 's';
             $request['content'][] = $rule['until'];
+        } else if ($rule['until'] === null) {
+            print('until : null' . PHP_EOL);
+            $this->db->request([
+                'query' => 'UPDATE cal_rrule SET until = NULL WHERE idcal_component = ? LIMIT 1;',
+                'type' => 'i',
+                'content' => [$idcomponent],
+            ]);
         }
         // count
         if (isset($rule['count'])) {
@@ -790,11 +797,12 @@ trait BopCal
             $request['type'] .= 's';
             $request['content'][] = implode(',', $rule['by_setpos']);
         }
-        $this->db->request([
-            'query' => 'UPDATE cal_rrule SET ' . implode(',', $request['set']) . ' WHERE idcal_component = ?;',
-            'type' => $request['type'] . 'i',
-            'content' => [...$request['content'], $idcomponent],
-        ]);
+        if (!empty($request['set']))
+            $this->db->request([
+                'query' => 'UPDATE cal_rrule SET ' . implode(',', $request['set']) . ' WHERE idcal_component = ?;',
+                'type' => $request['type'] . 'i',
+                'content' => [...$request['content'], $idcomponent],
+            ]);
     }
     private function calComponentChangeStart(int $idcomponent, string $start)
     {
@@ -844,7 +852,7 @@ trait BopCal
             'array' => true,
         ])[0][0];
         $this->db->request([
-            'query' => 'DELETE cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_alarm WHERE idcal_alarm = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idalarm],
         ]);
@@ -853,7 +861,7 @@ trait BopCal
     private function calComponentRemoveAttendee(int $idcomponent, int $attendee)
     {
         $this->db->request([
-            'query' => 'DELETE cal_attendee WHERE idcal_component = ? AND attendee = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_attendee WHERE idcal_component = ? AND attendee = ? LIMIT 1;',
             'type' => 'ii',
             'content' => [$idcomponent, $attendee],
         ]);
@@ -878,7 +886,7 @@ trait BopCal
     private function calComponentRemoveException(int $idcomponent, string $exception)
     {
         $this->db->request([
-            'query' => 'DELETE cal_exception WHERE idcal_component = ? AND date = ?;',
+            'query' => 'DELETE FROM cal_exception WHERE idcal_component = ? AND date = ?;',
             'type' => 'is',
             'content' => [$idcomponent, $exception],
         ]);
@@ -903,7 +911,7 @@ trait BopCal
     private function calComponentRemoveRDate(int $idcomponent, string $date)
     {
         $this->db->request([
-            'query' => 'DELETE cal_rdate WHERE idcal_component = ? AND date = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_rdate WHERE idcal_component = ? AND date = ? LIMIT 1;',
             'type' => 'is',
             'content' => [$idcomponent, $date],
         ]);
@@ -921,13 +929,13 @@ trait BopCal
     {
         // remove rrule
         $this->db->request([
-            'query' => 'DELETE cal_rrule WHERE idcal_component = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_rrule WHERE idcal_component = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
         // remove exceptions
         $this->db->request([
-            'query' => 'DELETE cal_exception WHERE idcal_component = ?;',
+            'query' => 'DELETE FROM cal_exception WHERE idcal_component = ?;',
             'type' => 'i',
             'content' => [$idcomponent],
         ]);
@@ -947,7 +955,7 @@ trait BopCal
     private function calComponentRemoveTag(int $idcomponent, int $tag)
     {
         $this->db->request([
-            'query' => 'DELETE cal_comp_has_tag WHERE idcal_component = ? AND idtag = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_comp_has_tag WHERE idcal_component = ? AND idtag = ? LIMIT 1;',
             'type' => 'ii',
             'content' => [$idcomponent, $tag],
         ]);
@@ -1159,11 +1167,12 @@ trait BopCal
         }
 
         $set = implode(',', $request['set']);
-        $this->db->request([
-            'query' => "UPDATE cal_component SET $set WHERE idcal_component = ?;",
-            'type' => $request['type'] . 'i',
-            'content' => [...$request['content'], $idcomponent],
-        ]);
+        if (!empty($request['set']))
+            $this->db->request([
+                'query' => "UPDATE cal_component SET $set WHERE idcal_component = ?;",
+                'type' => $request['type'] . 'i',
+                'content' => [...$request['content'], $idcomponent],
+            ]);
 
         if (isset($update['tag'])) {
             $this->db->request([
@@ -1767,7 +1776,7 @@ trait BopCal
             'content' => [$iddescription, $iddescription, $iddescription],
             'array' => true,
         ]))) $this->db->request([
-            'query' => 'DELETE cal_description WHERE idcal_description = ? LIMIT 1;',
+            'query' => 'DELETE FROM cal_description WHERE idcal_description = ? LIMIT 1;',
             'type' => 'i',
             'content' => [$iddescription],
         ]);
@@ -1812,7 +1821,7 @@ trait BopCal
             'array' => true,
         ])))
             $this->db->request([
-                'query' => 'DELETE cal_location WHERE idcal_location = ? LIMIT 1;',
+                'query' => 'DELETE FROM cal_location WHERE idcal_location = ? LIMIT 1;',
                 'type' => 'i',
                 'content' => [$idlocation],
             ]);

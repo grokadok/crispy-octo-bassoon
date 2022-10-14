@@ -956,7 +956,9 @@ class FWServer
         // );
         // $s = microtime(true) - $s;
         // echo PHP_EOL . 'Use ' . $s . 's for 100000 queries' . PHP_EOL . PHP_EOL;
-
+        $test = [];
+        print((isset($test) ? 'set' : 'unset') . PHP_EOL);
+        print((empty($test) ? 'empty' : 'not empty') . PHP_EOL);
         // change session management to stateless asap with jwt or use dedicated library.
         if ($this->db->test() === true) {
             $this->db->request([
