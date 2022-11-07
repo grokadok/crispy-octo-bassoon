@@ -815,7 +815,7 @@ class FWServer
         Frame $frame
     ) {
         if (!$this->serv->table->exist($frame->fd)) {
-            echo "login request from socket {$frame->fd}" . PHP_EOL;
+            echo "login request from socket {$frame->fd} on worker {$server->worker_id}" . PHP_EOL;
             $data = json_decode(urldecode($frame->data), true);
             $data["fd"] = $frame->fd;
             $res = $this->login($data);
