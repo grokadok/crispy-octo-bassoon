@@ -2333,6 +2333,8 @@ class BopCal {
             } else preset = 5; // else custom
             this.editor.repeat.preset.set(preset);
             // frequency
+            console.log(component.rrule.frequency);
+            console.info(this.editor.repeat.menu.frequency.field.options);
             this.editor.repeat.menu.frequency.field.set(
                 component.rrule.frequency
             );
